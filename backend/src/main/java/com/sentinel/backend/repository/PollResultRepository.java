@@ -8,5 +8,4 @@ import java.util.Optional;
 public interface PollResultRepository extends JpaRepository<PollResult, Integer> {
     List<PollResult> findBySignalId(Integer signalId);
     Optional<PollResult> findBySignalIdAndUserId(Integer signalId, String userId);
-    long countBySignalId(Integer signalId);
 }

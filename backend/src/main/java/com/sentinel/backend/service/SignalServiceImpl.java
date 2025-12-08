@@ -1,9 +1,16 @@
 package com.sentinel.backend.service;
 
-import com.sentinel.backend.dto.*;
-import com.sentinel.backend.entity.*;
-import com.sentinel.backend.model.SignalType;
-import com.sentinel.backend.repository.*;
+
+import com.sentinel.backend.dto.CreatePollResponse;
+import com.sentinel.backend.dto.PollCreateDTO;
+import com.sentinel.backend.dto.PollResultDTO;
+import com.sentinel.backend.dto.SubmitPollRequest;
+import com.sentinel.backend.entity.Poll;
+import com.sentinel.backend.entity.PollResult;
+import com.sentinel.backend.entity.Signal;
+import com.sentinel.backend.repository.PollRepository;
+import com.sentinel.backend.repository.PollResultRepository;
+import com.sentinel.backend.repository.SignalRepository;
 import com.sentinel.backend.util.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +18,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -67,33 +80,8 @@ public class SignalServiceImpl implements SignalService {
 
         CreatePollResponse resp = new CreatePollResponse();
         resp.setCloudSignalId(saved.getId());
+        resp.setLocalId(dto.getLocalId());
         return resp;
-    }
-
-    // Get assigned polls for user (non-expensive simple method)
-    @Override
-    public List<UserPollDTO> getAssignedPollsForUser(String userId) {
-        // fetch signals where userId in shared_with and type=POLL and not deleted
-        List<Signal> signals = signalRepository.findAll()
-                .stream()
-                .filter(s -> Arrays.asList(s.getSharedWith()).contains(userId))
-                .collect(Collectors.toList());
-
-        List<UserPollDTO> out = new ArrayList<>();
-        for (Signal s : signals) {
-            Optional<Poll> pOpt = pollRepository.findById(s.getId());
-            if (pOpt.isEmpty()) continue;
-            Poll p = pOpt.get();
-            UserPollDTO dto = new UserPollDTO();
-            dto.setCloudSignalId(s.getId());
-            dto.setQuestion(p.getQuestion());
-            dto.setOptions(p.getOptions());
-            dto.setAnonymous(s.getAnonymous());
-            dto.setEndTimestamp(s.getEndTimestamp());
-            dto.setDefaultOption(s.getDefaultOption());
-            out.add(dto);
-        }
-        return out;
     }
 
     // ensure defaults inserted for expired signals (idempotent)

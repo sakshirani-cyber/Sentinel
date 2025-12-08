@@ -28,6 +28,9 @@ public abstract class BaseSignalDTO {
     @NotNull(message = "type is required")
     private String type;
 
+    @NotNull(message = "localId is required")
+    private Integer localId;
+
     private Boolean defaultFlag;
     private String defaultOption;
 

@@ -7,13 +7,13 @@ import lombok.Data;
 @Data
 public class SubmitPollRequest {
 
-    @NotNull
+    @NotNull(message = "signalId is required")
     private Integer signalId;
 
-    @NotBlank
+    @NotBlank(message = "userId is required")
     private String userId;
 
-    @NotBlank
+    @NotBlank(message = "selectedOption is required")
     private String selectedOption;
 
     public void normalize() {
