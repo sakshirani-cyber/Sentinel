@@ -30,7 +30,12 @@ public class GlobalExceptionHandler {
     // --- Timestamp formatting errors
     @ExceptionHandler(DateTimeParseException.class)
     public ResponseEntity<ApiResponse<?>> handleDateTimeParsing(DateTimeParseException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure("endTimestamp must be ISO-8601 instant"));
+        return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<?>> handleConflict(ConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.failure(ex.getMessage()));
     }
 
     // --- Catch-all (unexpected errors) – keep this generic
@@ -38,6 +43,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleGeneral(Exception ex) {
         log.error("Unexpected error occurred", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.failure("Something went wrong. Please try again later."));
+                .body(ApiResponse.failure(ex.getMessage()));
     }
 }
