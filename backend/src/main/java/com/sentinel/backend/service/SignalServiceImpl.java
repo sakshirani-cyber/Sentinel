@@ -192,30 +192,68 @@ public class SignalServiceImpl implements SignalService {
 
         List<PollResult> results = pollResultRepository.findBySignalId(signalId);
 
+        // CURRENT options (after edit)
         Map<String, Integer> counts = new LinkedHashMap<>();
         Map<String, List<String>> optionToUsers = new LinkedHashMap<>();
 
+        // ARCHIVED (deleted) options
+        Map<String, List<String>> archivedOptionToUsers = new LinkedHashMap<>();
+
+        // initialize structure for current options
         for (String opt : p.getOptions()) {
             counts.put(opt, 0);
             optionToUsers.put(opt, new ArrayList<>());
         }
 
+        // fill counts + users
         for (PollResult r : results) {
-            counts.computeIfPresent(r.getSelectedOption(), (k, v) -> v + 1);
-            optionToUsers.get(r.getSelectedOption()).add(r.getUserId());
+
+            String selected = r.getSelectedOption();
+
+            if (optionToUsers.containsKey(selected)) {
+                // normal case
+                counts.put(selected, counts.get(selected) + 1);
+                optionToUsers.get(selected).add(r.getUserId());
+
+            } else {
+                // option was removed in edit → archive it
+                archivedOptionToUsers
+                        .computeIfAbsent(selected, k -> new ArrayList<>())
+                        .add(r.getUserId());
+            }
         }
 
-        return new PollResultDTO(
-                signalId,
-                s.getSharedWith().length,
-                results.size(),
-                counts,
-                Boolean.TRUE.equals(s.getAnonymous()) ? null :
-                        optionToUsers.entrySet().stream()
-                                .collect(Collectors.toMap(Map.Entry::getKey,
-                                        e -> e.getValue().toArray(new String[0])))
+        // build DTO
+        PollResultDTO dto = new PollResultDTO();
+        dto.setSignalId(signalId);
+        dto.setTotalAssigned(s.getSharedWith().length);
+        dto.setTotalResponded(results.size());
+        dto.setOptionCounts(counts);
+
+        dto.setOptionToUsers(
+                Boolean.TRUE.equals(s.getAnonymous())
+                        ? null
+                        : optionToUsers.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                e -> e.getValue().toArray(new String[0])
+                        ))
         );
+
+        // ALWAYS include archived options (even if anonymous = true)
+        dto.setArchivedOptions(
+                archivedOptionToUsers.isEmpty()
+                        ? null
+                        : archivedOptionToUsers.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                e -> e.getValue().toArray(new String[0])
+                        ))
+        );
+
+        return dto;
     }
+
 
     // -------------------------------------------------------------------------
     // EDIT & REPUBLISH
