@@ -1,48 +1,42 @@
 package com.sentinel.backend.exception;
 
 import com.sentinel.backend.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.time.format.DateTimeParseException;
+
 @ControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
-    // ❌ DTO validation errors (NotBlank, NotNull, @Valid)
+    // --- Bean validation errors (@Valid)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<?>> handleValidation(MethodArgumentNotValidException ex) {
-        String msg = ex.getBindingResult().getFieldError().getDefaultMessage();
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.failure(msg));
+    public ResponseEntity<ApiResponse<?>> handleValidationErrors(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldError().getDefaultMessage();
+        return ResponseEntity.badRequest().body(ApiResponse.failure(message));
     }
 
-    // ❌ Bad request errors (business logic)
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ApiResponse<?>> handleBadRequest(BadRequestException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.failure(ex.getMessage()));
+    // --- Business rule violations (your IllegalArgumentExceptions)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
     }
 
-    // ❌ Resource not found
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ApiResponse<?>> handleNotFound(NotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.failure(ex.getMessage()));
+    // --- Timestamp formatting errors
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<ApiResponse<?>> handleDateTimeParsing(DateTimeParseException ex) {
+        return ResponseEntity.badRequest().body(ApiResponse.failure("endTimestamp must be ISO-8601 instant"));
     }
 
-    // ❌ Duplicate resource (409)
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiResponse<?>> handleConflict(ConflictException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.failure(ex.getMessage()));
-    }
-
-    // ❌ Fallback — BUT still no internal server error leak
+    // --- Catch-all (unexpected errors) – keep this generic
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGeneral(Exception ex) {
-        ex.printStackTrace(); // logs internally, not returned to client
+        log.error("Unexpected error occurred", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("Something went wrong. Please try again later."));
     }
