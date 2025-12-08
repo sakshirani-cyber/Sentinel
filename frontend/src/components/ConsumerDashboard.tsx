@@ -44,6 +44,9 @@ export default function ConsumerDashboard({
     return responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
   }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
 
+  // Track which alerts have been sent for each poll
+  const [sentAlerts, setSentAlerts] = useState<Record<string, number[]>>({});
+
   // Check for alerts
   useEffect(() => {
     const interval = setInterval(() => {
@@ -51,42 +54,56 @@ export default function ConsumerDashboard({
 
       incompletePolls.forEach(poll => {
         const deadline = new Date(poll.deadline);
-        const alertTime = new Date(deadline.getTime() - poll.alertBeforeMinutes * 60 * 1000);
+        const minutesUntilDeadline = Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60));
 
-        // Check if it's time for an alert (within the last 15 seconds to avoid double firing)
-        // In a real app we'd track "alerted" state in local storage or DB
-        const timeDiff = now.getTime() - alertTime.getTime();
-        const isAlertTime = timeDiff >= 0 && timeDiff < 15000;
+        // Define alert thresholds (60, 30, 15, 1 minute)
+        const alertThresholds = [60, 30, 15, 1];
 
-        if (isAlertTime) {
-          // Trigger system notification
-          new Notification(`Sentinel Alert: ${poll.publisherName}`, {
-            body: `Action required: ${poll.question}`,
-            silent: false
-          });
+        const pollSentAlerts = sentAlerts[poll.id] || [];
 
-          if (poll.isPersistentAlert) {
-            // Bring window to foreground and lock it for persistent alerts
-            if ((window as any).electron) {
-              (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
+        alertThresholds.forEach(threshold => {
+          // Only send each alert once
+          if (pollSentAlerts.includes(threshold)) return;
+
+          // Check if we're within 15 seconds of the alert time
+          const isAlertTime = minutesUntilDeadline <= threshold && minutesUntilDeadline > (threshold - 0.25);
+
+          if (isAlertTime) {
+            // Mark this alert as sent
+            setSentAlerts(prev => ({
+              ...prev,
+              [poll.id]: [...(prev[poll.id] || []), threshold]
+            }));
+
+            // Trigger system notification
+            const notification = new Notification(`Sentinel Alert: ${poll.publisherName}`, {
+              body: `${threshold} min left: ${poll.question}`,
+              silent: false
+            });
+
+            notification.onclick = () => {
+              window.focus();
+              if ((window as any).electron) {
+                (window as any).electron.ipcRenderer.send('show-window');
+              }
+              setSelectedPoll(poll);
+            };
+
+            // Only 1-minute alert can be persistent
+            if (threshold === 1 && poll.isPersistentFinalAlert) {
+              if ((window as any).electron) {
+                (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
+              }
+              setPersistentAlertPoll(poll);
+              setShowPersistentAlert(true);
             }
-            setPersistentAlertPoll(poll);
-            setShowPersistentAlert(true);
           }
-        } else if (poll.isPersistentAlert && now >= alertTime && now < deadline && !showPersistentAlert) {
-          // Ensure persistent alert stays open if we missed the exact window but are still in the danger zone
-          // and it's not already open (simple check, could be more robust)
-          if ((window as any).electron) {
-            (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
-          }
-          setPersistentAlertPoll(poll);
-          setShowPersistentAlert(true);
-        }
+        });
       });
     }, 10000); // Check every 10 seconds
 
     return () => clearInterval(interval);
-  }, [incompletePolls, showPersistentAlert]);
+  }, [incompletePolls, showPersistentAlert, sentAlerts]);
 
   // Load drafts
   useEffect(() => {

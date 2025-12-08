@@ -19,8 +19,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
   const [showDefaultToConsumers, setShowDefaultToConsumers] = useState(false);
   const [anonymityMode, setAnonymityMode] = useState<'anonymous' | 'record'>('record');
   const [deadline, setDeadline] = useState('');
-  const [alertBeforeMinutes, setAlertBeforeMinutes] = useState(15);
-  const [isPersistentAlert, setIsPersistentAlert] = useState(false);
+  const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(false);
   const [selectedConsumers, setSelectedConsumers] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -82,8 +81,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
       showDefaultToConsumers,
       anonymityMode,
       deadline,
-      alertBeforeMinutes,
-      isPersistentAlert,
+      isPersistentFinalAlert,
       consumers: selectedConsumers,
       publishedAt: new Date().toISOString(),
       status: 'active'
@@ -100,20 +98,25 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
     setShowDefaultToConsumers(false);
     setAnonymityMode('record');
     setDeadline('');
-    setAlertBeforeMinutes(15);
-    setIsPersistentAlert(false);
+    setIsPersistentFinalAlert(false);
     setSelectedConsumers([]);
     setShowPreview(false);
   };
 
-  const isValid = 
+  const isDateValid = (dateStr: string) => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    return date > new Date();
+  };
+
+  const isValid =
     question.trim() &&
     options.filter(o => o.trim()).length >= 2 &&
     (useCustomDefault ? customDefault.trim() : defaultResponse) &&
-    deadline &&
+    isDateValid(deadline) &&
     selectedConsumers.length > 0;
 
-  const canPreview = 
+  const canPreview =
     question.trim() &&
     options.filter(o => o.trim()).length >= 2 &&
     (useCustomDefault ? customDefault.trim() : defaultResponse) &&
@@ -183,7 +186,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
                 (applied if consumer doesn't submit)
               </span>
             </label>
-            
+
             <div className="space-y-3">
               <div className="flex items-center gap-2 mb-2">
                 <input
@@ -245,14 +248,14 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
               <input
                 type="checkbox"
                 id="persistent"
-                checked={isPersistentAlert}
-                onChange={(e) => setIsPersistentAlert(e.target.checked)}
+                checked={isPersistentFinalAlert}
+                onChange={(e) => setIsPersistentFinalAlert(e.target.checked)}
                 className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-2 focus:ring-blue-500"
               />
               <label htmlFor="persistent" className="text-slate-700">
-                Make alert persistent
+                Make final alert (1 min before deadline) persistent
                 <p className="text-sm text-slate-500 mt-1">
-                  Consumers must provide a reason to skip this notification
+                  The 1-minute warning will require action before it can be dismissed
                 </p>
               </label>
             </div>
@@ -298,37 +301,20 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
           </div>
 
           {/* Deadline */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-slate-700 mb-2">
-                Deadline <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                min={getMinDateTime()}
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 mb-2">
-                Alert Before Deadline
-              </label>
-              <select
-                value={alertBeforeMinutes}
-                onChange={(e) => setAlertBeforeMinutes(Number(e.target.value))}
-                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value={5}>5 minutes</option>
-                <option value={10}>10 minutes</option>
-                <option value={15}>15 minutes</option>
-                <option value={30}>30 minutes</option>
-                <option value={60}>1 hour</option>
-                <option value={120}>2 hours</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-slate-700 mb-2">
+              Deadline <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              min={getMinDateTime()}
+            />
+            <p className="text-sm text-slate-500 mt-2">
+              Notifications will be sent at 60, 30, 15, and 1 minute before this deadline
+            </p>
           </div>
 
           {/* Consumer Selection */}
@@ -372,7 +358,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
               <Eye className="w-4 h-4" />
               Preview
             </button>
-            
+
             <button
               onClick={handlePublish}
               disabled={!isValid}
@@ -386,9 +372,16 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
           {!isValid && (
             <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-800">
-                Please fill all required fields and select at least one consumer before publishing
-              </p>
+              <div className="text-sm text-amber-800">
+                <p>Please ensure:</p>
+                <ul className="list-disc list-inside ml-1">
+                  {!question.trim() && <li>Question is filled</li>}
+                  {options.filter(o => o.trim()).length < 2 && <li>At least 2 options are provided</li>}
+                  {!(useCustomDefault ? customDefault.trim() : defaultResponse) && <li>Default response is selected</li>}
+                  {!isDateValid(deadline) && <li>Deadline is in the future</li>}
+                  {selectedConsumers.length === 0 && <li>At least one consumer is selected</li>}
+                </ul>
+              </div>
             </div>
           )}
         </div>
@@ -410,8 +403,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
             showDefaultToConsumers,
             anonymityMode,
             deadline,
-            alertBeforeMinutes,
-            isPersistentAlert,
+            isPersistentFinalAlert,
             consumers: selectedConsumers,
             publishedAt: new Date().toISOString(),
             status: 'active'

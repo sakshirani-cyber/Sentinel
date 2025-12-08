@@ -1,15 +1,8 @@
 package com.sentinel.backend.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "signal")
@@ -20,29 +13,31 @@ public class Signal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "created_by")
+    @Column(name = "created_by", nullable = false)
     private String createdBy;
 
-    @Column(name = "created_date")
-    private LocalDateTime createdDate = LocalDateTime.now();
+    @Column(name = "created_on", nullable = false)
+    private Instant createdOn = Instant.now();
 
     @Column(name = "last_edited")
-    private LocalDateTime lastEdited;
+    private Instant lastEdited;
 
     private Boolean anonymous = false;
 
-    @Column(name = "end_date")
-    private LocalDate endDate;
+    @Column(name = "end_timestamp", nullable = false)
+    private Instant endTimestamp;
 
-    @Column(name = "end_time")
-    private LocalTime endTime;
-
-    @Column(name = "type_of_signal")
+    @Column(name = "type_of_signal", nullable = false)
     private String typeOfSignal;
 
     @Column(name = "default_flag")
     private Boolean defaultFlag = false;
 
-    @Column(name = "shared_with", columnDefinition = "text[]")
+    @Column(name = "default_option")
+    private String defaultOption;
+
+    @Column(name = "shared_with", columnDefinition = "text[]", nullable = false)
     private String[] sharedWith;
+
+    private String status = "ACTIVE";
 }

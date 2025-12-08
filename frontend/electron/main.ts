@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
 
@@ -89,6 +89,43 @@ app.whenReady().then(async () => {
             win?.show();
         }
     });
+
+    // Device Status Tracking
+    console.log('[Device Status] Tracking initialized');
+
+    // Track lock/unlock screen
+    powerMonitor.on('lock-screen', () => {
+        console.log('[Device Status] Screen locked');
+    });
+
+    powerMonitor.on('unlock-screen', () => {
+        console.log('[Device Status] Screen unlocked');
+    });
+
+    // Track sleep/wake
+    powerMonitor.on('suspend', () => {
+        console.log('[Device Status] System suspended (sleep)');
+    });
+
+    powerMonitor.on('resume', () => {
+        console.log('[Device Status] System resumed (wake)');
+    });
+
+    // Track idle state - check every 30 seconds
+    let lastIdleState = 'active';
+    setInterval(() => {
+        // Check if system has been idle for more than 60 seconds
+        const idleState = powerMonitor.getSystemIdleState(60);
+
+        if (idleState !== lastIdleState) {
+            if (idleState === 'idle') {
+                console.log('[Device Status] System is idle (no activity for 60+ seconds)');
+            } else if (idleState === 'active') {
+                console.log('[Device Status] System is active');
+            }
+            lastIdleState = idleState;
+        }
+    }, 30000); // Check every 30 seconds
 });
 
 app.on('window-all-closed', () => {

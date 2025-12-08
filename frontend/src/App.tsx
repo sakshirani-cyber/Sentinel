@@ -26,8 +26,7 @@ export interface Poll {
   showDefaultToConsumers: boolean;
   anonymityMode: 'anonymous' | 'record';
   deadline: string;
-  alertBeforeMinutes: number;
-  isPersistentAlert: boolean;
+  isPersistentFinalAlert: boolean;
   consumers: string[];
   publishedAt: string;
   status: 'active' | 'completed';
@@ -70,8 +69,7 @@ function App() {
           showDefaultToConsumers: true,
           anonymityMode: 'record',
           deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
-          alertBeforeMinutes: 30,
-          isPersistentAlert: true,
+          isPersistentFinalAlert: true,
           consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com', 'diana@company.com', 'eve@company.com'],
           publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
           status: 'active'
@@ -90,8 +88,7 @@ function App() {
           showDefaultToConsumers: false,
           anonymityMode: 'anonymous',
           deadline: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(), // 5 hours from now
-          alertBeforeMinutes: 15,
-          isPersistentAlert: false,
+          isPersistentFinalAlert: false,
           consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com'],
           publishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
           status: 'active'
@@ -109,8 +106,7 @@ function App() {
           showDefaultToConsumers: true,
           anonymityMode: 'record',
           deadline: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago (expired)
-          alertBeforeMinutes: 60,
-          isPersistentAlert: true,
+          isPersistentFinalAlert: true,
           consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com', 'diana@company.com', 'eve@company.com'],
           publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
           status: 'completed'
@@ -129,8 +125,7 @@ function App() {
           showDefaultToConsumers: true,
           anonymityMode: 'record',
           deadline: new Date(Date.now() + 45 * 60 * 1000).toISOString(), // 45 minutes from now
-          alertBeforeMinutes: 15,
-          isPersistentAlert: true,
+          isPersistentFinalAlert: true,
           consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com', 'diana@company.com'],
           publishedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
           status: 'active'
@@ -297,8 +292,8 @@ function App() {
   const handleCreatePoll = (poll: Poll) => {
     setPolls((prev: Poll[]) => [...prev, poll]);
 
-    // Show notification demo for the first consumer
-    if (poll.consumers.length > 0) {
+    // Show notification demo only if the current user is a targeted consumer
+    if (currentUser && poll.consumers.includes(currentUser.email)) {
       setNotificationPoll(poll);
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 5000);
@@ -327,6 +322,10 @@ function App() {
         <NotificationDemo
           poll={notificationPoll}
           onClose={() => setShowNotification(false)}
+          onFill={() => {
+            setShowNotification(false);
+            setMode('consumer');
+          }}
         />
       )}
 

@@ -1,31 +1,17 @@
 package com.sentinel.backend.service;
 
-import com.sentinel.backend.dto.CreatePollRequest;
-import com.sentinel.backend.dto.PollResultDTO;
-import com.sentinel.backend.dto.SubmitPollResponse;
-import com.sentinel.backend.dto.UserPollDTO;
-import com.sentinel.backend.dto.YourDashboardDTO;
-import com.sentinel.backend.entity.Poll;
-import com.sentinel.backend.entity.PollAssignment;
-import com.sentinel.backend.entity.PollResult;
-import com.sentinel.backend.entity.Signal;
-import com.sentinel.backend.repository.PollAssignmentRepository;
-import com.sentinel.backend.repository.PollRepository;
-import com.sentinel.backend.repository.PollResultRepository;
-import com.sentinel.backend.repository.SignalRepository;
+import com.sentinel.backend.dto.*;
+import com.sentinel.backend.entity.*;
+import com.sentinel.backend.model.SignalType;
+import com.sentinel.backend.repository.*;
+import com.sentinel.backend.util.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,218 +22,246 @@ public class SignalServiceImpl implements SignalService {
     private final SignalRepository signalRepository;
     private final PollRepository pollRepository;
     private final PollResultRepository pollResultRepository;
-    private final PollAssignmentRepository pollAssignmentRepository;
 
+    // CREATE POLL
     @Override
-    public Integer createPoll(CreatePollRequest req) {
-        log.debug("Creating poll with data: {}", req);
+    @Transactional
+    public CreatePollResponse createPoll(PollCreateDTO dto) {
+        dto.normalizeCommon();
+        dto.normalizePoll();
+        dto.validateCommon();
+        dto.validatePoll();
 
-        List<String> incoming = Arrays.stream(req.getOptions())
-                .map(opt -> opt.trim().toLowerCase())
-                .sorted()
-                .toList();
+        // 1. Duplicate check: question (normalized) + options (normalized sorted)
+        String incomingQ = NormalizationUtils.normalizeQuestion(dto.getQuestion());
+        List<String> incomingOpts = NormalizationUtils.normalizeForComparison(dto.getOptions());
 
-        List<Poll> existingPolls =
-                pollRepository.findByQuestionCaseInsensitive(req.getQuestion());
-
-        for (Poll p : existingPolls) {
-            List<String> existingOptions = Arrays.stream(p.getOptions())
-                    .map(opt -> opt.trim().toLowerCase())
-                    .sorted()
-                    .toList();
-
-            if (incoming.equals(existingOptions)) {
-                throw new IllegalArgumentException(
-                        "A poll with the same question and options already exists."
-                );
+        List<Poll> allPolls = pollRepository.findAll();
+        for (Poll p : allPolls) {
+            String existingQ = NormalizationUtils.normalizeQuestion(p.getQuestion());
+            if (!incomingQ.equals(existingQ)) continue;
+            List<String> existOpts = NormalizationUtils.normalizeForComparison(p.getOptions());
+            if (incomingOpts.equals(existOpts)) {
+                throw new IllegalArgumentException("A poll with the same question and options already exists.");
             }
         }
 
-        Signal signal = new Signal();
-        signal.setCreatedBy(req.getCreatedBy());
-        signal.setAnonymous(req.getAnonymous());
-        signal.setEndDate(LocalDate.parse(req.getEndDate()));
-        signal.setEndTime(LocalTime.parse(req.getEndTime()));
-        signal.setTypeOfSignal(req.getTypeOfSignal());
-        signal.setDefaultFlag(req.getDefaultFlag() != null ? req.getDefaultFlag() : false);
-        signal.setSharedWith(req.getSharedWith());
+        // 2. Save Signal
+        Signal s = new Signal();
+        s.setCreatedBy(dto.getCreatedBy());
+        s.setAnonymous(dto.getAnonymous());
+        s.setEndTimestamp(dto.parseEndTimestamp());
+        s.setTypeOfSignal(dto.getType());
+        s.setDefaultFlag(Boolean.TRUE.equals(dto.getDefaultFlag()));
+        s.setDefaultOption(dto.getDefaultOption());
+        s.setSharedWith(dto.getSharedWith());
 
-        Signal saved = signalRepository.save(signal);
+        Signal saved = signalRepository.save(s);
 
+        // 3. Save poll
         Poll poll = new Poll();
         poll.setSignal(saved);
-        poll.setQuestion(req.getQuestion());
-        poll.setOptions(req.getOptions());
-        poll.setDefaultOption(req.getDefaultOption());
-
+        poll.setQuestion(dto.getQuestion().trim());
+        poll.setOptions(dto.getOptions());
         pollRepository.save(poll);
 
-        if (req.getSharedWith() != null) {
-            for (String email : req.getSharedWith()) {
-                PollAssignment a = new PollAssignment();
-                a.setSignalId(saved.getId());
-                a.setUserEmail(email);
-                pollAssignmentRepository.findBySignalIdAndUserEmail(saved.getId(), email)
-                        .orElseGet(() -> pollAssignmentRepository.save(a));
-            }
-        }
-        return saved.getId();
+        CreatePollResponse resp = new CreatePollResponse();
+        resp.setCloudSignalId(saved.getId());
+        return resp;
     }
 
+    // Get assigned polls for user (non-expensive simple method)
     @Override
-    public List<UserPollDTO> getAssignedPollsForUser(String userEmail) {
-        List<PollAssignment> assignments = pollAssignmentRepository.findByUserEmailOrderByAssignedAtDesc(userEmail);
+    public List<UserPollDTO> getAssignedPollsForUser(String userId) {
+        // fetch signals where userId in shared_with and type=POLL and not deleted
+        List<Signal> signals = signalRepository.findAll()
+                .stream()
+                .filter(s -> Arrays.asList(s.getSharedWith()).contains(userId))
+                .collect(Collectors.toList());
+
         List<UserPollDTO> out = new ArrayList<>();
-        for (PollAssignment a : assignments) {
-            Integer signalId = a.getSignalId();
-            Poll poll = pollRepository.findById(signalId).orElse(null);
-            if (poll == null) continue; // maybe deleted
-            Signal signal = signalRepository.findById(signalId).orElse(null);
-            if (signal == null) continue;
+        for (Signal s : signals) {
+            Optional<Poll> pOpt = pollRepository.findById(s.getId());
+            if (pOpt.isEmpty()) continue;
+            Poll p = pOpt.get();
             UserPollDTO dto = new UserPollDTO();
-            dto.setSignalId(signalId);
-            dto.setQuestion(poll.getQuestion());
-            dto.setOptions(poll.getOptions());
-            dto.setAnonymous(signal.getAnonymous());
-            dto.setEndDate(signal.getEndDate());
-            dto.setEndTime(signal.getEndTime());
-
-            List<PollResult> results = pollResultRepository.findBySignalId(signalId);
-            Optional<PollResult> myVote = results.stream()
-                    .filter(r -> userEmail.equals(r.getUserEmail()))
-                    .findFirst();
-            dto.setAlreadyVoted(myVote.isPresent());
-            dto.setSelectedOption(myVote.map(PollResult::getSelectedOption).orElse(null));
-
+            dto.setCloudSignalId(s.getId());
+            dto.setQuestion(p.getQuestion());
+            dto.setOptions(p.getOptions());
+            dto.setAnonymous(s.getAnonymous());
+            dto.setEndTimestamp(s.getEndTimestamp());
+            dto.setDefaultOption(s.getDefaultOption());
             out.add(dto);
         }
         return out;
     }
 
-    @Override
-    public void submitOrUpdateVote(SubmitPollResponse req) {
-        // 1. check poll exists and not expired
-        Signal signal = signalRepository.findById(req.getSignalId())
-                .orElseThrow(() -> new IllegalArgumentException("Poll not found"));
+    // ensure defaults inserted for expired signals (idempotent)
+    @Transactional
+    protected void ensureDefaultsForExpired(Integer signalId) {
+        Signal s = signalRepository.findById(signalId).orElse(null);
+        if (s == null) return;
 
-        // check end date/time: if endDate != null and endTime != null -> compare
-        if (isPollExpired(signal)) {
-            throw new IllegalArgumentException("Poll is closed for submissions");
+        Instant now = Instant.now();
+        if (s.getEndTimestamp() == null || now.isBefore(s.getEndTimestamp())) return; // not expired
+
+        // for each user in shared_with not present in poll_result, insert default
+        String[] assigned = s.getSharedWith();
+        List<PollResult> existing = pollResultRepository.findBySignalId(signalId);
+        Set<String> responded = existing.stream().map(PollResult::getUserId).collect(Collectors.toSet());
+
+        List<PollResult> toInsert = new ArrayList<>();
+        for (String uid : assigned) {
+            if (!responded.contains(uid)) {
+                PollResult pr = new PollResult();
+                pr.setSignalId(signalId);
+                pr.setUserId(uid);
+                pr.setSelectedOption(s.getDefaultOption() == null ? "" : s.getDefaultOption());
+                pr.setTimeOfSubmission(s.getEndTimestamp());
+                toInsert.add(pr);
+            }
+        }
+        if (!toInsert.isEmpty()) pollResultRepository.saveAll(toInsert);
+    }
+
+    // SUBMIT / UPDATE VOTE
+    @Override
+    @Transactional
+    public void submitOrUpdateVote(SubmitPollRequest req) {
+        req.normalize();
+        // validate signal
+        Signal s = signalRepository.findById(req.getSignalId())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid signalId. Poll does not exist."));
+
+        // if expired -> ensure defaults applied and reject submissions
+        if (s.getEndTimestamp() != null && Instant.now().isAfter(s.getEndTimestamp())) {
+            ensureDefaultsForExpired(req.getSignalId());
+            throw new IllegalArgumentException("Poll is closed for submissions; default responses have been applied.");
         }
 
-        // 2. check options validity
+        // check user assignment
+        if (!Arrays.asList(s.getSharedWith()).contains(req.getUserId())) {
+            throw new IllegalArgumentException("User is not assigned to this poll");
+        }
+
+        // validate poll & option: exact match
         Poll poll = pollRepository.findById(req.getSignalId())
                 .orElseThrow(() -> new IllegalArgumentException("Poll data not found"));
-        boolean optionValid = Arrays.stream(poll.getOptions())
-                .anyMatch(o -> o.equalsIgnoreCase(req.getSelectedOption()));
-        if (!optionValid) throw new IllegalArgumentException("Selected option is invalid");
 
-        // 3. find existing result for user
-        Optional<PollResult> existing = pollResultRepository.findBySignalId(req.getSignalId())
-                .stream()
-                .filter(r -> r.getUserEmail().equalsIgnoreCase(req.getUserEmail()))
-                .findFirst();
+        boolean validOption = Arrays.asList(poll.getOptions()).contains(req.getSelectedOption());
+        if (!validOption) throw new IllegalArgumentException("Selected option is invalid");
 
+        // upsert
+        Optional<PollResult> existing = pollResultRepository.findBySignalIdAndUserId(req.getSignalId(), req.getUserId());
         if (existing.isPresent()) {
             PollResult pr = existing.get();
             pr.setSelectedOption(req.getSelectedOption());
-            pr.setTimeOfSubmission(LocalDateTime.now());
+            pr.setTimeOfSubmission(Instant.now());
             pollResultRepository.save(pr);
         } else {
             PollResult pr = new PollResult();
             pr.setSignalId(req.getSignalId());
-            pr.setUserEmail(req.getUserEmail());
+            pr.setUserId(req.getUserId());
             pr.setSelectedOption(req.getSelectedOption());
+            pr.setTimeOfSubmission(Instant.now());
             pollResultRepository.save(pr);
-            // mark assignment submitted if exists
-            pollAssignmentRepository.findBySignalIdAndUserEmail(req.getSignalId(), req.getUserEmail())
-                    .ifPresent(a -> {
-                        a.setSubmitted(true);
-                        pollAssignmentRepository.save(a);
-                    });
         }
     }
 
-    private boolean isPollExpired(Signal signal) {
-        if (signal.getEndDate() == null) return false;
-        LocalDate nowDate = LocalDate.now();
-        LocalTime nowTime = LocalTime.now();
-        if (nowDate.isAfter(signal.getEndDate())) return true;
-        if (nowDate.isEqual(signal.getEndDate()) && signal.getEndTime() != null && nowTime.isAfter(signal.getEndTime()))
-            return true;
-        return false;
-    }
-
+    // GET RESULTS (applies defaults first if expired)
     @Override
+    @Transactional
     public PollResultDTO getPollResults(Integer signalId) {
-        Signal signal = signalRepository.findById(signalId)
+        Signal s = signalRepository.findById(signalId)
                 .orElseThrow(() -> new IllegalArgumentException("Poll not found"));
+
+        // apply defaults if expired
+        ensureDefaultsForExpired(signalId);
+
         Poll poll = pollRepository.findById(signalId)
                 .orElseThrow(() -> new IllegalArgumentException("Poll data not found"));
 
         List<PollResult> results = pollResultRepository.findBySignalId(signalId);
-        Map<String, Integer> optionCounts = new LinkedHashMap<>();
-        Map<String, List<String>> optionToUsers = new LinkedHashMap<>();
 
-        // initialize
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        Map<String, List<String>> optionToUsers = new LinkedHashMap<>();
         for (String opt : poll.getOptions()) {
-            optionCounts.put(opt, 0);
+            counts.put(opt, 0);
             optionToUsers.put(opt, new ArrayList<>());
         }
 
         for (PollResult r : results) {
-            String matched = poll.getOptions()[0]; // fallback
-            // find exact option by case-insensitive match
-            for (String opt : poll.getOptions()) {
-                if (opt.equalsIgnoreCase(r.getSelectedOption())) {
-                    matched = opt;
-                    break;
-                }
+            counts.put(r.getSelectedOption(), counts.getOrDefault(r.getSelectedOption(), 0) + 1);
+            if (optionToUsers.containsKey(r.getSelectedOption())) {
+                optionToUsers.get(r.getSelectedOption()).add(r.getUserId());
+            } else {
+                // if result contains an option no longer present, still store under that label
+                optionToUsers.computeIfAbsent(r.getSelectedOption(), k -> new ArrayList<>()).add(r.getUserId());
+                counts.putIfAbsent(r.getSelectedOption(), 1);
             }
-            optionCounts.put(matched, optionCounts.getOrDefault(matched, 0) + 1);
-            optionToUsers.get(matched).add(r.getUserEmail());
         }
 
         PollResultDTO dto = new PollResultDTO();
         dto.setSignalId(signalId);
-        dto.setTotalAssigned(pollAssignmentRepository.findBySignalId(signalId).size());
+        dto.setTotalAssigned(s.getSharedWith().length);
         dto.setTotalResponded(results.size());
-        dto.setOptionCounts(optionCounts);
-        if (Boolean.TRUE.equals(signal.getAnonymous())) {
-            dto.setOptionToUsers(null); // do not return user lists
-        } else {
-            // convert lists to arrays
-            Map<String, String[]> map = new LinkedHashMap<>();
-            optionToUsers.forEach((k, v) -> map.put(k, v.toArray(new String[0])));
-            dto.setOptionToUsers(map);
-        }
+        dto.setOptionCounts(counts);
+        dto.setOptionToUsers(Boolean.TRUE.equals(s.getAnonymous()) ? null :
+                optionToUsers.entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toArray(new String[0]))));
         return dto;
     }
 
+    // EDIT & REPUBLISH - simplified using PollCreateDTO fields
     @Override
-    public List<YourDashboardDTO> listSignalsForCreator(String createdBy) {
-        // simple dashboard: list signals by createdBy with assigned/responded counts and status
-        List<Signal> signals = signalRepository.findAll()
-                .stream()
-                .filter(s -> createdBy.equals(s.getCreatedBy()))
-                .collect(Collectors.toList());
+    @Transactional
+    public void editSignal(Integer signalId, boolean republish, PollCreateDTO dto) {
+        dto.normalizeCommon();
+        dto.normalizePoll();
+        dto.validateCommon();
+        dto.validatePoll();
 
-        List<YourDashboardDTO> out = new ArrayList<>();
-        for (Signal s : signals) {
-            Integer id = s.getId();
-            int assigned = pollAssignmentRepository.findBySignalId(id).size();
-            int responded = pollResultRepository.findBySignalId(id).size();
-            YourDashboardDTO d = new YourDashboardDTO();
-            d.setSignalId(id);
-            d.setTypeOfSignal(s.getTypeOfSignal());
-            d.setCreatedDate(s.getCreatedDate());
-            d.setAssignedCount(assigned);
-            d.setRespondedCount(responded);
-            d.setExpired(isPollExpired(s));
-            out.add(d);
+        Signal s = signalRepository.findById(signalId)
+                .orElseThrow(() -> new IllegalArgumentException("Signal not found"));
+        Poll poll = pollRepository.findById(signalId)
+                .orElseThrow(() -> new IllegalArgumentException("Poll not found"));
+
+        // Duplicate check like create (skip self)
+        String incomingQ = NormalizationUtils.normalizeQuestion(dto.getQuestion());
+        List<String> incomingOpts = NormalizationUtils.normalizeForComparison(dto.getOptions());
+        List<Poll> all = pollRepository.findAll();
+        for (Poll p : all) {
+            if (p.getSignalId().equals(signalId)) continue;
+            if (NormalizationUtils.normalizeQuestion(p.getQuestion()).equals(incomingQ)) {
+                List<String> exist = NormalizationUtils.normalizeForComparison(p.getOptions());
+                if (exist.equals(incomingOpts)) throw new IllegalArgumentException("A poll with same question/options exists.");
+            }
         }
-        return out;
+
+        // Apply changes
+        poll.setQuestion(dto.getQuestion().trim());
+        poll.setOptions(dto.getOptions());
+        s.setAnonymous(dto.getAnonymous());
+        s.setDefaultFlag(Boolean.TRUE.equals(dto.getDefaultFlag()));
+        s.setDefaultOption(dto.getDefaultOption());
+        s.setEndTimestamp(dto.parseEndTimestamp());
+        s.setSharedWith(dto.getSharedWith());
+        s.setLastEdited(Instant.now());
+
+        pollRepository.save(poll);
+        signalRepository.save(s);
+
+        // republish -> delete existing results so users must re-answer
+        if (republish) {
+            List<PollResult> existing = pollResultRepository.findBySignalId(signalId);
+            if (!existing.isEmpty()) pollResultRepository.deleteAll(existing);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteSignal(Integer signalId) {
+        if (!signalRepository.existsById(signalId)) throw new IllegalArgumentException("Signal not found");
+        signalRepository.deleteById(signalId);
     }
 }
-
-

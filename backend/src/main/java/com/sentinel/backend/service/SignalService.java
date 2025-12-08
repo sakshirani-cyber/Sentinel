@@ -1,17 +1,14 @@
 package com.sentinel.backend.service;
 
-import com.sentinel.backend.dto.CreatePollRequest;
-import com.sentinel.backend.dto.PollResultDTO;
-import com.sentinel.backend.dto.SubmitPollResponse;
-import com.sentinel.backend.dto.UserPollDTO;
-import com.sentinel.backend.dto.YourDashboardDTO;
+import com.sentinel.backend.dto.*;
 
 import java.util.List;
 
 public interface SignalService {
-    Integer createPoll(CreatePollRequest request);
-    List<UserPollDTO> getAssignedPollsForUser(String userEmail);
-    void submitOrUpdateVote(SubmitPollResponse req);
+    CreatePollResponse createPoll(PollCreateDTO dto);
+    List<UserPollDTO> getAssignedPollsForUser(String userId);
+    void submitOrUpdateVote(SubmitPollRequest req);
     PollResultDTO getPollResults(Integer signalId);
-    List<YourDashboardDTO> listSignalsForCreator(String createdBy); // simple HR dashboard
+    void editSignal(Integer signalId, boolean republish, PollCreateDTO dto); // for poll type reuse PollCreateDTO fields for edit
+    void deleteSignal(Integer signalId);
 }

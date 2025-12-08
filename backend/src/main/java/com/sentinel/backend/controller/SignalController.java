@@ -1,60 +1,65 @@
 package com.sentinel.backend.controller;
 
-import com.sentinel.backend.dto.ApiResponse;
-import com.sentinel.backend.dto.CreatePollRequest;
-import com.sentinel.backend.dto.PollResultDTO;
-import com.sentinel.backend.dto.SubmitPollResponse;
-import com.sentinel.backend.dto.UserPollDTO;
-import com.sentinel.backend.dto.YourDashboardDTO;
+import com.sentinel.backend.dto.*;
 import com.sentinel.backend.service.SignalService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/signal")
+@RequestMapping("/api/signals")
 @RequiredArgsConstructor
-@Slf4j
 public class SignalController {
 
     private final SignalService signalService;
 
-    @PostMapping("/poll/create")
-    public ResponseEntity<ApiResponse<?>> createPoll(@RequestBody @Valid CreatePollRequest request) {
-        Integer id = signalService.createPoll(request);
-        return ResponseEntity.ok(ApiResponse.builder().success(true).message("Poll created").data(id).build());
+    @PostMapping
+    public ResponseEntity<ApiResponse<CreatePollResponse>> createSignal(@RequestBody @Valid PollCreateDTO req) {
+        // normalize + validate common + poll-specific
+        req.normalizeCommon();
+        req.normalizePoll();
+
+        req.validateCommon();
+        req.validatePoll();
+
+        CreatePollResponse resp = signalService.createPoll(req);
+        return ResponseEntity.status(201).body(ApiResponse.success("Created", resp));
     }
 
-    @GetMapping("/poll/user/{email}")
-    public ResponseEntity<ApiResponse<?>> getPollsForUser(@PathVariable("email") String email) {
-        List<UserPollDTO> polls = signalService.getAssignedPollsForUser(email);
-        return ResponseEntity.ok(ApiResponse.builder().success(true).message("OK").data(polls).build());
+
+    @GetMapping("/assigned/{userId}")
+    public ResponseEntity<ApiResponse<List<UserPollDTO>>> getAssigned(@PathVariable String userId) {
+        List<UserPollDTO> list = signalService.getAssignedPollsForUser(userId);
+        return ResponseEntity.ok(ApiResponse.success("OK", list));
     }
 
-    @PostMapping("/poll/submit")
-    public ResponseEntity<ApiResponse<?>> submitVote(@RequestBody @Valid SubmitPollResponse req) {
+    @PostMapping("/poll/response")
+    public ResponseEntity<ApiResponse<Void>> submitResponse(@RequestBody @Valid SubmitPollRequest req) {
+        req.setSignalId(req.getSignalId());
+        req.normalize();
         signalService.submitOrUpdateVote(req);
-        return ResponseEntity.ok(ApiResponse.builder().success(true).message("Vote saved").build());
+        return ResponseEntity.ok(ApiResponse.success("Saved", null));
     }
 
-    @GetMapping("/poll/result/{signalId}")
-    public ResponseEntity<ApiResponse<?>> getPollResults(@PathVariable Integer signalId) {
+    @GetMapping("/{signalId}/poll/results")
+    public ResponseEntity<ApiResponse<PollResultDTO>> results(@PathVariable Integer signalId) {
         PollResultDTO dto = signalService.getPollResults(signalId);
-        return ResponseEntity.ok(ApiResponse.builder().success(true).message("OK").data(dto).build());
+        return ResponseEntity.ok(ApiResponse.success("OK", dto));
     }
 
-    @GetMapping("/poll/creator/{createdBy}")
-    public ResponseEntity<ApiResponse<?>> listSignalsForCreator(@PathVariable String createdBy) {
-        List<YourDashboardDTO> list = signalService.listSignalsForCreator(createdBy);
-        return ResponseEntity.ok(ApiResponse.builder().success(true).message("OK").data(list).build());
+    @PutMapping("/{signalId}")
+    public ResponseEntity<ApiResponse<Void>> edit(@PathVariable Integer signalId,
+                                                  @RequestParam(defaultValue = "false") boolean republish,
+                                                  @RequestBody PollCreateDTO dto) {
+        signalService.editSignal(signalId, republish, dto);
+        return ResponseEntity.ok(ApiResponse.success("Edited", null));
+    }
+
+    @DeleteMapping("/{signalId}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Integer signalId) {
+        signalService.deleteSignal(signalId);
+        return ResponseEntity.ok(ApiResponse.success("Deleted", null));
     }
 }

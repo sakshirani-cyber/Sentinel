@@ -1,12 +1,6 @@
 package com.sentinel.backend.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
@@ -23,11 +17,9 @@ public class Poll {
     @JoinColumn(name = "signal_id")
     private Signal signal;
 
+    @Column(nullable = false)
     private String question;
 
-    @Column(columnDefinition = "text[]")
+    @Column(name = "options", columnDefinition = "text[]", nullable = false)
     private String[] options;
-
-    @Column(name = "default_option")
-    private String defaultOption;
 }

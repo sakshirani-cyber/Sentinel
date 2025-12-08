@@ -1,17 +1,14 @@
 package com.sentinel.backend.dto;
 
 import lombok.Data;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.Instant;
 
 @Data
 public class UserPollDTO {
-    private Integer signalId;
+    private Integer cloudSignalId;
     private String question;
     private String[] options;
     private Boolean anonymous;
-    private LocalDate endDate;
-    private LocalTime endTime;
-    private Boolean alreadyVoted;
-    private String selectedOption;
+    private Instant endTimestamp;
+    private String defaultOption;
 }

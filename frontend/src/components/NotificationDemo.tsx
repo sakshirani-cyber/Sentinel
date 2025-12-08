@@ -4,9 +4,10 @@ import { X } from 'lucide-react';
 interface NotificationDemoProps {
   poll: Poll;
   onClose: () => void;
+  onFill: () => void;
 }
 
-export default function NotificationDemo({ poll, onClose }: NotificationDemoProps) {
+export default function NotificationDemo({ poll, onClose, onFill }: NotificationDemoProps) {
   return (
     <div className="fixed top-4 right-4 z-50 animate-slide-in">
       <div className="bg-white border-2 border-blue-500 rounded-xl shadow-2xl p-4 max-w-sm w-96">
@@ -27,7 +28,10 @@ export default function NotificationDemo({ poll, onClose }: NotificationDemoProp
             <p className="text-sm text-slate-600 line-clamp-2">{poll.question}</p>
           </div>
         </div>
-        <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
+        <button
+          onClick={onFill}
+          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
           Fill
         </button>
         <p className="text-xs text-slate-500 text-center mt-2">

@@ -9,23 +9,26 @@ interface EditPollModalProps {
 }
 
 export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModalProps) {
+    const getMinDateTime = () => {
+        const now = new Date();
+        now.setMinutes(now.getMinutes());
+        return now.toISOString().slice(0, 16);
+    };
+
+    const isDateValid = (dateStr: string) => {
+        if (!dateStr) return false;
+        const date = new Date(dateStr);
+        return date > new Date();
+    };
     const [question, setQuestion] = useState(poll.question);
     const [options, setOptions] = useState<string[]>(poll.options.map(o => o.text));
     const [defaultResponse, setDefaultResponse] = useState(poll.defaultResponse);
     const [showDefaultToConsumers, setShowDefaultToConsumers] = useState(poll.showDefaultToConsumers);
     const [anonymityMode, setAnonymityMode] = useState<'anonymous' | 'record'>(poll.anonymityMode);
-    const [deadline, setDeadline] = useState(poll.deadline.slice(0, 16)); // Format for datetime-local
-    const [alertBeforeMinutes, setAlertBeforeMinutes] = useState(poll.alertBeforeMinutes);
-    const [isPersistentAlert, setIsPersistentAlert] = useState(poll.isPersistentAlert);
+    const [deadline, setDeadline] = useState(poll.deadline.slice(0, 16));
+    const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(poll.isPersistentFinalAlert);
     const [selectedConsumers, setSelectedConsumers] = useState<string[]>(poll.consumers);
 
-    // Mock consumers list - in real app, this would come from backend or props
-    // For now, we'll just use the ones already in the poll plus some extras if needed
-    // Or better, just assume the current list is what we have to work with + maybe we can't add new ones easily without the full list
-    // Let's just use the poll's consumers for now to avoid complexity, or pass availableConsumers as prop.
-    // To keep it simple and working, I'll just allow removing existing consumers.
-    // Actually, the user might want to add consumers. I'll re-use the list from CreatePoll if possible, 
-    // but since I don't have it passed down, I'll just use the poll's consumers + a few hardcoded ones for demo.
     const availableConsumers = Array.from(new Set([
         ...poll.consumers,
         'alice@company.com',
@@ -65,15 +68,14 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         const updates: Partial<Poll> = {
             question,
             options: validOptions.map((text, index) => ({
-                id: `opt-${index}`, // Regenerate IDs to keep it simple
+                id: `opt-${index}`,
                 text
             })),
             defaultResponse,
             showDefaultToConsumers,
             anonymityMode,
             deadline,
-            alertBeforeMinutes,
-            isPersistentAlert,
+            isPersistentFinalAlert,
             consumers: selectedConsumers,
             isEdited: true
         };
@@ -86,7 +88,8 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         question.trim() &&
         options.filter(o => o.trim()).length >= 2 &&
         defaultResponse &&
-        deadline &&
+        defaultResponse &&
+        isDateValid(deadline) &&
         selectedConsumers.length > 0;
 
     return (
@@ -195,14 +198,14 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                 <input
                                     type="checkbox"
                                     id="persistent"
-                                    checked={isPersistentAlert}
-                                    onChange={(e) => setIsPersistentAlert(e.target.checked)}
+                                    checked={isPersistentFinalAlert}
+                                    onChange={(e) => setIsPersistentFinalAlert(e.target.checked)}
                                     className="mt-1 w-4 h-4 text-mono-primary rounded border-mono-primary/30 focus:ring-mono-accent"
                                 />
                                 <label htmlFor="persistent" className="text-mono-text text-sm">
-                                    <span className="font-medium">Make alert persistent</span>
+                                    <span className="font-medium">Make final alert (1 min) persistent</span>
                                     <p className="text-mono-text/60 mt-0.5">
-                                        Consumers must provide a reason to skip this notification
+                                        The 1-minute warning will require action before it can be dismissed
                                     </p>
                                 </label>
                             </div>
@@ -216,23 +219,11 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     value={deadline}
                                     onChange={(e) => setDeadline(e.target.value)}
                                     className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                                    min={getMinDateTime()}
                                 />
-                            </div>
-
-                            <div>
-                                <label className="block text-mono-text mb-2 font-medium">Alert Before</label>
-                                <select
-                                    value={alertBeforeMinutes}
-                                    onChange={(e) => setAlertBeforeMinutes(Number(e.target.value))}
-                                    className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
-                                >
-                                    <option value={5}>5 minutes</option>
-                                    <option value={10}>10 minutes</option>
-                                    <option value={15}>15 minutes</option>
-                                    <option value={30}>30 minutes</option>
-                                    <option value={60}>1 hour</option>
-                                    <option value={120}>2 hours</option>
-                                </select>
+                                <p className="text-sm text-mono-text/60 mt-2">
+                                    Notifications will be sent at 60, 30, 15, and 1 minute before deadline
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -264,7 +255,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-amber-800">
-                                Please ensure all required fields are filled correctly
+                                Please ensure all required fields are filled correctly and the deadline is in the future
                             </p>
                         </div>
                     )}

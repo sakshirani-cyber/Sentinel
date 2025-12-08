@@ -118,6 +118,37 @@ electron_1.app.whenReady().then(async () => {
             win?.show();
         }
     });
+    // Device Status Tracking
+    console.log('[Device Status] Tracking initialized');
+    // Track lock/unlock screen
+    electron_1.powerMonitor.on('lock-screen', () => {
+        console.log('[Device Status] Screen locked');
+    });
+    electron_1.powerMonitor.on('unlock-screen', () => {
+        console.log('[Device Status] Screen unlocked');
+    });
+    // Track sleep/wake
+    electron_1.powerMonitor.on('suspend', () => {
+        console.log('[Device Status] System suspended (sleep)');
+    });
+    electron_1.powerMonitor.on('resume', () => {
+        console.log('[Device Status] System resumed (wake)');
+    });
+    // Track idle state - check every 30 seconds
+    let lastIdleState = 'active';
+    setInterval(() => {
+        // Check if system has been idle for more than 60 seconds
+        const idleState = electron_1.powerMonitor.getSystemIdleState(60);
+        if (idleState !== lastIdleState) {
+            if (idleState === 'idle') {
+                console.log('[Device Status] System is idle (no activity for 60+ seconds)');
+            }
+            else if (idleState === 'active') {
+                console.log('[Device Status] System is active');
+            }
+            lastIdleState = idleState;
+        }
+    }, 30000); // Check every 30 seconds
 });
 electron_1.app.on('window-all-closed', () => {
     // Don't quit on window close - keep running in tray

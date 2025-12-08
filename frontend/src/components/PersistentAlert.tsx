@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Poll } from '../App';
-import { AlertTriangle, X, ArrowRight, SkipForward } from 'lucide-react';
+import { AlertTriangle, ArrowRight, SkipForward } from 'lucide-react';
 
 interface PersistentAlertProps {
   poll: Poll;
@@ -51,7 +51,7 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
           <div className="mb-6">
             <p className="text-sm text-gray-600 mb-2 font-medium">From: {poll.publisherName}</p>
             <h3 className="text-gray-900 text-xl font-bold mb-4 leading-tight">{poll.question}</h3>
-            
+
             {poll.showDefaultToConsumers && (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
                 <p className="text-sm text-amber-900">
@@ -68,10 +68,10 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
                 onClick={onFill}
                 className="w-full group bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 px-6 rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-3"
               >
-                <span>Take me to the Signal</span>
+                <span>Fill Form</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
-              
+
               <button
                 onClick={() => setShowReasonInput(true)}
                 className="w-full bg-gray-50 text-gray-700 py-4 px-6 rounded-xl font-semibold border border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:bg-gray-200 transition-all duration-200 flex items-center justify-center gap-2"
@@ -95,7 +95,7 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
                   autoFocus
                 />
               </div>
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => {
