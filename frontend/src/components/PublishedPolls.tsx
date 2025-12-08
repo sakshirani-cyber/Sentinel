@@ -1,0 +1,281 @@
+import { useState } from 'react';
+import { Poll, Response } from '../App';
+import { Clock, Users, BarChart3, Eye, Trash2, Calendar, Edit, PenTool } from 'lucide-react';
+import AnalyticsView from './AnalyticsView';
+import EditPollModal from './EditPollModal';
+
+interface PublishedPollsProps {
+  polls: Poll[];
+  responses: Response[];
+  onDeletePoll: (pollId: string) => void;
+  onUpdatePoll: (pollId: string, updates: Partial<Poll>) => void;
+}
+
+export default function PublishedPolls({
+  polls,
+  responses,
+  onDeletePoll,
+  onUpdatePoll
+}: PublishedPollsProps) {
+  const [selectedPollForAnalytics, setSelectedPollForAnalytics] = useState<Poll | null>(null);
+  const [selectedPollForDetails, setSelectedPollForDetails] = useState<Poll | null>(null);
+  const [selectedPollForEdit, setSelectedPollForEdit] = useState<Poll | null>(null);
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getTimeRemaining = (deadline: string) => {
+    const now = new Date();
+    const deadlineDate = new Date(deadline);
+    const diff = deadlineDate.getTime() - now.getTime();
+
+    if (diff < 0) return 'Completed';
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days}d ${hours}h left`;
+    if (hours > 0) return `${hours}h ${minutes}m left`;
+    return `${minutes}m left`;
+  };
+
+  const getResponseCount = (pollId: string) => {
+    return responses.filter(r => r.pollId === pollId).length;
+  };
+
+  const sortedPolls = [...polls].sort((a, b) => {
+    return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
+  });
+
+  if (polls.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-20 h-20 bg-mono-primary/5 rounded-full flex items-center justify-center mx-auto mb-4">
+          <BarChart3 className="w-10 h-10 text-mono-primary/40" />
+        </div>
+        <h3 className="text-mono-text mb-2">No Polls Published Yet</h3>
+        <p className="text-mono-text/60 mb-6">
+          Create your first poll to start collecting responses
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-mono-text text-xl font-medium mb-2">Published Polls</h2>
+        <p className="text-mono-text/60">
+          Manage and view analytics for your published polls
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {sortedPolls.map((poll) => {
+          const responseCount = getResponseCount(poll.id);
+          const isCompleted = poll.status === 'completed' || new Date(poll.deadline) < new Date();
+
+          return (
+            <div
+              key={poll.id}
+              className="bg-mono-bg border border-mono-primary/10 rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden group"
+            >
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm text-mono-text/40">Signal ID:</span>
+                      <span className="text-sm text-mono-text/60 font-mono">{poll.id.split('-')[1]}...</span>
+                      {poll.isEdited && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-mono-accent/20 text-mono-primary text-xs rounded-full font-medium border border-mono-accent/30">
+                          <PenTool className="w-3 h-3" />
+                          Edited
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-mono-text text-lg font-medium mb-2">{poll.question}</h3>
+                    <div className="flex flex-wrap gap-3 text-sm text-mono-text/60">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4" />
+                        Published: {formatDateTime(poll.publishedAt)}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4" />
+                        Deadline: {formatDateTime(poll.deadline)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs mb-2 font-medium border ${isCompleted
+                        ? 'bg-mono-primary/10 text-mono-text border-mono-primary/20'
+                        : 'bg-mono-accent/20 text-mono-primary border-mono-accent/30'
+                      }`}>
+                      {isCompleted ? 'Completed' : getTimeRemaining(poll.deadline)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 mb-4 text-sm">
+                  <div className="flex items-center gap-2 text-mono-text/60">
+                    <Users className="w-4 h-4" />
+                    <span>{poll.consumers.length} consumers</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-mono-primary font-medium">
+                    <BarChart3 className="w-4 h-4" />
+                    <span>{responseCount} responses</span>
+                  </div>
+                  <div className="px-2 py-1 bg-mono-primary/5 text-mono-text/70 rounded text-xs capitalize border border-mono-primary/10">
+                    {poll.anonymityMode}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-4 border-t border-mono-primary/5">
+                  <button
+                    onClick={() => setSelectedPollForDetails(poll)}
+                    className="flex items-center gap-2 px-4 py-2 bg-mono-primary/5 text-mono-text rounded-lg hover:bg-mono-primary/10 transition-colors text-sm font-medium"
+                  >
+                    <Eye className="w-4 h-4" />
+                    More
+                  </button>
+                  <button
+                    onClick={() => setSelectedPollForAnalytics(poll)}
+                    className="flex items-center gap-2 px-4 py-2 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-primary/90 transition-colors text-sm font-medium"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Analytics
+                  </button>
+                  {!isCompleted && (
+                    <button
+                      onClick={() => setSelectedPollForEdit(poll)}
+                      className="flex items-center gap-2 px-4 py-2 bg-mono-accent/20 text-mono-primary rounded-lg hover:bg-mono-accent/30 transition-colors text-sm font-medium border border-mono-accent/30"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit
+                    </button>
+                  )}
+                  {!isCompleted && (
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this poll?')) {
+                          onDeletePoll(poll.id);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm ml-auto border border-red-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Analytics Modal */}
+      {selectedPollForAnalytics && (
+        <AnalyticsView
+          poll={selectedPollForAnalytics}
+          responses={responses.filter(r => r.pollId === selectedPollForAnalytics.id)}
+          onClose={() => setSelectedPollForAnalytics(null)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {selectedPollForEdit && (
+        <EditPollModal
+          poll={selectedPollForEdit}
+          onUpdate={onUpdatePoll}
+          onClose={() => setSelectedPollForEdit(null)}
+        />
+      )}
+
+      {/* Details Modal */}
+      {selectedPollForDetails && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-mono-primary/10 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
+              <h2 className="text-mono-text text-lg font-medium">Poll Details</h2>
+              <button
+                onClick={() => setSelectedPollForDetails(null)}
+                className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors"
+              >
+                <Eye className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
+              <div>
+                <p className="text-sm text-mono-text/60 mb-1 font-medium">Question</p>
+                <p className="text-mono-text text-lg">{selectedPollForDetails.question}</p>
+              </div>
+              <div>
+                <p className="text-sm text-mono-text/60 mb-2 font-medium">Options</p>
+                <ul className="space-y-2">
+                  {selectedPollForDetails.options.map((opt) => (
+                    <li key={opt.id} className="flex items-center gap-3 text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
+                      <span className="w-2 h-2 bg-mono-accent rounded-full ring-2 ring-mono-accent/30"></span>
+                      {opt.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm text-mono-text/60 mb-1 font-medium">Default Response</p>
+                <p className="text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10 inline-block">
+                  {selectedPollForDetails.defaultResponse}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-mono-text/60 mb-2 font-medium">Settings</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
+                    <span className="text-xs text-mono-text/60 block">Anonymity</span>
+                    <span className="text-mono-text capitalize font-medium">{selectedPollForDetails.anonymityMode}</span>
+                  </div>
+                  <div className="p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
+                    <span className="text-xs text-mono-text/60 block">Show Default</span>
+                    <span className="text-mono-text font-medium">{selectedPollForDetails.showDefaultToConsumers ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
+                    <span className="text-xs text-mono-text/60 block">Persistent Alert</span>
+                    <span className="text-mono-text font-medium">{selectedPollForDetails.isPersistentAlert ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
+                    <span className="text-xs text-mono-text/60 block">Alert Timing</span>
+                    <span className="text-mono-text font-medium">{selectedPollForDetails.alertBeforeMinutes} min before</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-mono-text/60 mb-2 font-medium">Consumers ({selectedPollForDetails.consumers.length})</p>
+                <div className="space-y-1 max-h-40 overflow-y-auto border border-mono-primary/10 rounded-lg p-2 bg-mono-bg">
+                  {selectedPollForDetails.consumers.map(email => (
+                    <p key={email} className="text-sm text-mono-text px-2 py-1 hover:bg-mono-primary/5 rounded">{email}</p>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-mono-primary/10 bg-mono-bg">
+              <button
+                onClick={() => setSelectedPollForDetails(null)}
+                className="w-full bg-mono-primary text-mono-bg py-3 rounded-xl hover:bg-mono-primary/90 transition-colors font-medium shadow-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

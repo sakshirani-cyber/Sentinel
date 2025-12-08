@@ -1,0 +1,13 @@
+directories:
+  output: dist-build
+  buildResources: build
+appId: com.arrise.sentinel
+productName: Sentinel
+files:
+  - filter:
+      - dist/**/*
+      - dist-electron/**/*
+      - package.json
+win:
+  target: nsis
+electronVersion: 39.2.4
