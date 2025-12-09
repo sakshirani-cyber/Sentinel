@@ -5,8 +5,6 @@ import com.sentinel.backend.dto.PollCreateDTO;
 import com.sentinel.backend.dto.PollResultDTO;
 import com.sentinel.backend.dto.SubmitPollRequest;
 
-import java.util.List;
-
 public interface SignalService {
     CreatePollResponse createPoll(PollCreateDTO dto);
     void submitOrUpdateVote(SubmitPollRequest req);
