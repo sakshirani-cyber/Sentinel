@@ -8,51 +8,29 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import java.time.format.DateTimeParseException;
-
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    // --- Bean validation errors (@Valid)
+    // Bean validation errors (@Valid)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidationErrors(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldError().getDefaultMessage();
         return ResponseEntity.badRequest().body(ApiResponse.failure(message));
     }
 
-    // --- Business rule violations (your IllegalArgumentExceptions)
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<?>> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
+    // All custom, intentional errors
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity<ApiResponse<?>> handleCustomException(CustomException ex) {
+        return ResponseEntity.status(ex.getStatus())
+                .body(ApiResponse.failure(ex.getMessage()));
     }
 
-    // --- Timestamp formatting errors
-    @ExceptionHandler(DateTimeParseException.class)
-    public ResponseEntity<ApiResponse<?>> handleDateTimeParsing(DateTimeParseException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
-    }
-
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ApiResponse<?>> handleBadRequest(BadRequestException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
-    }
-
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ApiResponse<?>> handleNotFound(NotFoundException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
-    }
-
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiResponse<?>> handleConflict(ConflictException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.failure(ex.getMessage()));
-    }
-
-    // --- Catch-all (unexpected errors) – keep this generic
+    // Anything you didn’t expect
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<?>> handleGeneral(Exception ex) {
+    public ResponseEntity<ApiResponse<?>> handleUnexpected(Exception ex) {
         log.error("Unexpected error occurred", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.failure(ex.getMessage()));
+                .body(ApiResponse.failure("Something went wrong. Please try again."));
     }
 }
