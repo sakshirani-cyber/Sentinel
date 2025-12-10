@@ -144,18 +144,15 @@ public class SignalServiceImpl implements SignalService {
                         HttpStatus.NOT_FOUND
                 ));
 
-        // ---- If expired → apply defaults & reject ----
         if (s.getEndTimestamp() != null && Instant.now().isAfter(s.getEndTimestamp())) {
             ensureDefaultsForExpired(req.getSignalId());
             throw new CustomException("Poll is closed for submissions.", HttpStatus.BAD_REQUEST);
         }
 
-        // ---- Validate Assigned User ----
         if (!Arrays.asList(s.getSharedWith()).contains(req.getUserId())) {
             throw new CustomException("User is not assigned to this poll.", HttpStatus.BAD_REQUEST);
         }
 
-        // ---- Validate Options ----
         Poll poll = pollRepository.findById(req.getSignalId())
                 .orElseThrow(() -> new CustomException(
                         "Poll data not found",
@@ -163,13 +160,12 @@ public class SignalServiceImpl implements SignalService {
                 ));
 
         boolean valid = Arrays.asList(poll.getOptions())
-                .contains(req.getSelectedOption()); // EXACT match only
+                .contains(req.getSelectedOption());
 
         if (!valid) {
             throw new CustomException("Selected option is invalid.", HttpStatus.BAD_REQUEST);
         }
 
-        // ---- UPSERT Response ----
         Optional<PollResult> existing =
                 pollResultRepository.findBySignalIdAndUserId(req.getSignalId(), req.getUserId());
 
@@ -200,11 +196,9 @@ public class SignalServiceImpl implements SignalService {
 
         List<PollResult> results = pollResultRepository.findBySignalId(signalId);
 
-        // CURRENT options
         Map<String, Integer> counts = new LinkedHashMap<>();
         Map<String, List<String>> optionToUsers = new LinkedHashMap<>();
 
-        // ARCHIVED options
         Map<String, List<String>> archivedOptionToUsers = new LinkedHashMap<>();
 
         for (String opt : p.getOptions()) {
@@ -284,7 +278,7 @@ public class SignalServiceImpl implements SignalService {
             }
         }
 
-        poll.setQuestion(dto.getQuestion().trim());
+        poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());
 
         s.setAnonymous(dto.getAnonymous());
@@ -297,7 +291,6 @@ public class SignalServiceImpl implements SignalService {
         pollRepository.save(poll);
         signalRepository.save(s);
 
-        // ---- Republish: delete old responses ----
         if (republish) {
             List<PollResult> existing = pollResultRepository.findBySignalId(signalId);
             if (!existing.isEmpty()) pollResultRepository.deleteAll(existing);
