@@ -14,7 +14,6 @@ public class PollCreateDTO extends BaseSignalDTO {
     @NotNull(message = "options must be provided")
     private String[] options;
 
-    /** Trim + basic normalization for poll-specific fields */
     public void normalizePoll() {
         if (question != null) question = question.trim();
 
@@ -25,7 +24,6 @@ public class PollCreateDTO extends BaseSignalDTO {
         }
     }
 
-    /** Validate options: at least 2, no blank, no duplicates (case-insensitive) */
     public void validatePoll() {
         if (question == null || question.trim().isEmpty()) {
             throw new IllegalArgumentException("question cannot be blank");
@@ -35,19 +33,16 @@ public class PollCreateDTO extends BaseSignalDTO {
             throw new IllegalArgumentException("options must contain at least 2 values");
         }
 
-        // empty/blank check
         for (String o : options) {
             if (o == null || o.trim().isEmpty()) {
                 throw new IllegalArgumentException("options cannot contain empty or blank values");
             }
         }
 
-        // duplicates case-insensitive check
         if (NormalizationUtils.hasDuplicatesIgnoreCase(options)) {
             throw new IllegalArgumentException("options contain duplicate values (case-insensitive)");
         }
 
-        // After validation, canonicalize options (trim + unique preserving order)
         this.options = NormalizationUtils.trimAndUnique(options);
     }
 }

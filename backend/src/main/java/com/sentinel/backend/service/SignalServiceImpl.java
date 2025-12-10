@@ -49,27 +49,21 @@ public class SignalServiceImpl implements SignalService {
         dto.validateCommon();
         dto.validatePoll();
 
-// ---- 1. Duplicate question + options check (but only for ACTIVE polls) ----
         String incomingQ = NormalizationUtils.normalizeQuestion(dto.getQuestion());
-        List<String> incomingOpts =
-                NormalizationUtils.normalizeForComparison(dto.getOptions());
+        List<String> incomingOpts = NormalizationUtils.normalizeForComparison(dto.getOptions());
 
         Instant now = Instant.now();
 
         for (Poll p : pollRepository.findAll()) {
 
-            // Match question & options
             if (!incomingQ.equals(NormalizationUtils.normalizeQuestion(p.getQuestion())))
                 continue;
 
             if (!incomingOpts.equals(NormalizationUtils.normalizeForComparison(p.getOptions())))
                 continue;
 
-            // Check if the linked signal is still active
             Signal sig = p.getSignal();
             if (sig != null && sig.getEndTimestamp() != null && sig.getEndTimestamp().isAfter(now)) {
-
-                // It's *still active*, so block the duplicate
                 throw new CustomException(
                         "A similar poll is already active. Signal ID: " + sig.getId(),
                         HttpStatus.CONFLICT
@@ -77,7 +71,6 @@ public class SignalServiceImpl implements SignalService {
             }
         }
 
-        // ---- 2. Create Signal ----
         Signal s = new Signal();
         s.setCreatedBy(dto.getCreatedBy());
         s.setAnonymous(dto.getAnonymous());
@@ -89,14 +82,13 @@ public class SignalServiceImpl implements SignalService {
 
         Signal saved = signalRepository.save(s);
 
-        // ---- 3. Create Poll ----
         Poll poll = new Poll();
         poll.setSignal(saved);
-        poll.setQuestion(dto.getQuestion().trim());
+        poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());
+
         pollRepository.save(poll);
 
-        // ---- 4. Response ----
         return new CreatePollResponse(saved.getId(), dto.getLocalId());
     }
 
@@ -276,7 +268,6 @@ public class SignalServiceImpl implements SignalService {
         Poll poll = pollRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Poll not found", HttpStatus.NOT_FOUND));
 
-        // ---- Duplicate Check ----
         String incomingQ = NormalizationUtils.normalizeQuestion(dto.getQuestion());
         List<String> incomingOpts = NormalizationUtils.normalizeForComparison(dto.getOptions());
 
@@ -293,7 +284,6 @@ public class SignalServiceImpl implements SignalService {
             }
         }
 
-        // ---- Apply updates ----
         poll.setQuestion(dto.getQuestion().trim());
         poll.setOptions(dto.getOptions());
 

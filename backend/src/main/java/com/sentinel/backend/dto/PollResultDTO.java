@@ -14,6 +14,6 @@ public class PollResultDTO {
     private Integer totalAssigned;
     private Integer totalResponded;
     private Map<String, Integer> optionCounts;
-    private Map<String, String[]> optionToUsers; // null if anonymous true
+    private Map<String, String[]> optionToUsers;
     private Map<String, String[]> archivedOptions;
 }
