@@ -9,6 +9,6 @@ public interface SignalService {
     CreatePollResponse createPoll(PollCreateDTO dto);
     void submitOrUpdateVote(SubmitPollRequest req);
     PollResultDTO getPollResults(Integer signalId);
-    void editSignal(Integer signalId, boolean republish, PollCreateDTO dto); // for poll type reuse PollCreateDTO fields for edit
+    void editSignal(Integer signalId, boolean republish, PollCreateDTO dto);
     void deleteSignal(Integer signalId);
 }

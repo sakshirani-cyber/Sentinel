@@ -34,12 +34,12 @@ public abstract class BaseSignalDTO {
     private Boolean defaultFlag;
     private String defaultOption;
 
-    /** Trim + basic normalization for common fields */
     public void normalizeCommon() {
         if (createdBy != null) createdBy = createdBy.trim();
+        if (endTimestamp != null) endTimestamp = endTimestamp.trim();
+        if (type != null) type = type.trim();
         if (defaultOption != null) defaultOption = defaultOption.trim();
 
-        // trim sharedWith but keep duplicates for validation step (we will set to unique later if validation passes)
         if (sharedWith != null) {
             for (int i = 0; i < sharedWith.length; i++) {
                 if (sharedWith[i] != null) sharedWith[i] = sharedWith[i].trim();
@@ -47,10 +47,8 @@ public abstract class BaseSignalDTO {
         }
     }
 
-    /** Validate common fields (timestamp in future, no duplicate sharedWith etc.) */
     public void validateCommon() {
         validateType();
-        // 1. endTimestamp parse + future
         Instant end;
         try {
             end = Instant.parse(endTimestamp);
@@ -59,7 +57,6 @@ public abstract class BaseSignalDTO {
         }
         if (end.isBefore(Instant.now())) throw new IllegalArgumentException("endTimestamp must be in the future");
 
-        // 2. sharedWith must not be empty and must not contain blanks
         if (sharedWith == null || sharedWith.length == 0) {
             throw new IllegalArgumentException("sharedWith must contain at least one user id");
         }
@@ -69,16 +66,13 @@ public abstract class BaseSignalDTO {
             }
         }
 
-        // 3. duplicates check case-insensitive
         if (NormalizationUtils.hasDuplicatesIgnoreCase(sharedWith)) {
             throw new IllegalArgumentException("sharedWith contains duplicate user ids (case-insensitive)");
         }
 
-        // After validation, store canonical trimmed-unique array for downstream use
         this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
     }
 
-    /** Helper to parse end timestamp */
     public Instant parseEndTimestamp() {
         try {
             return Instant.parse(endTimestamp);
@@ -93,10 +87,9 @@ public abstract class BaseSignalDTO {
         }
 
         try {
-            // Normalize string before validation
             String normalized = type.trim().toUpperCase();
             SignalType.valueOf(normalized);
-            type = normalized; // store canonical value (uppercase)
+            type = normalized;
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException(
                     "Invalid type. Allowed values: " + Arrays.toString(SignalType.values())
