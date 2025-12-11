@@ -53,143 +53,39 @@ function App() {
 
   // Initialize and load data
   useEffect(() => {
-    const initializeMockData = () => {
-      const mockPolls: Poll[] = [
-        {
-          id: 'poll-1701234567890-abc123',
-          publisherEmail: 'hr@company.com',
-          publisherName: 'Sarah Chen (HR)',
-          question: 'Are you available for the team offsite next Friday?',
-          options: [
-            { id: 'opt-0', text: 'Yes, I can attend' },
-            { id: 'opt-1', text: 'No, I have conflicts' },
-            { id: 'opt-2', text: 'Maybe, need to check' }
-          ],
-          defaultResponse: 'No response provided',
-          showDefaultToConsumers: true,
-          anonymityMode: 'record',
-          deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
-          isPersistentFinalAlert: true,
-          consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com', 'diana@company.com', 'eve@company.com'],
-          publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-          status: 'active'
-        },
-        {
-          id: 'poll-1701234567891-def456',
-          publisherEmail: 'it@company.com',
-          publisherName: 'Michael Torres (IT)',
-          question: 'Which time slot works best for system maintenance this weekend?',
-          options: [
-            { id: 'opt-0', text: 'Saturday 2AM - 6AM' },
-            { id: 'opt-1', text: 'Sunday 2AM - 6AM' },
-            { id: 'opt-2', text: 'Either works for me' }
-          ],
-          defaultResponse: 'Either works for me',
-          showDefaultToConsumers: false,
-          anonymityMode: 'anonymous',
-          deadline: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(), // 5 hours from now
-          isPersistentFinalAlert: false,
-          consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com'],
-          publishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
-          status: 'active'
-        },
-        {
-          id: 'poll-1701234567892-ghi789',
-          publisherEmail: 'admin@company.com',
-          publisherName: 'Jennifer Kim (Admin)',
-          question: 'Did you complete the mandatory security training?',
-          options: [
-            { id: 'opt-0', text: 'Yes, completed' },
-            { id: 'opt-1', text: 'No, not yet' }
-          ],
-          defaultResponse: 'No, not yet',
-          showDefaultToConsumers: true,
-          anonymityMode: 'record',
-          deadline: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago (expired)
-          isPersistentFinalAlert: true,
-          consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com', 'diana@company.com', 'eve@company.com'],
-          publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-          status: 'completed'
-        },
-        {
-          id: 'poll-1701234567893-jkl012',
-          publisherEmail: 'operations@company.com',
-          publisherName: 'David Park (Operations)',
-          question: 'What is your preferred lunch option for the all-hands meeting?',
-          options: [
-            { id: 'opt-0', text: 'Vegetarian' },
-            { id: 'opt-1', text: 'Non-vegetarian' },
-            { id: 'opt-2', text: 'Vegan' }
-          ],
-          defaultResponse: 'Vegetarian',
-          showDefaultToConsumers: true,
-          anonymityMode: 'record',
-          deadline: new Date(Date.now() + 45 * 60 * 1000).toISOString(), // 45 minutes from now
-          isPersistentFinalAlert: true,
-          consumers: ['alice@company.com', 'bob@company.com', 'charlie@company.com', 'diana@company.com'],
-          publishedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-          status: 'active'
-        }
-      ];
-
-      const mockResponses: Response[] = [
-        {
-          pollId: 'poll-1701234567892-ghi789',
-          consumerEmail: 'alice@company.com',
-          response: 'Yes, completed',
-          submittedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          isDefault: false
-        },
-        {
-          pollId: 'poll-1701234567892-ghi789',
-          consumerEmail: 'bob@company.com',
-          response: 'No, not yet',
-          submittedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-          isDefault: true
-        }
-      ];
-
-      if (window.electron?.store) {
-        window.electron.store.set('sentinel_polls', mockPolls);
-        window.electron.store.set('sentinel_responses', mockResponses);
-      } else {
-        localStorage.setItem('sentinel_polls', JSON.stringify(mockPolls));
-        localStorage.setItem('sentinel_responses', JSON.stringify(mockResponses));
-      }
-      setPolls(mockPolls);
-      setResponses(mockResponses);
-    };
-
     const loadData = async () => {
-      console.log('Loading data...', { hasElectronStore: !!window.electron?.store });
-      if (window.electron?.store) {
+      console.log('Loading data...');
+
+      // Load User from LocalStorage (since we only migrated polls/responses to DB)
+      const savedUser = localStorage.getItem('sentinel_user');
+      if (savedUser) setCurrentUser(JSON.parse(savedUser));
+
+      if (window.electron?.db) {
         try {
-          const savedUser = await window.electron.store.get('sentinel_user');
-          const savedPolls = await window.electron.store.get('sentinel_polls');
-          const savedResponses = await window.electron.store.get('sentinel_responses');
+          const savedPolls = await window.electron.db.getPolls();
+          const savedResponses = await window.electron.db.getResponses();
 
-          console.log('Loaded from Electron Store:', { savedUser, savedPolls, savedResponses });
-
-          if (savedUser) setCurrentUser(savedUser);
+          console.log('Loaded from SQLite DB:', { savedPolls, savedResponses });
 
           if (savedPolls && Array.isArray(savedPolls) && savedPolls.length > 0) {
             setPolls(savedPolls);
           } else {
-            initializeMockData();
+            // If DB is empty, maybe we shouldn't initialize mock data automatically in production?
+            // But for dev/demo, let's keep it empty or initialize if needed.
+            // The user didn't ask to keep mock data.
+            setPolls([]);
           }
 
           if (savedResponses) setResponses(savedResponses);
         } catch (error) {
-          console.error('Error loading from Electron Store:', error);
+          console.error('Error loading from SQLite DB:', error);
         }
       } else {
-        const savedUser = localStorage.getItem('sentinel_user');
+        // Fallback to localStorage if not in Electron (e.g. browser dev)
         const savedPolls = localStorage.getItem('sentinel_polls');
         const savedResponses = localStorage.getItem('sentinel_responses');
 
-        if (savedUser) setCurrentUser(JSON.parse(savedUser));
         if (savedPolls) setPolls(JSON.parse(savedPolls));
-        else initializeMockData();
         if (savedResponses) setResponses(JSON.parse(savedResponses));
       }
       setIsLoaded(true);
@@ -202,31 +98,12 @@ function App() {
   useEffect(() => {
     if (!isLoaded) return;
     if (currentUser) {
-      if (window.electron?.store) {
-        window.electron.store.set('sentinel_user', currentUser);
-      } else {
-        localStorage.setItem('sentinel_user', JSON.stringify(currentUser));
-      }
+      localStorage.setItem('sentinel_user', JSON.stringify(currentUser));
     }
   }, [currentUser, isLoaded]);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (window.electron?.store) {
-      window.electron.store.set('sentinel_polls', polls);
-    } else {
-      localStorage.setItem('sentinel_polls', JSON.stringify(polls));
-    }
-  }, [polls, isLoaded]);
+  // Removed auto-sync for polls and responses as we now use explicit DB calls
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (window.electron?.store) {
-      window.electron.store.set('sentinel_responses', responses);
-    } else {
-      localStorage.setItem('sentinel_responses', JSON.stringify(responses));
-    }
-  }, [responses, isLoaded]);
 
   // Auto-apply default responses for missed deadlines
   useEffect(() => {
@@ -289,8 +166,21 @@ function App() {
     localStorage.removeItem('sentinel_user');
   };
 
-  const handleCreatePoll = (poll: Poll) => {
+  const handleCreatePoll = async (poll: Poll) => {
     setPolls((prev: Poll[]) => [...prev, poll]);
+
+    if (window.electron?.db) {
+      try {
+        await window.electron.db.createPoll(poll);
+      } catch (error) {
+        console.error('Failed to create poll in DB:', error);
+        // Optionally revert state or show error
+      }
+    } else {
+      // Fallback for browser dev
+      const currentPolls = JSON.parse(localStorage.getItem('sentinel_polls') || '[]');
+      localStorage.setItem('sentinel_polls', JSON.stringify([...currentPolls, poll]));
+    }
 
     // Show notification demo only if the current user is a targeted consumer
     if (currentUser && poll.consumers.includes(currentUser.email)) {
@@ -300,8 +190,19 @@ function App() {
     }
   };
 
-  const handleSubmitResponse = (response: Response) => {
+  const handleSubmitResponse = async (response: Response) => {
     setResponses((prev: Response[]) => [...prev, response]);
+
+    if (window.electron?.db) {
+      try {
+        await window.electron.db.submitResponse(response);
+      } catch (error) {
+        console.error('Failed to submit response to DB:', error);
+      }
+    } else {
+      const currentResponses = JSON.parse(localStorage.getItem('sentinel_responses') || '[]');
+      localStorage.setItem('sentinel_responses', JSON.stringify([...currentResponses, response]));
+    }
   };
 
   const handleDeletePoll = (pollId: string) => {

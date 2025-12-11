@@ -1,11 +1,12 @@
 /// <reference path="../types/electron.d.ts" />
 import { useState, useEffect } from 'react';
 import { User, Poll, Response } from '../App';
-import { Clock, CheckCircle, LogOut, ArrowRightLeft, AlertTriangle } from 'lucide-react';
+import { Clock, CheckCircle, LogOut, ArrowRightLeft, AlertTriangle, BarChart3 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import SignalCard from './SignalCard';
 import SignalDetail from './SignalDetail';
 import PersistentAlert from './PersistentAlert';
+import AnalyticsView from './AnalyticsView';
 
 interface ConsumerDashboardProps {
   user: User;
@@ -24,11 +25,12 @@ export default function ConsumerDashboard({
   onSwitchMode,
   onLogout
 }: ConsumerDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'incomplete' | 'completed'>('incomplete');
+  const [activeTab, setActiveTab] = useState<'incomplete' | 'completed' | 'analytics'>('incomplete');
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
   const [showPersistentAlert, setShowPersistentAlert] = useState(false);
   const [persistentAlertPoll, setPersistentAlertPoll] = useState<Poll | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [selectedPollForAnalytics, setSelectedPollForAnalytics] = useState<Poll | null>(null);
 
   // Get polls assigned to this user
   const userPolls = polls.filter(p => p.consumers.includes(user.email));
@@ -44,8 +46,47 @@ export default function ConsumerDashboard({
     return responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
   }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
 
+
   // Track which alerts have been sent for each poll
   const [sentAlerts, setSentAlerts] = useState<Record<string, number[]>>({});
+
+  // Track which polls have been notified about
+  const [notifiedPolls, setNotifiedPolls] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('sentinel_notified_polls');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  // Notify when new polls are assigned to the user
+  useEffect(() => {
+    userPolls.forEach(poll => {
+      // Only notify for incomplete polls
+      const hasResponded = responses.some(r => r.pollId === poll.id && r.consumerEmail === user.email);
+      if (hasResponded || notifiedPolls.has(poll.id)) return;
+
+      // Mark as notified
+      setNotifiedPolls(prev => {
+        const newSet = new Set(prev);
+        newSet.add(poll.id);
+        localStorage.setItem('sentinel_notified_polls', JSON.stringify([...newSet]));
+        return newSet;
+      });
+
+      // Send notification
+      const notification = new Notification(`New Poll from ${poll.publisherName}`, {
+        body: poll.question,
+        silent: false,
+        icon: '/logo.png'
+      });
+
+      notification.onclick = () => {
+        if ((window as any).electron) {
+          (window as any).electron.ipcRenderer.send('restore-window');
+        }
+        window.focus();
+        setSelectedPoll(poll);
+      };
+    });
+  }, [userPolls, notifiedPolls, responses, user.email]);
 
   // Check for alerts
   useEffect(() => {
@@ -78,14 +119,16 @@ export default function ConsumerDashboard({
             // Trigger system notification
             const notification = new Notification(`Sentinel Alert: ${poll.publisherName}`, {
               body: `${threshold} min left: ${poll.question}`,
-              silent: false
+              silent: false,
+              icon: '/logo.png' // Add app logo to notification
             });
 
             notification.onclick = () => {
-              window.focus();
+              // Restore and focus the window
               if ((window as any).electron) {
-                (window as any).electron.ipcRenderer.send('show-window');
+                (window as any).electron.ipcRenderer.send('restore-window');
               }
+              window.focus();
               setSelectedPoll(poll);
             };
 
@@ -108,24 +151,15 @@ export default function ConsumerDashboard({
   // Load drafts
   useEffect(() => {
     const loadDrafts = async () => {
-      if (window.electron?.store) {
-        const savedDrafts = await window.electron.store.get('sentinel_drafts');
-        if (savedDrafts) setDrafts(savedDrafts);
-      } else {
-        const savedDrafts = localStorage.getItem('sentinel_drafts');
-        if (savedDrafts) setDrafts(JSON.parse(savedDrafts));
-      }
+      const savedDrafts = localStorage.getItem('sentinel_drafts');
+      if (savedDrafts) setDrafts(JSON.parse(savedDrafts));
     };
     loadDrafts();
   }, []);
 
   // Save drafts
   useEffect(() => {
-    if (window.electron?.store) {
-      window.electron.store.set('sentinel_drafts', drafts);
-    } else {
-      localStorage.setItem('sentinel_drafts', JSON.stringify(drafts));
-    }
+    localStorage.setItem('sentinel_drafts', JSON.stringify(drafts));
   }, [drafts]);
 
   const handleSaveDraft = (pollId: string, value: string) => {
@@ -155,6 +189,9 @@ export default function ConsumerDashboard({
       return newDrafts;
     });
 
+    // Close persistent alert if it was open
+    setShowPersistentAlert(false);
+    setPersistentAlertPoll(null);
     setSelectedPoll(null);
   };
 
@@ -289,6 +326,16 @@ export default function ConsumerDashboard({
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'analytics'
+                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
+                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="hidden sm:inline">Analytics</span>
+            </button>
           </div>
         </div>
       </div>
@@ -368,6 +415,82 @@ export default function ConsumerDashboard({
             )}
           </div>
         )}
+
+        {activeTab === 'analytics' && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-mono-text mb-2">Poll Analytics</h2>
+              <p className="text-mono-text/60">
+                View response analytics for polls you were assigned to
+              </p>
+            </div>
+            {userPolls.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 bg-mono-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="w-10 h-10 text-mono-primary/40" />
+                </div>
+                <h3 className="text-mono-text mb-2">No Polls Available</h3>
+                <p className="text-mono-text/60">
+                  You haven't been assigned to any polls yet
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {userPolls.map(poll => {
+                  const pollResponses = responses.filter(r => r.pollId === poll.id);
+                  const responseCount = pollResponses.length;
+                  const totalConsumers = poll.consumers.length;
+                  const responseRate = totalConsumers > 0 ? (responseCount / totalConsumers) * 100 : 0;
+
+                  return (
+                    <div
+                      key={poll.id}
+                      className="bg-mono-bg border border-mono-primary/10 rounded-xl shadow-sm hover:shadow-md transition-all p-5"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-mono-text text-lg font-medium mb-2">{poll.question}</h3>
+                          <div className="flex flex-wrap gap-3 text-sm text-mono-text/60">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-4 h-4" />
+                              Deadline: {new Date(poll.deadline).toLocaleString()}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle className="w-4 h-4" />
+                              Status: {poll.status}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 mb-4 text-sm">
+                        <div className="flex items-center gap-2 text-mono-text/60">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span>{totalConsumers} consumers</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-mono-primary font-medium">
+                          <BarChart3 className="w-4 h-4" />
+                          <span>{responseCount} responses</span>
+                        </div>
+                        <div className="px-2 py-1 bg-mono-accent/20 text-mono-primary rounded text-xs font-medium">
+                          {responseRate.toFixed(1)}% response rate
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedPollForAnalytics(poll)}
+                        className="flex items-center gap-2 px-4 py-2 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-primary/90 transition-colors text-sm font-medium"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        View Analytics
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Signal Detail Modal */}
@@ -377,7 +500,37 @@ export default function ConsumerDashboard({
           draft={drafts[selectedPoll.id]}
           onSaveDraft={handleSaveDraft}
           onSubmit={handleSubmit}
-          onClose={() => setSelectedPoll(null)}
+          onClose={() => {
+            // If we're in persistent alert context, go back to persistent alert instead of fully closing
+            if (showPersistentAlert && selectedPoll?.isPersistentFinalAlert) {
+              setSelectedPoll(null);
+              // Don't setShowPersistentAlert(false) - stay in persistent alert mode
+            } else {
+              setSelectedPoll(null);
+            }
+          }}
+          isPersistentContext={showPersistentAlert && selectedPoll?.isPersistentFinalAlert}
+        />
+      )}
+
+      {/* Analytics Modal */}
+      {selectedPollForAnalytics && (
+        <AnalyticsView
+          poll={selectedPollForAnalytics}
+          responses={responses.filter(r => r.pollId === selectedPollForAnalytics.id)}
+          onClose={() => setSelectedPollForAnalytics(null)}
+        />
+      )}
+
+      {/* Persistent Alert */}
+      {showPersistentAlert && persistentAlertPoll && !selectedPoll && (
+        <PersistentAlert
+          poll={persistentAlertPoll}
+          onSkip={handleSkip}
+          onFill={() => {
+            setSelectedPoll(persistentAlertPoll);
+            // Keep showPersistentAlert true so we can return to it
+          }}
         />
       )}
     </div>

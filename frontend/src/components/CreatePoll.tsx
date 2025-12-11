@@ -64,6 +64,13 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
     }
   };
 
+  // Check for duplicate options (case-insensitive)
+  const hasDuplicateOptions = () => {
+    const validOptions = options.filter(o => o.trim()).map(o => o.trim().toLowerCase());
+    const uniqueOptions = new Set(validOptions);
+    return uniqueOptions.size !== validOptions.length;
+  };
+
   const handlePublish = () => {
     const validOptions = options.filter(o => o.trim());
     const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
@@ -75,7 +82,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
       question,
       options: validOptions.map((text, index) => ({
         id: `opt-${index}`,
-        text
+        text: text.trim()
       })),
       defaultResponse: finalDefaultResponse,
       showDefaultToConsumers,
@@ -112,6 +119,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
   const isValid =
     question.trim() &&
     options.filter(o => o.trim()).length >= 2 &&
+    !hasDuplicateOptions() &&
     (useCustomDefault ? customDefault.trim() : defaultResponse) &&
     isDateValid(deadline) &&
     selectedConsumers.length > 0;
@@ -139,6 +147,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
               onChange={(e) => setQuestion(e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Are you on leave tomorrow?"
+              autoFocus
             />
           </div>
 
@@ -377,6 +386,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
                 <ul className="list-disc list-inside ml-1">
                   {!question.trim() && <li>Question is filled</li>}
                   {options.filter(o => o.trim()).length < 2 && <li>At least 2 options are provided</li>}
+                  {hasDuplicateOptions() && <li>Options don't have duplicates (case-insensitive)</li>}
                   {!(useCustomDefault ? customDefault.trim() : defaultResponse) && <li>Default response is selected</li>}
                   {!isDateValid(deadline) && <li>Deadline is in the future</li>}
                   {selectedConsumers.length === 0 && <li>At least one consumer is selected</li>}

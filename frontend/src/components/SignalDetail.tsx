@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Poll } from '../App';
-import { X, Save, Send, AlertCircle, Clock, Shield } from 'lucide-react';
+import { X, Save, Send, AlertCircle, Clock, Shield, ArrowLeft } from 'lucide-react';
 
 interface SignalDetailProps {
   poll: Poll;
@@ -9,9 +9,10 @@ interface SignalDetailProps {
   onSaveDraft: (pollId: string, value: string) => void;
   onSubmit: (pollId: string, value: string) => void;
   onClose: () => void;
+  isPersistentContext?: boolean; // New prop to indicate if opened from persistent alert
 }
 
-export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClose }: SignalDetailProps) {
+export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClose, isPersistentContext = false }: SignalDetailProps) {
   const [selectedValue, setSelectedValue] = useState(draft || '');
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -84,9 +85,16 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors"
+              className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors flex items-center gap-2"
             >
-              <X className="w-5 h-5" />
+              {isPersistentContext ? (
+                <>
+                  <ArrowLeft className="w-5 h-5" />
+                  <span className="text-sm">Back</span>
+                </>
+              ) : (
+                <X className="w-5 h-5" />
+              )}
             </button>
           </div>
 
@@ -163,7 +171,7 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
           </div>
 
           {/* Warning */}
-          {poll.isPersistentAlert && (
+          {poll.isPersistentFinalAlert && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -172,7 +180,7 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
                     Persistent Alert
                   </p>
                   <p className="text-sm text-amber-700 mt-1">
-                    You will receive a mandatory alert {poll.alertBeforeMinutes} minutes before the deadline.
+                    You will receive a mandatory alert 1 minute before the deadline.
                     You must either submit or provide a reason to skip.
                   </p>
                 </div>

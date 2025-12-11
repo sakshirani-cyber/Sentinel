@@ -8,10 +8,11 @@ declare global {
                 on: (channel: string, func: (...args: any[]) => void) => void;
                 invoke: (channel: string, ...args: any[]) => Promise<any>;
             };
-            store: {
-                get: (key: string) => Promise<any>;
-                set: (key: string, value: any) => Promise<void>;
-                delete: (key: string) => Promise<void>;
+            db: {
+                createPoll: (poll: any) => Promise<{ success: boolean; error?: string }>;
+                getPolls: () => Promise<any[]>;
+                submitResponse: (response: any) => Promise<{ success: boolean; error?: string }>;
+                getResponses: () => Promise<any[]>;
             };
         };
     }

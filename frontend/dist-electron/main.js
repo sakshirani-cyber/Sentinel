@@ -39,9 +39,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const electron_is_dev_1 = __importDefault(require("electron-is-dev"));
+// Set app name for notifications (Windows/macOS/Linux)
+electron_1.app.setName('Sentinel');
+// Set AppUserModelId for Windows notifications to show correct app name
+if (process.platform === 'win32') {
+    electron_1.app.setAppUserModelId('Sentinel');
+}
 let tray = null;
 let win = null;
-let store;
+const db_1 = require("./db");
 // Simple icon for tray (16x16 blue circle)
 const iconBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFMSURBVDiNpZMxSwNBEIW/vb29JBcQFBELsbATrPwBNv4CK/+Alf9AO0EQrGwsLCwEwUKwsLOxEQQLC0EQbCwUQUQQvLu9nZndsUgOc5dEfM3uzHvfzO4MrLH+V8AYcwI0gQPgEHgCboAr4FJKebcSgDHmGDgFdoEt4BV4AC6Acynl8xKAMWYPOAO2gQ/gHrgFbqSUH0sAxpgGcAzsAJ/APXADXEsp3xcAjDFN4AjYBl6AO+AauJBSvi0CGGN2gUNgC3gG7oBr4FJK+bIIYIzZBw6ATeAJuAWugXMp5esiQB04ADaAR+AWuAHOpZRviwB14BDYBx6AW+AGuJBSvi8C1IFDoBZ4AG6BG+BcSvm+CFAHjoAa8ADcAjfAhZTyfRGgDhwBNeABuAVugHMp5ccigDHmCGgAD8AtcANcSCk/FwGMMUdAA3gAbv8A/FbXX2v9D/gBnqV8VC6kqXwAAAAASUVORK5CYII=';
 function createWindow() {
@@ -76,12 +82,10 @@ function createWindow() {
 }
 electron_1.app.whenReady().then(async () => {
     try {
-        const { default: Store } = await Promise.resolve().then(() => __importStar(require('electron-store')));
-        store = new Store();
-        console.log('Electron Store initialized successfully');
+        (0, db_1.initDB)();
     }
     catch (error) {
-        console.error('Failed to initialize Electron Store:', error);
+        console.error('Failed to initialize Database:', error);
     }
     createWindow();
     // Create system tray
@@ -202,25 +206,43 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
         }
     }
 });
-// Store handling
-electron_1.ipcMain.handle('electron-store-get', async (_event, key) => {
-    console.log(`[IPC] Getting key: ${key}, Store initialized: ${!!store}`);
-    if (!store)
-        return null;
-    const value = store.get(key);
-    console.log(`[IPC] Value for ${key}:`, value);
-    return value;
+// DB Handlers
+electron_1.ipcMain.handle('db-create-poll', async (_event, poll) => {
+    try {
+        (0, db_1.createPoll)(poll);
+        return { success: true };
+    }
+    catch (error) {
+        console.error('Error creating poll:', error);
+        return { success: false, error: error.message };
+    }
 });
-electron_1.ipcMain.handle('electron-store-set', async (_event, key, value) => {
-    console.log(`[IPC] Setting key: ${key}, Store initialized: ${!!store}`);
-    if (!store)
-        return;
-    store.set(key, value);
+electron_1.ipcMain.handle('db-get-polls', async () => {
+    try {
+        return (0, db_1.getPolls)();
+    }
+    catch (error) {
+        console.error('Error getting polls:', error);
+        return [];
+    }
 });
-electron_1.ipcMain.handle('electron-store-delete', async (_event, key) => {
-    console.log(`[IPC] Deleting key: ${key}`);
-    if (!store)
-        return;
-    store.delete(key);
+electron_1.ipcMain.handle('db-submit-response', async (_event, response) => {
+    try {
+        (0, db_1.submitResponse)(response);
+        return { success: true };
+    }
+    catch (error) {
+        console.error('Error submitting response:', error);
+        return { success: false, error: error.message };
+    }
+});
+electron_1.ipcMain.handle('db-get-responses', async () => {
+    try {
+        return (0, db_1.getResponses)();
+    }
+    catch (error) {
+        console.error('Error getting responses:', error);
+        return [];
+    }
 });
 //# sourceMappingURL=main.js.map

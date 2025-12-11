@@ -7,9 +7,10 @@ contextBridge.exposeInMainWorld('electron', {
             ipcRenderer.on(channel, (event, ...args) => func(...args)),
         invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
     },
-    store: {
-        get: (key: string) => ipcRenderer.invoke('electron-store-get', key),
-        set: (key: string, value: any) => ipcRenderer.invoke('electron-store-set', key, value),
-        delete: (key: string) => ipcRenderer.invoke('electron-store-delete', key),
+    db: {
+        createPoll: (poll: any) => ipcRenderer.invoke('db-create-poll', poll),
+        getPolls: () => ipcRenderer.invoke('db-get-polls'),
+        submitResponse: (response: any) => ipcRenderer.invoke('db-submit-response', response),
+        getResponses: () => ipcRenderer.invoke('db-get-responses'),
     }
 });
