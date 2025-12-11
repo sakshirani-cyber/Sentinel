@@ -16,7 +16,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidationErrors(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldError().getDefaultMessage();
-        return ResponseEntity.badRequest().body(ApiResponse.failure(message));
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.failure(message));
+    }
+
+    // All custom, intentional errors
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArguementException(IllegalArgumentException ex) {
+        String message = ex.getMessage();
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.failure(message));
     }
 
     // All custom, intentional errors
