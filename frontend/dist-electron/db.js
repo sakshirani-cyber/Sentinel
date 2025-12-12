@@ -133,18 +133,37 @@ function getPolls() {
         isEdited: false // Default
     }));
 }
-function updatePoll(pollId, updates) {
+function updatePoll(pollId, updates, republish = false) {
     const sets = [];
     const values = { localId: pollId };
-    if (updates.status) {
-        sets.push('status = @status');
-        values.status = updates.status;
+    const fields = [
+        'question', 'options', 'publisherEmail', 'publisherName', 'status',
+        'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
+        'defaultResponse', 'showDefaultToConsumers', 'publishedAt'
+    ];
+    fields.forEach(field => {
+        if (updates[field] !== undefined) {
+            sets.push(`${field} = @${field}`);
+            if (field === 'options' || field === 'consumers') {
+                values[field] = JSON.stringify(updates[field]);
+            }
+            else if (field === 'isPersistentFinalAlert' || field === 'showDefaultToConsumers') {
+                values[field] = updates[field] ? 1 : 0;
+            }
+            else {
+                values[field] = updates[field];
+            }
+        }
+    });
+    if (sets.length > 0) {
+        const stmt = db.prepare(`UPDATE polls SET ${sets.join(', ')} WHERE localId = @localId`);
+        stmt.run(values);
     }
-    // Add other fields as needed, for now just status is commonly updated
-    if (sets.length === 0)
-        return;
-    const stmt = db.prepare(`UPDATE polls SET ${sets.join(', ')} WHERE localId = @localId`);
-    return stmt.run(values);
+    if (republish) {
+        const deleteStmt = db.prepare('DELETE FROM responses WHERE pollLocalId = ?');
+        deleteStmt.run(pollId);
+    }
+    return { changes: 1 }; // Return something to indicate success
 }
 function deletePoll(pollId) {
     const stmt = db.prepare('DELETE FROM polls WHERE localId = ?');

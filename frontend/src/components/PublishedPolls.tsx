@@ -8,7 +8,7 @@ interface PublishedPollsProps {
   polls: Poll[];
   responses: Response[];
   onDeletePoll: (pollId: string) => void;
-  onUpdatePoll: (pollId: string, updates: Partial<Poll>) => void;
+  onUpdatePoll: (pollId: string, updates: Partial<Poll>, republish: boolean) => void;
 }
 
 export default function PublishedPolls({
@@ -116,8 +116,8 @@ export default function PublishedPolls({
                   </div>
                   <div className="text-right">
                     <span className={`inline-block px-3 py-1 rounded-full text-xs mb-2 font-medium border ${isCompleted
-                        ? 'bg-mono-primary/10 text-mono-text border-mono-primary/20'
-                        : 'bg-mono-accent/20 text-mono-primary border-mono-accent/30'
+                      ? 'bg-mono-primary/10 text-mono-text border-mono-primary/20'
+                      : 'bg-mono-accent/20 text-mono-primary border-mono-accent/30'
                       }`}>
                       {isCompleted ? 'Completed' : getTimeRemaining(poll.deadline)}
                     </span>

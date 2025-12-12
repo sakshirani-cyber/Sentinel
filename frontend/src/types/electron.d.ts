@@ -14,6 +14,7 @@ declare global {
                 submitResponse: (response: any) => Promise<{ success: boolean; error?: string }>;
                 getResponses: () => Promise<any[]>;
             };
+            getDeviceStatus: () => Promise<string>;
         };
-    }
+    };
 }

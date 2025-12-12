@@ -4,7 +4,7 @@ import { Plus, X, Save, AlertCircle } from 'lucide-react';
 
 interface EditPollModalProps {
     poll: Poll;
-    onUpdate: (pollId: string, updates: Partial<Poll>) => void;
+    onUpdate: (pollId: string, updates: Partial<Poll>, republish: boolean) => void;
     onClose: () => void;
 }
 
@@ -28,6 +28,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [deadline, setDeadline] = useState(poll.deadline.slice(0, 16));
     const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(poll.isPersistentFinalAlert);
     const [selectedConsumers, setSelectedConsumers] = useState<string[]>(poll.consumers);
+    const [republish, setRepublish] = useState(false);
 
     const availableConsumers = Array.from(new Set([
         ...poll.consumers,
@@ -80,17 +81,29 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
             isEdited: true
         };
 
-        onUpdate(poll.id, updates);
+        onUpdate(poll.id, updates, republish);
         onClose();
     };
+
+    const hasChanges =
+        question !== poll.question ||
+        JSON.stringify(options) !== JSON.stringify(poll.options.map(o => o.text)) ||
+        defaultResponse !== poll.defaultResponse ||
+        showDefaultToConsumers !== poll.showDefaultToConsumers ||
+        anonymityMode !== poll.anonymityMode ||
+        isPersistentFinalAlert !== poll.isPersistentFinalAlert ||
+        JSON.stringify(selectedConsumers.sort()) !== JSON.stringify(poll.consumers.sort());
+
+    const isDeadlineExtended = new Date(deadline) > new Date(poll.deadline);
 
     const isValid =
         question.trim() &&
         options.filter(o => o.trim()).length >= 2 &&
         defaultResponse &&
-        defaultResponse &&
         isDateValid(deadline) &&
-        selectedConsumers.length > 0;
+        selectedConsumers.length > 0 &&
+        hasChanges &&
+        isDeadlineExtended;
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -209,16 +222,35 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     </p>
                                 </label>
                             </div>
+
+                            <div className="flex items-start gap-3 p-4 border border-mono-primary/10 rounded-xl bg-mono-primary/5">
+                                <input
+                                    type="checkbox"
+                                    id="republish"
+                                    checked={republish}
+                                    onChange={(e) => setRepublish(e.target.checked)}
+                                    className="mt-1 w-4 h-4 text-mono-primary rounded border-mono-primary/30 focus:ring-mono-accent"
+                                />
+                                <label htmlFor="republish" className="text-mono-text text-sm">
+                                    <span className="font-medium">Republish Poll</span>
+                                    <p className="text-mono-text/60 mt-0.5">
+                                        If enabled, <strong>all existing responses will be deleted</strong> and consumers must submit again.
+                                    </p>
+                                </label>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-mono-text mb-2 font-medium">Deadline</label>
+                                <label className="block text-mono-text mb-2 font-medium">Deadline <span className="text-red-500">*</span></label>
                                 <input
                                     type="datetime-local"
                                     value={deadline}
                                     onChange={(e) => setDeadline(e.target.value)}
-                                    className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none focus:ring-1 transition-all ${hasChanges && !isDeadlineExtended
+                                        ? 'border-amber-500 focus:border-amber-500 focus:ring-amber-500'
+                                        : 'border-mono-primary/20 focus:border-mono-primary focus:ring-mono-primary'
+                                        }`}
                                     min={getMinDateTime()}
                                 />
                                 <p className="text-sm text-mono-text/60 mt-2">
@@ -251,14 +283,33 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         </div>
                     </div>
 
-                    {!isValid && (
-                        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-sm text-amber-800">
-                                Please ensure all required fields are filled correctly and the deadline is in the future
-                            </p>
-                        </div>
-                    )}
+                    {/* Validation Messages */}
+                    <div className="space-y-2">
+                        {!isValid && !hasChanges && (
+                            <div className="flex items-start gap-2 p-3 bg-mono-primary/5 border border-mono-primary/10 rounded-xl">
+                                <AlertCircle className="w-5 h-5 text-mono-text/60 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-mono-text/70">
+                                    Make changes to enable saving
+                                </p>
+                            </div>
+                        )}
+                        {hasChanges && !isDeadlineExtended && (
+                            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-amber-800">
+                                    You must extend the deadline when updating a poll
+                                </p>
+                            </div>
+                        )}
+                        {hasChanges && isDeadlineExtended && !isValid && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-red-800">
+                                    Please fill all required fields correctly
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer */}

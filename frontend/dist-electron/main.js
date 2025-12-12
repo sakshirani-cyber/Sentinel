@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const electron_is_dev_1 = __importDefault(require("electron-is-dev"));
+const db_1 = require("./db");
 // Set app name for notifications (Windows/macOS/Linux)
 electron_1.app.setName('Sentinel');
 // Set AppUserModelId for Windows notifications to show correct app name
@@ -47,7 +48,6 @@ if (process.platform === 'win32') {
 }
 let tray = null;
 let win = null;
-const db_1 = require("./db");
 // Simple icon for tray (16x16 blue circle)
 const iconBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFMSURBVDiNpZMxSwNBEIW/vb29JBcQFBELsbATrPwBNv4CK/+Alf9AO0EQrGwsLCwEwUKwsLOxEQQLC0EQbCwUQUQQvLu9nZndsUgOc5dEfM3uzHvfzO4MrLH+V8AYcwI0gQPgEHgCboAr4FJKebcSgDHmGDgFdoEt4BV4AC6Acynl8xKAMWYPOAO2gQ/gHrgFbqSUH0sAxpgGcAzsAJ/APXADXEsp3xcAjDFN4AjYBl6AO+AauJBSvi0CGGN2gUNgC3gG7oBr4FJK+bIIYIzZBw6ATeAJuAWugXMp5esiQB04ADaAR+AWuAHOpZRviwB14BDYBx6AW+AGuJBSvi8C1IFDoBZ4AG6BG+BcSvm+CFAHjoAa8ADcAjfAhZTyfRGgDhwBNeABuAVugHMp5ccigDHmCGgAD8AtcANcSCk/FwGMMUdAA3gAbv8A/FbXX2v9D/gBnqV8VC6kqXwAAAAASUVORK5CYII=';
 function createWindow() {
@@ -80,6 +80,40 @@ function createWindow() {
         return false;
     });
 }
+function setupAutoLaunch() {
+    // Windows & macOS
+    if (process.platform === 'darwin' || process.platform === 'win32') {
+        electron_1.app.setLoginItemSettings({
+            openAtLogin: true,
+            path: electron_1.app.getPath('exe')
+        });
+    }
+    // Linux
+    if (process.platform === 'linux') {
+        try {
+            const fs = require('fs');
+            const os = require('os');
+            const autostartDir = path.join(os.homedir(), '.config', 'autostart');
+            if (!fs.existsSync(autostartDir)) {
+                fs.mkdirSync(autostartDir, { recursive: true });
+            }
+            const desktopFile = path.join(autostartDir, 'sentinel.desktop');
+            const content = `[Desktop Entry]
+Type=Application
+Name=Sentinel
+Exec=${electron_1.app.getPath('exe')}
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Comment=Sentinel Signal Enforcement
+`;
+            fs.writeFileSync(desktopFile, content);
+        }
+        catch (error) {
+            console.error('Failed to set up Linux autostart:', error);
+        }
+    }
+}
 electron_1.app.whenReady().then(async () => {
     try {
         (0, db_1.initDB)();
@@ -87,25 +121,30 @@ electron_1.app.whenReady().then(async () => {
     catch (error) {
         console.error('Failed to initialize Database:', error);
     }
+    setupAutoLaunch();
     createWindow();
+    // Prevent Cmd+Q on macOS
+    electron_1.app.on('before-quit', (event) => {
+        if (!electron_1.app.isQuitting) {
+            event.preventDefault();
+        }
+    });
     // Create system tray
     const icon = electron_1.nativeImage.createFromDataURL(iconBase64);
     tray = new electron_1.Tray(icon);
     const contextMenu = electron_1.Menu.buildFromTemplate([
         {
-            label: 'Show App',
+            label: 'Show Sentinel',
             click: () => {
                 win?.show();
                 win?.focus();
             }
         },
         {
-            label: 'Quit',
-            click: () => {
-                electron_1.app.isQuitting = true;
-                electron_1.app.quit();
-            }
+            label: 'Status: Active',
+            enabled: false
         }
+        // Removed Quit option to prevent user from stopping the app
     ]);
     tray.setToolTip('Sentinel - Signal Enforcement System');
     tray.setContextMenu(contextMenu);
@@ -123,36 +162,44 @@ electron_1.app.whenReady().then(async () => {
         }
     });
     // Device Status Tracking
+    let currentDeviceStatus = 'active';
     console.log('[Device Status] Tracking initialized');
     // Track lock/unlock screen
     electron_1.powerMonitor.on('lock-screen', () => {
+        currentDeviceStatus = 'locked';
         console.log('[Device Status] Screen locked');
     });
     electron_1.powerMonitor.on('unlock-screen', () => {
+        currentDeviceStatus = 'active';
         console.log('[Device Status] Screen unlocked');
     });
     // Track sleep/wake
     electron_1.powerMonitor.on('suspend', () => {
+        currentDeviceStatus = 'sleep';
         console.log('[Device Status] System suspended (sleep)');
     });
     electron_1.powerMonitor.on('resume', () => {
+        currentDeviceStatus = 'active';
         console.log('[Device Status] System resumed (wake)');
     });
     // Track idle state - check every 30 seconds
-    let lastIdleState = 'active';
     setInterval(() => {
         // Check if system has been idle for more than 60 seconds
         const idleState = electron_1.powerMonitor.getSystemIdleState(60);
-        if (idleState !== lastIdleState) {
+        if (currentDeviceStatus !== 'locked' && currentDeviceStatus !== 'sleep') {
             if (idleState === 'idle') {
-                console.log('[Device Status] System is idle (no activity for 60+ seconds)');
+                currentDeviceStatus = 'idle';
+                console.log('[Device Status] System is idle');
             }
-            else if (idleState === 'active') {
+            else if (idleState === 'active' && currentDeviceStatus === 'idle') {
+                currentDeviceStatus = 'active';
                 console.log('[Device Status] System is active');
             }
-            lastIdleState = idleState;
         }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
+    electron_1.ipcMain.handle('get-device-status', () => {
+        return currentDeviceStatus;
+    });
 });
 electron_1.app.on('window-all-closed', () => {
     // Don't quit on window close - keep running in tray
@@ -243,6 +290,16 @@ electron_1.ipcMain.handle('db-get-responses', async () => {
     catch (error) {
         console.error('Error getting responses:', error);
         return [];
+    }
+});
+electron_1.ipcMain.handle('db-update-poll', async (_event, { pollId, updates, republish }) => {
+    try {
+        (0, db_1.updatePoll)(pollId, updates, republish);
+        return { success: true };
+    }
+    catch (error) {
+        console.error('Error updating poll:', error);
+        return { success: false, error: error.message };
     }
 });
 //# sourceMappingURL=main.js.map

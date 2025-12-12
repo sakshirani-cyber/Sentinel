@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
+import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll } from './db';
 
 // Set app name for notifications (Windows/macOS/Linux)
 app.setName('Sentinel');
@@ -12,7 +13,6 @@ if (process.platform === 'win32') {
 
 let tray: Tray | null = null;
 let win: BrowserWindow | null = null;
-import { initDB, createPoll, getPolls, submitResponse, getResponses } from './db';
 
 // Simple icon for tray (16x16 blue circle)
 const iconBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFMSURBVDiNpZMxSwNBEIW/vb29JBcQFBELsbATrPwBNv4CK/+Alf9AO0EQrGwsLCwEwUKwsLOxEQQLC0EQbCwUQUQQvLu9nZndsUgOc5dEfM3uzHvfzO4MrLH+V8AYcwI0gQPgEHgCboAr4FJKebcSgDHmGDgFdoEt4BV4AC6Acynl8xKAMWYPOAO2gQ/gHrgFbqSUH0sAxpgGcAzsAJ/APXADXEsp3xcAjDFN4AjYBl6AO+AauJBSvi0CGGN2gUNgC3gG7oBr4FJK+bIIYIzZBw6ATeAJuAWugXMp5esiQB04ADaAR+AWuAHOpZRviwB14BDYBx6AW+AGuJBSvi8C1IFDoBZ4AG6BG+BcSvm+CFAHjoAa8ADcAjfAhZTyfRGgDhwBNeABuAVugHMp5ccigDHmCGgAD8AtcANcSCk/FwGMMUdAA3gAbv8A/FbXX2v9D/gBnqV8VC6kqXwAAAAASUVORK5CYII=';
@@ -49,6 +49,43 @@ function createWindow() {
     });
 }
 
+function setupAutoLaunch() {
+    // Windows & macOS
+    if (process.platform === 'darwin' || process.platform === 'win32') {
+        app.setLoginItemSettings({
+            openAtLogin: true,
+            path: app.getPath('exe')
+        });
+    }
+
+    // Linux
+    if (process.platform === 'linux') {
+        try {
+            const fs = require('fs');
+            const os = require('os');
+            const autostartDir = path.join(os.homedir(), '.config', 'autostart');
+
+            if (!fs.existsSync(autostartDir)) {
+                fs.mkdirSync(autostartDir, { recursive: true });
+            }
+
+            const desktopFile = path.join(autostartDir, 'sentinel.desktop');
+            const content = `[Desktop Entry]
+Type=Application
+Name=Sentinel
+Exec=${app.getPath('exe')}
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Comment=Sentinel Signal Enforcement
+`;
+            fs.writeFileSync(desktopFile, content);
+        } catch (error) {
+            console.error('Failed to set up Linux autostart:', error);
+        }
+    }
+}
+
 app.whenReady().then(async () => {
     try {
         initDB();
@@ -56,7 +93,16 @@ app.whenReady().then(async () => {
         console.error('Failed to initialize Database:', error);
     }
 
+    setupAutoLaunch();
+
     createWindow();
+
+    // Prevent Cmd+Q on macOS
+    app.on('before-quit', (event) => {
+        if (!(app as any).isQuitting) {
+            event.preventDefault();
+        }
+    });
 
     // Create system tray
     const icon = nativeImage.createFromDataURL(iconBase64);
@@ -64,19 +110,17 @@ app.whenReady().then(async () => {
 
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: 'Show App',
+            label: 'Show Sentinel',
             click: () => {
                 win?.show();
                 win?.focus();
             }
         },
         {
-            label: 'Quit',
-            click: () => {
-                (app as any).isQuitting = true;
-                app.quit();
-            }
+            label: 'Status: Active',
+            enabled: false
         }
+        // Removed Quit option to prevent user from stopping the app
     ]);
 
     tray.setToolTip('Sentinel - Signal Enforcement System');
@@ -97,41 +141,50 @@ app.whenReady().then(async () => {
     });
 
     // Device Status Tracking
+    let currentDeviceStatus = 'active';
     console.log('[Device Status] Tracking initialized');
 
     // Track lock/unlock screen
     powerMonitor.on('lock-screen', () => {
+        currentDeviceStatus = 'locked';
         console.log('[Device Status] Screen locked');
     });
 
     powerMonitor.on('unlock-screen', () => {
+        currentDeviceStatus = 'active';
         console.log('[Device Status] Screen unlocked');
     });
 
     // Track sleep/wake
     powerMonitor.on('suspend', () => {
+        currentDeviceStatus = 'sleep';
         console.log('[Device Status] System suspended (sleep)');
     });
 
     powerMonitor.on('resume', () => {
+        currentDeviceStatus = 'active';
         console.log('[Device Status] System resumed (wake)');
     });
 
     // Track idle state - check every 30 seconds
-    let lastIdleState = 'active';
     setInterval(() => {
         // Check if system has been idle for more than 60 seconds
         const idleState = powerMonitor.getSystemIdleState(60);
 
-        if (idleState !== lastIdleState) {
+        if (currentDeviceStatus !== 'locked' && currentDeviceStatus !== 'sleep') {
             if (idleState === 'idle') {
-                console.log('[Device Status] System is idle (no activity for 60+ seconds)');
-            } else if (idleState === 'active') {
+                currentDeviceStatus = 'idle';
+                console.log('[Device Status] System is idle');
+            } else if (idleState === 'active' && currentDeviceStatus === 'idle') {
+                currentDeviceStatus = 'active';
                 console.log('[Device Status] System is active');
             }
-            lastIdleState = idleState;
         }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
+
+    ipcMain.handle('get-device-status', () => {
+        return currentDeviceStatus;
+    });
 });
 
 app.on('window-all-closed', () => {
@@ -227,5 +280,15 @@ ipcMain.handle('db-get-responses', async () => {
     } catch (error) {
         console.error('Error getting responses:', error);
         return [];
+    }
+});
+
+ipcMain.handle('db-update-poll', async (_event, { pollId, updates, republish }) => {
+    try {
+        updatePoll(pollId, updates, republish);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error updating poll:', error);
+        return { success: false, error: error.message };
     }
 });

@@ -1,35 +1,36 @@
-/// <reference path="./types/electron.d.ts" />
 import { useState, useEffect } from 'react';
+import AuthPage from './components/AuthPage';
 import PublisherDashboard from './components/PublisherDashboard';
 import ConsumerDashboard from './components/ConsumerDashboard';
-import NotificationDemo from './components/NotificationDemo';
-import AuthPage from './components/AuthPage';
 
 export interface User {
-  email: string;
   name: string;
+  email: string;
+  role: 'admin' | 'user';
   isPublisher: boolean;
 }
 
-export interface PollOption {
+export interface Option {
   id: string;
   text: string;
 }
 
 export interface Poll {
   id: string;
+  question: string;
+  options: Option[];
   publisherEmail: string;
   publisherName: string;
-  question: string;
-  options: PollOption[];
-  defaultResponse: string;
+  deadline: string;
+  status: 'active' | 'completed';
+  consumers: string[];
+  defaultResponse?: string;
   showDefaultToConsumers: boolean;
   anonymityMode: 'anonymous' | 'record';
-  deadline: string;
-  isPersistentFinalAlert: boolean;
-  consumers: string[];
+  isPersistentAlert: boolean;
+  alertBeforeMinutes: number;
   publishedAt: string;
-  status: 'active' | 'completed';
+  isPersistentFinalAlert?: boolean;
   isEdited?: boolean;
 }
 
@@ -43,215 +44,153 @@ export interface Response {
 }
 
 function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [mode, setMode] = useState<'consumer' | 'publisher'>('consumer');
+  const [user, setUser] = useState<User | null>(null);
   const [polls, setPolls] = useState<Poll[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationPoll, setNotificationPoll] = useState<Poll | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  // We need a view mode state to allow publishers to switch to consumer view
+  const [viewMode, setViewMode] = useState<'publisher' | 'consumer'>('publisher');
 
-  // Initialize and load data
+  // Load initial data
   useEffect(() => {
     const loadData = async () => {
-      console.log('Loading data...');
-
-      // Load User from LocalStorage (since we only migrated polls/responses to DB)
-      const savedUser = localStorage.getItem('sentinel_user');
-      if (savedUser) setCurrentUser(JSON.parse(savedUser));
-
-      if (window.electron?.db) {
-        try {
-          const savedPolls = await window.electron.db.getPolls();
-          const savedResponses = await window.electron.db.getResponses();
-
-          console.log('Loaded from SQLite DB:', { savedPolls, savedResponses });
-
-          if (savedPolls && Array.isArray(savedPolls) && savedPolls.length > 0) {
-            setPolls(savedPolls);
-          } else {
-            // If DB is empty, maybe we shouldn't initialize mock data automatically in production?
-            // But for dev/demo, let's keep it empty or initialize if needed.
-            // The user didn't ask to keep mock data.
-            setPolls([]);
-          }
-
-          if (savedResponses) setResponses(savedResponses);
-        } catch (error) {
-          console.error('Error loading from SQLite DB:', error);
+      try {
+        if ((window as any).electron) {
+          const loadedPolls = await (window as any).electron.db.getPolls();
+          const loadedResponses = await (window as any).electron.db.getResponses();
+          setPolls(loadedPolls);
+          setResponses(loadedResponses);
         }
-      } else {
-        // Fallback to localStorage if not in Electron (e.g. browser dev)
-        const savedPolls = localStorage.getItem('sentinel_polls');
-        const savedResponses = localStorage.getItem('sentinel_responses');
-
-        if (savedPolls) setPolls(JSON.parse(savedPolls));
-        if (savedResponses) setResponses(JSON.parse(savedResponses));
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setLoading(false);
       }
-      setIsLoaded(true);
     };
 
     loadData();
+
+    // Set up polling for updates
+    const interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Save data whenever it changes
   useEffect(() => {
-    if (!isLoaded) return;
-    if (currentUser) {
-      localStorage.setItem('sentinel_user', JSON.stringify(currentUser));
+    if (user) {
+      setViewMode(user.isPublisher ? 'publisher' : 'consumer');
     }
-  }, [currentUser, isLoaded]);
-
-  // Removed auto-sync for polls and responses as we now use explicit DB calls
-
-
-  // Auto-apply default responses for missed deadlines
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      polls.forEach(poll => {
-        if (poll.status === 'active' && new Date(poll.deadline) < now) {
-          // Check for consumers who haven't responded
-          poll.consumers.forEach(consumerEmail => {
-            const hasResponded = responses.some(
-              r => r.pollId === poll.id && r.consumerEmail === consumerEmail
-            );
-            if (!hasResponded) {
-              // Add default response
-              const defaultResponse: Response = {
-                pollId: poll.id,
-                consumerEmail,
-                response: poll.defaultResponse,
-                submittedAt: poll.deadline,
-                isDefault: true
-              };
-              setResponses((prev: Response[]) => [...prev, defaultResponse]);
-            }
-          });
-          // Mark poll as completed
-          setPolls((prev: Poll[]) => prev.map(p =>
-            p.id === poll.id ? { ...p, status: 'completed' as const } : p
-          ));
-        }
-      });
-    }, 5000); // Check every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [polls, responses]);
+  }, [user]);
 
   const handleLogin = (email: string, password: string) => {
-    // Mock authentication - in real app, this would validate against backend
-    // Publishers are those with specific email domains or in publisher list
-    const publisherEmails = [
-      'hr@company.com',
-      'it@company.com',
-      'admin@company.com',
-      'operations@company.com',
-      'manager@company.com'
-    ];
-
-    const isPublisher = publisherEmails.includes(email.toLowerCase());
-
-    const user: User = {
-      email,
-      name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-      isPublisher
+    // Simple demo logic for roles
+    const isPublisher = email.toLowerCase().startsWith('hr') || email.toLowerCase().includes('admin');
+    const userData: User = {
+      name: email.split('@')[0],
+      email: email,
+      role: isPublisher ? 'admin' : 'user',
+      isPublisher: isPublisher
     };
-    setCurrentUser(user);
+    setUser(userData);
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    setMode('consumer');
-    localStorage.removeItem('sentinel_user');
+    setUser(null);
   };
 
-  const handleCreatePoll = async (poll: Poll) => {
-    setPolls((prev: Poll[]) => [...prev, poll]);
-
-    if (window.electron?.db) {
-      try {
-        await window.electron.db.createPoll(poll);
-      } catch (error) {
-        console.error('Failed to create poll in DB:', error);
-        // Optionally revert state or show error
+  const handleCreatePoll = async (newPoll: Poll) => {
+    try {
+      if ((window as any).electron) {
+        const result = await (window as any).electron.db.createPoll(newPoll);
+        if (result.success) {
+          setPolls(prev => [...prev, newPoll]);
+        } else {
+          console.error('Failed to create poll:', result.error);
+          alert('Failed to create poll: ' + result.error);
+        }
       }
-    } else {
-      // Fallback for browser dev
-      const currentPolls = JSON.parse(localStorage.getItem('sentinel_polls') || '[]');
-      localStorage.setItem('sentinel_polls', JSON.stringify([...currentPolls, poll]));
+    } catch (error) {
+      console.error('Error creating poll:', error);
     }
+  };
 
-    // Show notification demo only if the current user is a targeted consumer
-    if (currentUser && poll.consumers.includes(currentUser.email)) {
-      setNotificationPoll(poll);
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 5000);
+  const handleUpdatePoll = async (pollId: string, updates: Partial<Poll>, republish: boolean) => {
+    try {
+      if ((window as any).electron) {
+        const result = await (window as any).electron.ipcRenderer.invoke('db-update-poll', { pollId, updates, republish });
+        if (result.success) {
+          setPolls(prev => prev.map(p => p.id === pollId ? { ...p, ...updates } : p));
+          // If republished, clear local responses for this poll so UI updates immediately
+          if (republish) {
+            setResponses(prev => prev.filter(r => r.pollId !== pollId));
+          }
+        } else {
+          console.error('Failed to update poll:', result.error);
+          alert('Failed to update poll: ' + result.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating poll:', error);
     }
+  };
+
+  const handleDeletePoll = async (pollId: string) => {
+    // Implement delete if needed, for now just local state
+    // setPolls(prev => prev.filter(p => p.id !== pollId));
+    console.log('Delete not implemented in backend yet', pollId);
   };
 
   const handleSubmitResponse = async (response: Response) => {
-    setResponses((prev: Response[]) => [...prev, response]);
-
-    if (window.electron?.db) {
-      try {
-        await window.electron.db.submitResponse(response);
-      } catch (error) {
-        console.error('Failed to submit response to DB:', error);
+    try {
+      if ((window as any).electron) {
+        const result = await (window as any).electron.db.submitResponse(response);
+        if (result.success) {
+          setResponses(prev => [...prev, response]);
+        } else {
+          console.error('Failed to submit response:', result.error);
+          alert('Failed to submit response: ' + result.error);
+        }
       }
-    } else {
-      const currentResponses = JSON.parse(localStorage.getItem('sentinel_responses') || '[]');
-      localStorage.setItem('sentinel_responses', JSON.stringify([...currentResponses, response]));
+    } catch (error) {
+      console.error('Error submitting response:', error);
     }
   };
 
-  const handleDeletePoll = (pollId: string) => {
-    setPolls((prev: Poll[]) => prev.filter(p => p.id !== pollId));
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
-  const handleUpdatePoll = (pollId: string, updates: Partial<Poll>) => {
-    setPolls((prev: Poll[]) => prev.map(p => p.id === pollId ? { ...p, ...updates } : p));
-  };
-
-  if (!currentUser) {
+  if (!user) {
     return <AuthPage onLogin={handleLogin} />;
   }
 
-  return (
-    <div className="min-h-screen bg-mono-bg">
-      {showNotification && notificationPoll && (
-        <NotificationDemo
-          poll={notificationPoll}
-          onClose={() => setShowNotification(false)}
-          onFill={() => {
-            setShowNotification(false);
-            setMode('consumer');
-          }}
-        />
-      )}
+  if (viewMode === 'publisher' && user.isPublisher) {
+    return (
+      <PublisherDashboard
+        user={user}
+        polls={polls}
+        responses={responses}
+        onCreatePoll={handleCreatePoll}
+        onDeletePoll={handleDeletePoll}
+        onUpdatePoll={handleUpdatePoll}
+        onSwitchMode={() => setViewMode('consumer')}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
-      {mode === 'publisher' ? (
-        <PublisherDashboard
-          user={currentUser}
-          polls={polls}
-          responses={responses}
-          onCreatePoll={handleCreatePoll}
-          onDeletePoll={handleDeletePoll}
-          onUpdatePoll={handleUpdatePoll}
-          onSwitchMode={() => setMode('consumer')}
-          onLogout={handleLogout}
-        />
-      ) : (
-        <ConsumerDashboard
-          user={currentUser}
-          polls={polls}
-          responses={responses}
-          onSubmitResponse={handleSubmitResponse}
-          onSwitchMode={() => setMode('publisher')}
-          onLogout={handleLogout}
-        />
-      )}
-    </div>
+  return (
+    <ConsumerDashboard
+      user={user}
+      polls={polls}
+      responses={responses}
+      onSubmitResponse={handleSubmitResponse}
+      onSwitchMode={() => user.isPublisher && setViewMode('publisher')}
+      onLogout={handleLogout}
+    />
   );
 }
 

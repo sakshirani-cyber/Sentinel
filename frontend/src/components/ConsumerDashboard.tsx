@@ -35,10 +35,11 @@ export default function ConsumerDashboard({
   // Get polls assigned to this user
   const userPolls = polls.filter(p => p.consumers.includes(user.email));
 
-  // Get incomplete polls (active polls where user hasn't responded)
+  // Get incomplete polls (active polls where user hasn't responded AND deadline hasn't passed)
   const incompletePolls = userPolls.filter(p => {
     const hasResponded = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
-    return !hasResponded && p.status === 'active';
+    const isExpired = new Date(p.deadline) < new Date();
+    return !hasResponded && p.status === 'active' && !isExpired;
   }).sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
 
   // Get completed polls
@@ -88,6 +89,44 @@ export default function ConsumerDashboard({
     });
   }, [userPolls, notifiedPolls, responses, user.email]);
 
+  // Track which polls have been notified about updates
+  const [notifiedUpdates, setNotifiedUpdates] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('sentinel_notified_updates');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  // Notify when polls are updated
+  useEffect(() => {
+    userPolls.forEach(poll => {
+      // Only notify if edited and not yet notified
+      if (poll.isEdited && !notifiedUpdates.has(poll.id)) {
+
+        // Mark as notified
+        setNotifiedUpdates(prev => {
+          const newSet = new Set(prev);
+          newSet.add(poll.id);
+          localStorage.setItem('sentinel_notified_updates', JSON.stringify([...newSet]));
+          return newSet;
+        });
+
+        // Send notification
+        const notification = new Notification(`Poll Updated: ${poll.publisherName}`, {
+          body: `The poll "${poll.question}" has been updated. Please check the new details.`,
+          silent: false,
+          icon: '/logo.png'
+        });
+
+        notification.onclick = () => {
+          if ((window as any).electron) {
+            (window as any).electron.ipcRenderer.send('restore-window');
+          }
+          window.focus();
+          setSelectedPoll(poll);
+        };
+      }
+    });
+  }, [userPolls, notifiedUpdates]);
+
   // Check for alerts
   useEffect(() => {
     const interval = setInterval(() => {
@@ -134,11 +173,42 @@ export default function ConsumerDashboard({
 
             // Only 1-minute alert can be persistent
             if (threshold === 1 && poll.isPersistentFinalAlert) {
+              // Check device status before showing persistent alert
               if ((window as any).electron) {
-                (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
+                (window as any).electron.getDeviceStatus().then((status: string) => {
+                  if (status !== 'active') {
+                    // Device is inactive/locked/sleep - auto-submit default response
+                    console.log(`[Sentinel] Auto-submitting default response due to device status: ${status}`);
+
+                    const response: Response = {
+                      pollId: poll.id,
+                      consumerEmail: user.email,
+                      response: poll.defaultResponse || '',
+                      submittedAt: new Date().toISOString(),
+                      isDefault: true,
+                      skipReason: `Auto-submitted: Device was ${status}`
+                    };
+
+                    onSubmitResponse(response);
+
+                    // Clear draft if exists
+                    setDrafts(prev => {
+                      const newDrafts = { ...prev };
+                      delete newDrafts[poll.id];
+                      return newDrafts;
+                    });
+                  } else {
+                    // Device is active - show persistent alert
+                    (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
+                    setPersistentAlertPoll(poll);
+                    setShowPersistentAlert(true);
+                  }
+                });
+              } else {
+                // Fallback for non-electron env (dev)
+                setPersistentAlertPoll(poll);
+                setShowPersistentAlert(true);
               }
-              setPersistentAlertPoll(poll);
-              setShowPersistentAlert(true);
             }
           }
         });

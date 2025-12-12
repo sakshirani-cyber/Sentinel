@@ -12,7 +12,7 @@ interface PublisherDashboardProps {
   responses: Response[];
   onCreatePoll: (poll: Poll) => void;
   onDeletePoll: (pollId: string) => void;
-  onUpdatePoll: (pollId: string, updates: Partial<Poll>) => void;
+  onUpdatePoll: (pollId: string, updates: Partial<Poll>, republish: boolean) => void;
   onSwitchMode: () => void;
   onLogout: () => void;
 }
@@ -92,8 +92,8 @@ export default function PublisherDashboard({
                 setSelectedFormType(null);
               }}
               className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'create'
-                  ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                  : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
+                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
                 }`}
             >
               <PlusCircle className="w-5 h-5" />
@@ -102,16 +102,16 @@ export default function PublisherDashboard({
             <button
               onClick={() => setActiveTab('published')}
               className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'published'
-                  ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                  : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
+                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
                 }`}
             >
               <List className="w-5 h-5" />
               <span className="hidden sm:inline">Published</span>
               {userPolls.length > 0 && (
                 <span className={`px-2.5 py-0.5 rounded-full text-xs ${activeTab === 'published'
-                    ? 'bg-mono-accent/30 text-mono-primary'
-                    : 'bg-mono-primary/20 text-mono-primary'
+                  ? 'bg-mono-accent/30 text-mono-primary'
+                  : 'bg-mono-primary/20 text-mono-primary'
                   }`}>
                   {userPolls.length}
                 </span>
