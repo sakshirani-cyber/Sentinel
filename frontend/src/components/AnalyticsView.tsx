@@ -24,7 +24,7 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
 
   // Add default response count if it's not in options
   const defaultResponseIsOption = poll.options.some(opt => opt.text === poll.defaultResponse);
-  if (!defaultResponseIsOption && defaultResponses.length > 0) {
+  if (poll.defaultResponse && !defaultResponseIsOption && defaultResponses.length > 0) {
     responseCounts[poll.defaultResponse] = defaultResponses.filter(
       r => r.response === poll.defaultResponse
     ).length;
