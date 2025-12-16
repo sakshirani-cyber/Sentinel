@@ -35,6 +35,8 @@ function initDB() {
                 defaultResponse TEXT,
                 showDefaultToConsumers INTEGER, -- boolean 0/1
                 publishedAt TEXT,
+                cloudSignalId INTEGER, -- Backend signal ID
+                syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending', 'error'
                 createdAt TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -89,11 +91,13 @@ function createPoll(poll) {
         INSERT INTO polls (
             localId, question, options, publisherEmail, publisherName, 
             status, deadline, anonymityMode, isPersistentFinalAlert, 
-            consumers, defaultResponse, showDefaultToConsumers, publishedAt
+            consumers, defaultResponse, showDefaultToConsumers, publishedAt,
+            cloudSignalId, syncStatus
         ) VALUES (
             @localId, @question, @options, @publisherEmail, @publisherName, 
             @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
-            @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt
+            @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
+            @cloudSignalId, @syncStatus
         )
     `);
     const info = stmt.run({
@@ -109,7 +113,9 @@ function createPoll(poll) {
         consumers: JSON.stringify(poll.consumers),
         defaultResponse: poll.defaultResponse,
         showDefaultToConsumers: poll.showDefaultToConsumers ? 1 : 0,
-        publishedAt: poll.publishedAt
+        publishedAt: poll.publishedAt,
+        cloudSignalId: poll.cloudSignalId || null,
+        syncStatus: poll.syncStatus || 'pending'
     });
     return info;
 }
@@ -130,6 +136,8 @@ function getPolls() {
         defaultResponse: row.defaultResponse,
         showDefaultToConsumers: !!row.showDefaultToConsumers,
         publishedAt: row.publishedAt,
+        cloudSignalId: row.cloudSignalId,
+        syncStatus: row.syncStatus || 'pending',
         isEdited: false // Default
     }));
 }
@@ -139,7 +147,7 @@ function updatePoll(pollId, updates, republish = false) {
     const fields = [
         'question', 'options', 'publisherEmail', 'publisherName', 'status',
         'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-        'defaultResponse', 'showDefaultToConsumers', 'publishedAt'
+        'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus'
     ];
     fields.forEach(field => {
         if (updates[field] !== undefined) {

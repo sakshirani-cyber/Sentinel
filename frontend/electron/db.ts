@@ -26,6 +26,8 @@ export function initDB() {
                 defaultResponse TEXT,
                 showDefaultToConsumers INTEGER, -- boolean 0/1
                 publishedAt TEXT,
+                cloudSignalId INTEGER, -- Backend signal ID
+                syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending', 'error'
                 createdAt TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -62,6 +64,8 @@ interface Poll {
     consumers: string[];
     publishedAt: string;
     status: 'active' | 'completed';
+    cloudSignalId?: number;
+    syncStatus?: 'synced' | 'pending' | 'error';
 }
 
 interface Response {
@@ -110,11 +114,13 @@ export function createPoll(poll: Poll) {
         INSERT INTO polls (
             localId, question, options, publisherEmail, publisherName, 
             status, deadline, anonymityMode, isPersistentFinalAlert, 
-            consumers, defaultResponse, showDefaultToConsumers, publishedAt
+            consumers, defaultResponse, showDefaultToConsumers, publishedAt,
+            cloudSignalId, syncStatus
         ) VALUES (
             @localId, @question, @options, @publisherEmail, @publisherName, 
             @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
-            @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt
+            @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
+            @cloudSignalId, @syncStatus
         )
     `);
 
@@ -131,7 +137,9 @@ export function createPoll(poll: Poll) {
         consumers: JSON.stringify(poll.consumers),
         defaultResponse: poll.defaultResponse,
         showDefaultToConsumers: poll.showDefaultToConsumers ? 1 : 0,
-        publishedAt: poll.publishedAt
+        publishedAt: poll.publishedAt,
+        cloudSignalId: poll.cloudSignalId || null,
+        syncStatus: poll.syncStatus || 'pending'
     });
 
     return info;
@@ -155,6 +163,8 @@ export function getPolls(): Poll[] {
         defaultResponse: row.defaultResponse,
         showDefaultToConsumers: !!row.showDefaultToConsumers,
         publishedAt: row.publishedAt,
+        cloudSignalId: row.cloudSignalId,
+        syncStatus: (row.syncStatus as 'synced' | 'pending' | 'error') || 'pending',
         isEdited: false // Default
     }));
 }
@@ -166,7 +176,7 @@ export function updatePoll(pollId: string, updates: Partial<Poll>, republish: bo
     const fields = [
         'question', 'options', 'publisherEmail', 'publisherName', 'status',
         'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-        'defaultResponse', 'showDefaultToConsumers', 'publishedAt'
+        'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus'
     ];
 
     fields.forEach(field => {

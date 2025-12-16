@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import AuthPage from './components/AuthPage';
 import PublisherDashboard from './components/PublisherDashboard';
 import ConsumerDashboard from './components/ConsumerDashboard';
+import pollService from './services/pollService';
 
 export interface User {
   name: string;
@@ -32,6 +33,8 @@ export interface Poll {
   publishedAt: string;
   isPersistentFinalAlert?: boolean;
   isEdited?: boolean;
+  cloudSignalId?: number; // Backend signal ID
+  syncStatus?: 'synced' | 'pending' | 'error'; // Sync status with backend
 }
 
 export interface Response {
@@ -99,27 +102,56 @@ function App() {
 
   const handleCreatePoll = async (newPoll: Poll) => {
     try {
+      // Try to create on backend first
+      try {
+        const response = await pollService.createPoll(newPoll);
+        newPoll.cloudSignalId = response.cloudSignalId;
+        newPoll.syncStatus = 'synced';
+      } catch (backendError) {
+        console.warn('Failed to create poll on backend, saving locally:', backendError);
+        newPoll.syncStatus = 'error';
+      }
+
+      // Always save to local DB
       if ((window as any).electron) {
         const result = await (window as any).electron.db.createPoll(newPoll);
         if (result.success) {
           setPolls(prev => [...prev, newPoll]);
         } else {
-          console.error('Failed to create poll:', result.error);
+          console.error('Failed to create poll locally:', result.error);
           alert('Failed to create poll: ' + result.error);
         }
       }
     } catch (error) {
       console.error('Error creating poll:', error);
+      alert('Error creating poll: ' + (error as Error).message);
     }
   };
 
   const handleUpdatePoll = async (pollId: string, updates: Partial<Poll>, republish: boolean) => {
     try {
+      const poll = polls.find(p => p.id === pollId);
+      if (!poll) throw new Error('Poll not found');
+
+      const updatedPoll = { ...poll, ...updates };
+
+      // Try to update on backend if synced
+      if (poll.cloudSignalId) {
+        try {
+          await pollService.editPoll(poll.cloudSignalId, updatedPoll, republish);
+          updates.syncStatus = 'synced';
+        } catch (backendError) {
+          console.warn('Failed to update poll on backend:', backendError);
+          updates.syncStatus = 'error';
+        }
+      }
+
+      // Always update local DB
       if ((window as any).electron) {
         const result = await (window as any).electron.ipcRenderer.invoke('db-update-poll', { pollId, updates, republish });
         if (result.success) {
           setPolls(prev => prev.map(p => p.id === pollId ? { ...p, ...updates } : p));
-          // If republished, clear local responses for this poll so UI updates immediately
+          // If republished, clear local responses for this poll
           if (republish) {
             setResponses(prev => prev.filter(r => r.pollId !== pollId));
           }
@@ -130,6 +162,7 @@ function App() {
       }
     } catch (error) {
       console.error('Error updating poll:', error);
+      alert('Error updating poll: ' + (error as Error).message);
     }
   };
 
@@ -141,6 +174,23 @@ function App() {
 
   const handleSubmitResponse = async (response: Response) => {
     try {
+      const poll = polls.find(p => p.id === response.pollId);
+      if (!poll) throw new Error('Poll not found');
+
+      // Try to submit to backend if poll is synced
+      if (poll.cloudSignalId) {
+        try {
+          await pollService.submitVote(
+            poll.cloudSignalId,
+            response.consumerEmail,
+            response.response
+          );
+        } catch (backendError) {
+          console.warn('Failed to submit vote to backend:', backendError);
+        }
+      }
+
+      // Always save to local DB
       if ((window as any).electron) {
         const result = await (window as any).electron.db.submitResponse(response);
         if (result.success) {
@@ -152,6 +202,7 @@ function App() {
       }
     } catch (error) {
       console.error('Error submitting response:', error);
+      alert('Error submitting response: ' + (error as Error).message);
     }
   };
 

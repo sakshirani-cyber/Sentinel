@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { User, Poll, PollOption } from '../App';
-import { Plus, X, Eye, Check, AlertCircle } from 'lucide-react';
+import { User, Poll } from '../App';
+import { Plus, X, Eye, Check, AlertCircle, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import PollPreview from './PollPreview';
 
 interface CreatePollProps {
@@ -10,7 +11,7 @@ interface CreatePollProps {
   formType?: string;
 }
 
-export default function CreatePoll({ user, onCreatePoll, existingPolls, formType }: CreatePollProps) {
+export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<string[]>(['', '']);
   const [defaultResponse, setDefaultResponse] = useState('');
@@ -22,6 +23,8 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
   const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(false);
   const [selectedConsumers, setSelectedConsumers] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
 
   // Set minimum datetime to current time
   const getMinDateTime = () => {
@@ -64,6 +67,56 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadStats(null);
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      const extractedEmails: string[] = [];
+
+      // Flatten array and look for email-like strings
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      jsonData.forEach((row: any) => {
+        if (Array.isArray(row)) {
+          row.forEach((cell: any) => {
+            if (typeof cell === 'string' && emailRegex.test(cell.trim())) {
+              extractedEmails.push(cell.trim());
+            }
+          });
+        }
+      });
+
+      const uniqueEmails = [...new Set(extractedEmails)];
+      const newEmails = uniqueEmails.filter(email => !selectedConsumers.includes(email));
+
+      if (newEmails.length > 0) {
+        setSelectedConsumers(prev => [...prev, ...newEmails]);
+        setUploadStats({
+          total: uniqueEmails.length,
+          new: newEmails.length
+        });
+      } else {
+        alert('No new valid emails found in the file.');
+      }
+    } catch (error) {
+      console.error('Error parsing file:', error);
+      alert('Failed to parse file. Please ensure it is a valid Excel or CSV file.');
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
   // Check for duplicate options (case-insensitive)
   const hasDuplicateOptions = () => {
     const validOptions = options.filter(o => o.trim()).map(o => o.trim().toLowerCase());
@@ -91,7 +144,9 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
       isPersistentFinalAlert,
       consumers: selectedConsumers,
       publishedAt: new Date().toISOString(),
-      status: 'active'
+      status: 'active',
+      isPersistentAlert: false,
+      alertBeforeMinutes: 15
     };
 
     onCreatePoll(poll);
@@ -108,6 +163,7 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
     setIsPersistentFinalAlert(false);
     setSelectedConsumers([]);
     setShowPreview(false);
+    setUploadStats(null);
   };
 
   const isDateValid = (dateStr: string) => {
@@ -334,7 +390,55 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
                 ({selectedConsumers.length} selected)
               </span>
             </label>
+
+            <div className="mb-3">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
+                  <Upload className="w-4 h-4 text-slate-600" />
+                  <span className="text-sm text-slate-700">Import from Excel/CSV</span>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
+                {isUploading && <span className="text-sm text-slate-500">Processing...</span>}
+                {uploadStats && (
+                  <span className="text-sm text-green-600 flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    Added {uploadStats.new} new emails
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1 ml-1">
+                Supports .xlsx, .xls, .csv. Will extract any valid emails found.
+              </p>
+            </div>
+
             <div className="border border-slate-300 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
+              {/* Show uploaded consumers first */}
+              {selectedConsumers
+                .filter(email => !availableConsumers.includes(email))
+                .map(email => (
+                  <label
+                    key={email}
+                    className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer transition-colors bg-blue-50/50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      onChange={() => handleToggleConsumer(email)}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-slate-700">{email}</span>
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                      Imported
+                    </span>
+                  </label>
+                ))}
+
               {availableConsumers.map(email => (
                 <label
                   key={email}
@@ -416,7 +520,9 @@ export default function CreatePoll({ user, onCreatePoll, existingPolls, formType
             isPersistentFinalAlert,
             consumers: selectedConsumers,
             publishedAt: new Date().toISOString(),
-            status: 'active'
+            status: 'active',
+            isPersistentAlert: false,
+            alertBeforeMinutes: 15
           }}
           onClose={() => setShowPreview(false)}
         />

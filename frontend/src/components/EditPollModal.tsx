@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Poll } from '../App';
-import { Plus, X, Save, AlertCircle } from 'lucide-react';
+import { Plus, X, Save, AlertCircle, Upload, Check } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface EditPollModalProps {
     poll: Poll;
@@ -29,6 +30,8 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(poll.isPersistentFinalAlert);
     const [selectedConsumers, setSelectedConsumers] = useState<string[]>(poll.consumers);
     const [republish, setRepublish] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
 
     const availableConsumers = Array.from(new Set([
         ...poll.consumers,
@@ -60,6 +63,56 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
             setSelectedConsumers(selectedConsumers.filter(e => e !== email));
         } else {
             setSelectedConsumers([...selectedConsumers, email]);
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setUploadStats(null);
+
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            const extractedEmails: string[] = [];
+
+            // Flatten array and look for email-like strings
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            jsonData.forEach((row: any) => {
+                if (Array.isArray(row)) {
+                    row.forEach((cell: any) => {
+                        if (typeof cell === 'string' && emailRegex.test(cell.trim())) {
+                            extractedEmails.push(cell.trim());
+                        }
+                    });
+                }
+            });
+
+            const uniqueEmails = [...new Set(extractedEmails)];
+            const newEmails = uniqueEmails.filter(email => !selectedConsumers.includes(email));
+
+            if (newEmails.length > 0) {
+                setSelectedConsumers(prev => [...prev, ...newEmails]);
+                setUploadStats({
+                    total: uniqueEmails.length,
+                    new: newEmails.length
+                });
+            } else {
+                alert('No new valid emails found in the file.');
+            }
+        } catch (error) {
+            console.error('Error parsing file:', error);
+            alert('Failed to parse file. Please ensure it is a valid Excel or CSV file.');
+        } finally {
+            setIsUploading(false);
+            // Reset input
+            e.target.value = '';
         }
     };
 
@@ -264,8 +317,59 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                     <div>
                         <label className="block text-mono-text mb-3 font-medium">
                             Consumers <span className="text-red-500">*</span>
+                            <span className="text-sm text-mono-text/60 ml-2">
+                                ({selectedConsumers.length} selected)
+                            </span>
                         </label>
+
+                        <div className="mb-3">
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 px-4 py-2 bg-white border border-mono-primary/20 rounded-xl cursor-pointer hover:bg-mono-primary/5 transition-colors shadow-sm">
+                                    <Upload className="w-4 h-4 text-mono-text/60" />
+                                    <span className="text-sm text-mono-text">Import from Excel/CSV</span>
+                                    <input
+                                        type="file"
+                                        accept=".xlsx,.xls,.csv"
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                        disabled={isUploading}
+                                    />
+                                </label>
+                                {isUploading && <span className="text-sm text-mono-text/60">Processing...</span>}
+                                {uploadStats && (
+                                    <span className="text-sm text-green-600 flex items-center gap-1">
+                                        <Check className="w-3 h-3" />
+                                        Added {uploadStats.new} new emails
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-mono-text/60 mt-1 ml-1">
+                                Supports .xlsx, .xls, .csv. Will extract any valid emails found.
+                            </p>
+                        </div>
+
                         <div className="border border-mono-primary/20 rounded-xl p-4 max-h-48 overflow-y-auto space-y-2 bg-mono-bg">
+                            {/* Show uploaded consumers first */}
+                            {selectedConsumers
+                                .filter(email => !availableConsumers.includes(email))
+                                .map(email => (
+                                    <label
+                                        key={email}
+                                        className="flex items-center gap-3 p-2 hover:bg-mono-primary/5 rounded-lg cursor-pointer transition-colors bg-blue-50/50"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={true}
+                                            onChange={() => handleToggleConsumer(email)}
+                                            className="w-4 h-4 text-mono-primary rounded border-mono-primary/30 focus:ring-mono-accent"
+                                        />
+                                        <span className="text-mono-text">{email}</span>
+                                        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                                            Imported
+                                        </span>
+                                    </label>
+                                ))}
+
                             {availableConsumers.map(email => (
                                 <label
                                     key={email}
