@@ -29,7 +29,7 @@ public abstract class BaseSignalDTO {
     private String type;
 
     @NotNull(message = "localId is required")
-    private Integer localId;
+    private Long localId;
 
     private Boolean defaultFlag;
     private String defaultOption;

@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CreatePollResponse {
     private Integer cloudSignalId;
-    private Integer localId;
+    private Long localId;
 }
