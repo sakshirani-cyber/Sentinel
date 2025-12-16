@@ -52,6 +52,17 @@ function initDB() {
                 UNIQUE(pollLocalId, userId)
             );
         `);
+        // Migration: Add missing columns for existing databases
+        const tableInfo = db.prepare("PRAGMA table_info(polls)").all();
+        const columns = tableInfo.map(col => col.name);
+        if (!columns.includes('cloudSignalId')) {
+            console.log('Migrating database: Adding cloudSignalId to polls table');
+            db.exec("ALTER TABLE polls ADD COLUMN cloudSignalId INTEGER");
+        }
+        if (!columns.includes('syncStatus')) {
+            console.log('Migrating database: Adding syncStatus to polls table');
+            db.exec("ALTER TABLE polls ADD COLUMN syncStatus TEXT DEFAULT 'pending'");
+        }
     }
     catch (error) {
         console.error('Failed to initialize SQLite database:', error);

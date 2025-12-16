@@ -12,6 +12,14 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         getPolls: () => electron_1.ipcRenderer.invoke('db-get-polls'),
         submitResponse: (response) => electron_1.ipcRenderer.invoke('db-submit-response', response),
         getResponses: () => electron_1.ipcRenderer.invoke('db-get-responses'),
-    }
+    },
+    backend: {
+        createPoll: (poll) => electron_1.ipcRenderer.invoke('backend-create-poll', poll),
+        submitVote: (signalId, userId, selectedOption) => electron_1.ipcRenderer.invoke('backend-submit-vote', { signalId, userId, selectedOption }),
+        getPollResults: (signalId) => electron_1.ipcRenderer.invoke('backend-get-results', signalId),
+        editPoll: (signalId, poll, republish) => electron_1.ipcRenderer.invoke('backend-edit-poll', { signalId, poll, republish }),
+        deletePoll: (signalId) => electron_1.ipcRenderer.invoke('backend-delete-poll', signalId),
+    },
+    getDeviceStatus: () => electron_1.ipcRenderer.invoke('get-device-status')
 });
 //# sourceMappingURL=preload.js.map

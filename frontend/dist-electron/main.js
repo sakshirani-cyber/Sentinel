@@ -40,6 +40,7 @@ const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const electron_is_dev_1 = __importDefault(require("electron-is-dev"));
 const db_1 = require("./db");
+const backendApi = __importStar(require("./backendApi"));
 // Set app name for notifications (Windows/macOS/Linux)
 electron_1.app.setName('Sentinel');
 // Set AppUserModelId for Windows notifications to show correct app name
@@ -117,6 +118,59 @@ Comment=Sentinel Signal Enforcement
 electron_1.app.whenReady().then(async () => {
     try {
         (0, db_1.initDB)();
+        // ========================================================================
+        // Backend API IPC Handlers (bypass CORS by making calls from main process)
+        // ========================================================================
+        electron_1.ipcMain.handle('backend-create-poll', async (_event, poll) => {
+            try {
+                const result = await backendApi.createPoll(poll);
+                return { success: true, data: result };
+            }
+            catch (error) {
+                console.error('Backend API - Create Poll Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+        electron_1.ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption }) => {
+            try {
+                await backendApi.submitVote(signalId, userId, selectedOption);
+                return { success: true };
+            }
+            catch (error) {
+                console.error('Backend API - Submit Vote Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+        electron_1.ipcMain.handle('backend-get-results', async (_event, signalId) => {
+            try {
+                const result = await backendApi.getPollResults(signalId);
+                return { success: true, data: result };
+            }
+            catch (error) {
+                console.error('Backend API - Get Results Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+        electron_1.ipcMain.handle('backend-edit-poll', async (_event, { signalId, poll, republish }) => {
+            try {
+                await backendApi.editPoll(signalId, poll, republish);
+                return { success: true };
+            }
+            catch (error) {
+                console.error('Backend API - Edit Poll Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+        electron_1.ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
+            try {
+                await backendApi.deletePoll(signalId);
+                return { success: true };
+            }
+            catch (error) {
+                console.error('Backend API - Delete Poll Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
     }
     catch (error) {
         console.error('Failed to initialize Database:', error);

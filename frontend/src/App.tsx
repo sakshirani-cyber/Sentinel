@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import AuthPage from './components/AuthPage';
 import PublisherDashboard from './components/PublisherDashboard';
 import ConsumerDashboard from './components/ConsumerDashboard';
-import pollService from './services/pollService';
 
 export interface User {
   name: string;
@@ -102,14 +101,21 @@ function App() {
 
   const handleCreatePoll = async (newPoll: Poll) => {
     try {
-      // Try to create on backend first
-      try {
-        const response = await pollService.createPoll(newPoll);
-        newPoll.cloudSignalId = response.cloudSignalId;
-        newPoll.syncStatus = 'synced';
-      } catch (backendError) {
-        console.warn('Failed to create poll on backend, saving locally:', backendError);
-        newPoll.syncStatus = 'error';
+      // Try to create on backend first via Electron IPC (bypasses CORS)
+      if ((window as any).electron?.backend) {
+        try {
+          const backendResult = await (window as any).electron.backend.createPoll(newPoll);
+          if (backendResult.success) {
+            newPoll.cloudSignalId = backendResult.data.cloudSignalId;
+            newPoll.syncStatus = 'synced';
+          } else {
+            console.warn('Failed to create poll on backend:', backendResult.error);
+            newPoll.syncStatus = 'error';
+          }
+        } catch (backendError) {
+          console.warn('Failed to create poll on backend:', backendError);
+          newPoll.syncStatus = 'error';
+        }
       }
 
       // Always save to local DB
@@ -135,11 +141,20 @@ function App() {
 
       const updatedPoll = { ...poll, ...updates };
 
-      // Try to update on backend if synced
-      if (poll.cloudSignalId) {
+      // Try to update on backend if synced via Electron IPC
+      if (poll.cloudSignalId && (window as any).electron?.backend) {
         try {
-          await pollService.editPoll(poll.cloudSignalId, updatedPoll, republish);
-          updates.syncStatus = 'synced';
+          const backendResult = await (window as any).electron.backend.editPoll(
+            poll.cloudSignalId,
+            updatedPoll,
+            republish
+          );
+          if (backendResult.success) {
+            updates.syncStatus = 'synced';
+          } else {
+            console.warn('Failed to update poll on backend:', backendResult.error);
+            updates.syncStatus = 'error';
+          }
         } catch (backendError) {
           console.warn('Failed to update poll on backend:', backendError);
           updates.syncStatus = 'error';
@@ -177,14 +192,17 @@ function App() {
       const poll = polls.find(p => p.id === response.pollId);
       if (!poll) throw new Error('Poll not found');
 
-      // Try to submit to backend if poll is synced
-      if (poll.cloudSignalId) {
+      // Try to submit to backend if poll is synced via Electron IPC
+      if (poll.cloudSignalId && (window as any).electron?.backend) {
         try {
-          await pollService.submitVote(
+          const backendResult = await (window as any).electron.backend.submitVote(
             poll.cloudSignalId,
             response.consumerEmail,
             response.response
           );
+          if (!backendResult.success) {
+            console.warn('Failed to submit vote to backend:', backendResult.error);
+          }
         } catch (backendError) {
           console.warn('Failed to submit vote to backend:', backendError);
         }

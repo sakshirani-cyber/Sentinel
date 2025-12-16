@@ -59,6 +59,8 @@ export default function ConsumerDashboard({
 
   // Notify when new polls are assigned to the user
   useEffect(() => {
+    if (Notification.permission !== 'granted') return;
+
     userPolls.forEach(poll => {
       // Only notify for incomplete polls
       const hasResponded = responses.some(r => r.pollId === poll.id && r.consumerEmail === user.email);
@@ -73,6 +75,7 @@ export default function ConsumerDashboard({
       });
 
       // Send notification
+      console.log('[Notification] New poll assigned:', poll.question);
       const notification = new Notification(`New Poll from ${poll.publisherName}`, {
         body: poll.question,
         silent: false,
@@ -94,6 +97,17 @@ export default function ConsumerDashboard({
     const saved = localStorage.getItem('sentinel_notified_updates');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('[Notifications] Permission:', permission);
+      });
+    } else {
+      console.log('[Notifications] Current permission:', Notification.permission);
+    }
+  }, []);
 
   // Notify when polls are updated
   useEffect(() => {
@@ -149,13 +163,37 @@ export default function ConsumerDashboard({
           const isAlertTime = minutesUntilDeadline <= threshold && minutesUntilDeadline > (threshold - 0.25);
 
           if (isAlertTime) {
+            // Double-check: Don't send notification if poll is expired or user already responded
+            const isPollExpired = new Date(poll.deadline) < new Date();
+            const hasUserResponded = responses.some(r => r.pollId === poll.id && r.consumerEmail === user.email);
+
+            if (isPollExpired) {
+              console.log(`[Alert] Skipping notification - poll expired: ${poll.question}`);
+              return;
+            }
+
+            if (hasUserResponded) {
+              console.log(`[Alert] Skipping notification - user already responded: ${poll.question}`);
+              return;
+            }
+
+            console.log(`[Alert] Triggering ${threshold}-minute alert for poll: ${poll.question}`);
+            console.log(`[Alert] Time until deadline: ${minutesUntilDeadline.toFixed(2)} minutes`);
+
             // Mark this alert as sent
             setSentAlerts(prev => ({
               ...prev,
               [poll.id]: [...(prev[poll.id] || []), threshold]
             }));
 
+            // Check notification permission
+            if (Notification.permission !== 'granted') {
+              console.warn('[Alert] Notification permission not granted');
+              return;
+            }
+
             // Trigger system notification
+            console.log(`[Notification] Sending ${threshold}-min alert`);
             const notification = new Notification(`Sentinel Alert: ${poll.publisherName}`, {
               body: `${threshold} min left: ${poll.question}`,
               silent: false,
@@ -176,9 +214,15 @@ export default function ConsumerDashboard({
               // Check device status before showing persistent alert
               if ((window as any).electron) {
                 (window as any).electron.getDeviceStatus().then((status: string) => {
-                  if (status !== 'active') {
-                    // Device is inactive/locked/sleep - auto-submit default response
-                    console.log(`[Sentinel] Auto-submitting default response due to device status: ${status}`);
+                  // Check if poll is expired before taking action
+                  const isExpired = new Date(poll.deadline) < new Date();
+
+                  // Only auto-submit if device is LOCKED or SLEEPING (not idle!)
+                  if ((status === 'locked' || status === 'sleep') && !isExpired) {
+                    // Device is truly unavailable - auto-submit default response
+                    console.log(`[Sentinel] Auto-submitting default response due to device status: ${status}`)
+
+                      ;
 
                     const response: Response = {
                       pollId: poll.id,
@@ -197,8 +241,14 @@ export default function ConsumerDashboard({
                       delete newDrafts[poll.id];
                       return newDrafts;
                     });
+                  } else if (isExpired) {
+                    // Poll is expired - dismiss persistent alert if shown
+                    console.log(`[Sentinel] Poll expired - dismissing persistent alert`);
+                    setShowPersistentAlert(false);
+                    setPersistentAlertPoll(null);
                   } else {
-                    // Device is active - show persistent alert
+                    // Device is active OR idle - show persistent alert for both
+                    console.log(`[Sentinel] Showing persistent alert (device status: ${status})`);
                     (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
                     setPersistentAlertPoll(poll);
                     setShowPersistentAlert(true);
@@ -217,6 +267,31 @@ export default function ConsumerDashboard({
 
     return () => clearInterval(interval);
   }, [incompletePolls, showPersistentAlert, sentAlerts]);
+
+  // Auto-dismiss persistent alert when deadline passes
+  useEffect(() => {
+    if (!showPersistentAlert || !persistentAlertPoll) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const deadline = new Date(persistentAlertPoll.deadline);
+
+      if (now >= deadline) {
+        console.log('[Sentinel] Deadline passed - auto-dismissing persistent alert');
+        setShowPersistentAlert(false);
+        setPersistentAlertPoll(null);
+
+        // Unlock window
+        if ((window as any).electron) {
+          (window as any).electron.ipcRenderer.send('set-persistent-alert-active', false);
+          (window as any).electron.ipcRenderer.send('set-always-on-top', false);
+        }
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [showPersistentAlert, persistentAlertPoll]);
+
 
   // Load drafts
   useEffect(() => {

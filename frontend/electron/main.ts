@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor } fr
 import * as path from 'path';
 import isDev from 'electron-is-dev';
 import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll } from './db';
+import * as backendApi from './backendApi';
 
 // Set app name for notifications (Windows/macOS/Linux)
 app.setName('Sentinel');
@@ -89,6 +90,61 @@ Comment=Sentinel Signal Enforcement
 app.whenReady().then(async () => {
     try {
         initDB();
+
+        // ========================================================================
+        // Backend API IPC Handlers (bypass CORS by making calls from main process)
+        // ========================================================================
+
+        ipcMain.handle('backend-create-poll', async (_event, poll) => {
+            try {
+                const result = await backendApi.createPoll(poll);
+                return { success: true, data: result };
+            } catch (error: any) {
+                console.error('Backend API - Create Poll Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+
+        ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption }) => {
+            try {
+                await backendApi.submitVote(signalId, userId, selectedOption);
+                return { success: true };
+            } catch (error: any) {
+                console.error('Backend API - Submit Vote Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+
+        ipcMain.handle('backend-get-results', async (_event, signalId) => {
+            try {
+                const result = await backendApi.getPollResults(signalId);
+                return { success: true, data: result };
+            } catch (error: any) {
+                console.error('Backend API - Get Results Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+
+        ipcMain.handle('backend-edit-poll', async (_event, { signalId, poll, republish }) => {
+            try {
+                await backendApi.editPoll(signalId, poll, republish);
+                return { success: true };
+            } catch (error: any) {
+                console.error('Backend API - Edit Poll Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+
+        ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
+            try {
+                await backendApi.deletePoll(signalId);
+                return { success: true };
+            } catch (error: any) {
+                console.error('Backend API - Delete Poll Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+
     } catch (error) {
         console.error('Failed to initialize Database:', error);
     }

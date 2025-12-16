@@ -12,5 +12,15 @@ contextBridge.exposeInMainWorld('electron', {
         getPolls: () => ipcRenderer.invoke('db-get-polls'),
         submitResponse: (response: any) => ipcRenderer.invoke('db-submit-response', response),
         getResponses: () => ipcRenderer.invoke('db-get-responses'),
-    }
+    },
+    backend: {
+        createPoll: (poll: any) => ipcRenderer.invoke('backend-create-poll', poll),
+        submitVote: (signalId: number, userId: string, selectedOption: string) =>
+            ipcRenderer.invoke('backend-submit-vote', { signalId, userId, selectedOption }),
+        getPollResults: (signalId: number) => ipcRenderer.invoke('backend-get-results', signalId),
+        editPoll: (signalId: number, poll: any, republish: boolean) =>
+            ipcRenderer.invoke('backend-edit-poll', { signalId, poll, republish }),
+        deletePoll: (signalId: number) => ipcRenderer.invoke('backend-delete-poll', signalId),
+    },
+    getDeviceStatus: () => ipcRenderer.invoke('get-device-status')
 });
