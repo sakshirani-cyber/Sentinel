@@ -12,6 +12,7 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         getPolls: () => electron_1.ipcRenderer.invoke('db-get-polls'),
         submitResponse: (response) => electron_1.ipcRenderer.invoke('db-submit-response', response),
         getResponses: () => electron_1.ipcRenderer.invoke('db-get-responses'),
+        deletePoll: (pollId) => electron_1.ipcRenderer.invoke('db-delete-poll', pollId),
     },
     backend: {
         createPoll: (poll) => electron_1.ipcRenderer.invoke('backend-create-poll', poll),

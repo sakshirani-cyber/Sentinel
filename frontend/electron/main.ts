@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
-import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll } from './db';
+import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll } from './db';
 import * as backendApi from './backendApi';
 
 // Set app name for notifications (Windows/macOS/Linux)
@@ -345,6 +345,16 @@ ipcMain.handle('db-update-poll', async (_event, { pollId, updates, republish }) 
         return { success: true };
     } catch (error: any) {
         console.error('Error updating poll:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('db-delete-poll', async (_event, pollId) => {
+    try {
+        deletePoll(pollId);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error deleting poll:', error);
         return { success: false, error: error.message };
     }
 });

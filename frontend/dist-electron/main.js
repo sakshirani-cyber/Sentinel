@@ -356,4 +356,14 @@ electron_1.ipcMain.handle('db-update-poll', async (_event, { pollId, updates, re
         return { success: false, error: error.message };
     }
 });
+electron_1.ipcMain.handle('db-delete-poll', async (_event, pollId) => {
+    try {
+        (0, db_1.deletePoll)(pollId);
+        return { success: true };
+    }
+    catch (error) {
+        console.error('Error deleting poll:', error);
+        return { success: false, error: error.message };
+    }
+});
 //# sourceMappingURL=main.js.map

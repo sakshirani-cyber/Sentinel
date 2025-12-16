@@ -32,8 +32,8 @@ export interface Poll {
   publishedAt: string;
   isPersistentFinalAlert?: boolean;
   isEdited?: boolean;
-  cloudSignalId?: number; // Backend signal ID
-  syncStatus?: 'synced' | 'pending' | 'error'; // Sync status with backend
+  cloudSignalId?: number;
+  syncStatus?: 'synced' | 'pending' | 'error';
 }
 
 export interface Response {
@@ -103,19 +103,25 @@ function App() {
     try {
       // Try to create on backend first via Electron IPC (bypasses CORS)
       if ((window as any).electron?.backend) {
+        console.log('[Frontend] Calling backend to create poll:', newPoll.question);
         try {
           const backendResult = await (window as any).electron.backend.createPoll(newPoll);
+          console.log('[Frontend] Backend create poll result:', backendResult);
+
           if (backendResult.success) {
             newPoll.cloudSignalId = backendResult.data.cloudSignalId;
             newPoll.syncStatus = 'synced';
+            console.log('[Frontend] Poll synced to backend, cloudSignalId:', newPoll.cloudSignalId);
           } else {
-            console.warn('Failed to create poll on backend:', backendResult.error);
+            console.warn('[Frontend] Failed to create poll on backend:', backendResult.error);
             newPoll.syncStatus = 'error';
           }
         } catch (backendError) {
-          console.warn('Failed to create poll on backend:', backendError);
+          console.warn('[Frontend] Backend error:', backendError);
           newPoll.syncStatus = 'error';
         }
+      } else {
+        console.warn('[Frontend] Backend API not available (electron.backend missing)');
       }
 
       // Always save to local DB
@@ -182,9 +188,57 @@ function App() {
   };
 
   const handleDeletePoll = async (pollId: string) => {
-    // Implement delete if needed, for now just local state
-    // setPolls(prev => prev.filter(p => p.id !== pollId));
-    console.log('Delete not implemented in backend yet', pollId);
+    try {
+      const poll = polls.find(p => p.id === pollId);
+      if (!poll) {
+        console.error('Poll not found:', pollId);
+        return;
+      }
+
+      // Try to delete from backend if synced
+      if (poll.cloudSignalId && (window as any).electron?.backend) {
+        console.log('[Frontend] Calling backend to delete poll:', { pollId, cloudSignalId: poll.cloudSignalId });
+        try {
+          const backendResult = await (window as any).electron.backend.deletePoll(poll.cloudSignalId);
+          console.log('[Frontend] Backend delete poll result:', backendResult);
+
+          if (!backendResult.success) {
+            console.warn('[Frontend] Failed to delete poll from backend:', backendResult.error);
+            // Continue with local delete even if backend fails
+          } else {
+            console.log('[Frontend] Poll deleted from backend successfully');
+          }
+        } catch (backendError) {
+          console.warn('[Frontend] Backend error during delete:', backendError);
+          // Continue with local delete even if backend fails
+        }
+      } else {
+        console.log('[Frontend] Skipping backend delete - poll not synced or backend unavailable');
+      }
+
+      // Always delete from local state
+      setPolls(prev => prev.filter(p => p.id !== pollId));
+      console.log('[Frontend] Poll deleted from local state:', pollId);
+
+      // Delete from local DB via Electron IPC
+      if ((window as any).electron) {
+        try {
+          console.log('[Frontend] Deleting from local DB:', pollId);
+          const result = await (window as any).electron.db.deletePoll(pollId);
+          if (result.success) {
+            console.log('[Frontend] Poll deleted from local DB successfully');
+          } else {
+            console.error('[Frontend] Failed to delete poll from local DB:', result.error);
+          }
+        } catch (error) {
+          console.error('[Frontend] Error deleting from local DB:', error);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error deleting poll:', error);
+      alert('Error deleting poll: ' + (error as Error).message);
+    }
   };
 
   const handleSubmitResponse = async (response: Response) => {
@@ -194,18 +248,25 @@ function App() {
 
       // Try to submit to backend if poll is synced via Electron IPC
       if (poll.cloudSignalId && (window as any).electron?.backend) {
+        console.log('[Frontend] Calling backend to submit vote:', { cloudSignalId: poll.cloudSignalId, userId: response.consumerEmail, option: response.response });
         try {
           const backendResult = await (window as any).electron.backend.submitVote(
             poll.cloudSignalId,
             response.consumerEmail,
             response.response
           );
+          console.log('[Frontend] Backend submit vote result:', backendResult);
+
           if (!backendResult.success) {
-            console.warn('Failed to submit vote to backend:', backendResult.error);
+            console.warn('[Frontend] Failed to submit vote to backend:', backendResult.error);
+          } else {
+            console.log('[Frontend] Vote synced to backend');
           }
         } catch (backendError) {
-          console.warn('Failed to submit vote to backend:', backendError);
+          console.warn('[Frontend] Backend error:', backendError);
         }
+      } else {
+        console.log('[Frontend] Skipping backend vote - poll not synced or backend unavailable');
       }
 
       // Always save to local DB

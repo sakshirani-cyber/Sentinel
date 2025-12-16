@@ -83,11 +83,18 @@ function mapPollToDTO(poll: any): PollCreateDTO {
 // ============================================================================
 
 export async function createPoll(poll: any): Promise<CreatePollResponse> {
+    console.log('[Backend API] Creating poll:', poll.question);
+    console.log('[Backend API] Request URL:', `${API_BASE_URL}/api/signals`);
+
     const dto = mapPollToDTO(poll);
+    console.log('[Backend API] Poll DTO:', dto);
+
     const response = await apiClient.post<ApiResponse<CreatePollResponse>>(
         '/api/signals',
         dto
     );
+
+    console.log('[Backend API] Create poll response:', response.data);
     return response.data.data;
 }
 
@@ -96,14 +103,22 @@ export async function submitVote(
     userId: string,
     selectedOption: string
 ): Promise<void> {
+    console.log('[Backend API] Submitting vote:', { signalId, userId, selectedOption });
+
     const request: SubmitPollRequest = { signalId, userId, selectedOption };
     await apiClient.post<ApiResponse<void>>('/api/signals/poll/response', request);
+
+    console.log('[Backend API] Vote submitted successfully');
 }
 
 export async function getPollResults(signalId: number): Promise<PollResultDTO> {
+    console.log('[Backend API] Fetching poll results for signalId:', signalId);
+
     const response = await apiClient.get<ApiResponse<PollResultDTO>>(
         `/api/signals/${signalId}/poll/results`
     );
+
+    console.log('[Backend API] Poll results:', response.data.data);
     return response.data.data;
 }
 
@@ -112,14 +127,22 @@ export async function editPoll(
     poll: any,
     republish: boolean
 ): Promise<void> {
+    console.log('[Backend API] Editing poll:', { signalId, republish });
+
     const dto = mapPollToDTO(poll);
     await apiClient.put<ApiResponse<void>>(
         `/api/signals/${signalId}`,
         dto,
         { params: { republish } }
     );
+
+    console.log('[Backend API] Poll edited successfully');
 }
 
 export async function deletePoll(signalId: number): Promise<void> {
+    console.log('[Backend API] Deleting poll:', signalId);
+
     await apiClient.delete<ApiResponse<void>>(`/api/signals/${signalId}`);
+
+    console.log('[Backend API] Poll deleted successfully');
 }
