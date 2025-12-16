@@ -14,7 +14,9 @@ import com.sentinel.backend.repository.SignalRepository;
 import com.sentinel.backend.util.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ public class SignalServiceImpl implements SignalService {
     private final SignalRepository signalRepository;
     private final PollRepository pollRepository;
     private final PollResultRepository pollResultRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     // -------------------------------------------------------------------------
     // CREATE POLL
@@ -95,7 +98,6 @@ public class SignalServiceImpl implements SignalService {
     // -------------------------------------------------------------------------
     // AUTO DEFAULT FILL FOR EXPIRED SIGNALS
     // -------------------------------------------------------------------------
-    @Transactional
     protected void ensureDefaultsForExpired(Integer signalId) {
 
         Signal s = signalRepository.findById(signalId).orElse(null);
@@ -307,5 +309,29 @@ public class SignalServiceImpl implements SignalService {
             throw new CustomException("Signal not found", HttpStatus.NOT_FOUND);
         }
         signalRepository.deleteById(signalId);
+    }
+
+    // -------------------------------------------------------------------------
+    // LOGIN
+    // -------------------------------------------------------------------------
+    @Override
+    public String login(String email, String password) {
+        String sql = """
+        SELECT role
+        FROM users
+        WHERE email = ?
+          AND password = ?
+        """;
+
+        try {
+            return jdbcTemplate.queryForObject(
+                    sql,
+                    String.class,
+                    email,
+                    password
+            );
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
     }
 }
