@@ -83,16 +83,44 @@ function App() {
     }
   }, [user]);
 
-  const handleLogin = (email: string, password: string) => {
-    // Simple demo logic for roles
-    const isPublisher = email.toLowerCase().startsWith('hr') || email.toLowerCase().includes('admin');
-    const userData: User = {
-      name: email.split('@')[0],
-      email: email,
-      role: isPublisher ? 'admin' : 'user',
-      isPublisher: isPublisher
-    };
-    setUser(userData);
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      if ((window as any).electron?.backend) {
+        console.log('[Frontend] Attempting login via backend:', email);
+        const result = await (window as any).electron.backend.login(email, password);
+
+        if (result.success) {
+          console.log('[Frontend] Login successful, role:', result.data);
+          const role = result.data; // "PUBLISHER" or "CONSUMER"
+          const isPublisher = role === 'PUBLISHER';
+
+          const userData: User = {
+            name: email.split('@')[0],
+            email: email,
+            role: isPublisher ? 'admin' : 'user',
+            isPublisher: isPublisher
+          };
+          setUser(userData);
+        } else {
+          console.error('[Frontend] Login failed:', result.error);
+          alert('Login failed: ' + result.error);
+        }
+      } else {
+        // Fallback for dev without electron (shouldn't happen in prod)
+        console.warn('[Frontend] Backend API not available, using mock login');
+        const isPublisher = email.toLowerCase().startsWith('hr') || email.toLowerCase().includes('admin');
+        const userData: User = {
+          name: email.split('@')[0],
+          email: email,
+          role: isPublisher ? 'admin' : 'user',
+          isPublisher: isPublisher
+        };
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('[Frontend] Login error:', error);
+      alert('Login error occurred');
+    }
   };
 
   const handleLogout = () => {

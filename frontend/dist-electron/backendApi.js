@@ -8,6 +8,7 @@ exports.submitVote = submitVote;
 exports.getPollResults = getPollResults;
 exports.editPoll = editPoll;
 exports.deletePoll = deletePoll;
+exports.login = login;
 const axios_1 = __importDefault(require("axios"));
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
@@ -72,5 +73,11 @@ async function deletePoll(signalId) {
     console.log('[Backend API] Deleting poll:', signalId);
     await apiClient.delete(`/api/signals/${signalId}`);
     console.log('[Backend API] Poll deleted successfully');
+}
+async function login(email, password) {
+    console.log('[Backend API] Logging in:', email);
+    const response = await apiClient.post('/api/signals/login', null, { params: { email, password } });
+    console.log('[Backend API] Login success, role:', response.data.data);
+    return response.data.data;
 }
 //# sourceMappingURL=backendApi.js.map

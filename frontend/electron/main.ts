@@ -145,6 +145,18 @@ app.whenReady().then(async () => {
             }
         });
 
+        ipcMain.handle('backend-login', async (_event, { email, password }) => {
+            console.log('[IPC Handler] backend-login called:', email);
+            try {
+                const role = await backendApi.login(email, password);
+                console.log('[IPC Handler] backend-login success, role:', role);
+                return { success: true, data: role };
+            } catch (error: any) {
+                console.error('[IPC Handler] backend-login error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+
     } catch (error) {
         console.error('Failed to initialize Database:', error);
     }

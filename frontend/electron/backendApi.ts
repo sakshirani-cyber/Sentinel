@@ -146,3 +146,16 @@ export async function deletePoll(signalId: number): Promise<void> {
 
     console.log('[Backend API] Poll deleted successfully');
 }
+
+export async function login(email: string, password: string): Promise<string> {
+    console.log('[Backend API] Logging in:', email);
+
+    const response = await apiClient.post<ApiResponse<string>>(
+        '/api/signals/login',
+        null,
+        { params: { email, password } }
+    );
+
+    console.log('[Backend API] Login success, role:', response.data.data);
+    return response.data.data;
+}

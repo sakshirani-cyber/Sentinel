@@ -17,11 +17,7 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
         }
     };
 
-    const handleDemoLogin = (demoEmail: string) => {
-        setEmail(demoEmail);
-        setPassword('demo123');
-        onLogin(demoEmail, 'demo123');
-    };
+
 
     return (
         <div className="min-h-screen bg-mono-bg flex items-center justify-center p-4 relative overflow-hidden">
@@ -163,32 +159,8 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
                                 </button>
                             </form>
 
-                            <div className="mt-8 pt-6 border-t border-mono-primary/20">
-                                <p className="text-sm text-mono-text/60 mb-4 flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 text-mono-accent" />
-                                    Quick access (MVP Demo)
-                                </p>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        onClick={() => handleDemoLogin('alice@company.com')}
-                                        className="px-4 py-3 text-sm bg-mono-accent/20 hover:bg-mono-accent/30 text-mono-primary border border-mono-accent/30 rounded-xl transition-all"
-                                    >
-                                        🙋‍♀️ Alice
-                                    </button>
-                                    <button
-                                        onClick={() => handleDemoLogin('hr@company.com')}
-                                        className="px-4 py-3 text-sm bg-mono-primary/20 hover:bg-mono-primary/30 text-mono-primary border border-mono-primary/30 rounded-xl transition-all"
-                                    >
-                                        👤 HR
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
-
-                    <p className="text-center text-sm text-mono-text/60 mt-6 bg-mono-primary/10 rounded-lg p-3 border border-mono-primary/20">
-                        MVP Demo • Use any email and password to sign in
-                    </p>
                 </div>
             </div>
         </div>
