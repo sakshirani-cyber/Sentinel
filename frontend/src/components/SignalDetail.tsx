@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Poll } from '../App';
-import { X, Save, Send, AlertCircle, Clock, Shield, ArrowLeft } from 'lucide-react';
+import { X, Send, AlertCircle, Clock, Shield, ArrowLeft } from 'lucide-react';
 
 interface SignalDetailProps {
   poll: Poll;
@@ -27,12 +27,7 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
     return () => clearInterval(interval);
   }, [selectedValue, poll.id, onSaveDraft]);
 
-  const handleManualSave = () => {
-    if (selectedValue) {
-      onSaveDraft(poll.id, selectedValue);
-      alert('Draft saved successfully!');
-    }
-  };
+
 
   const handleSubmit = () => {
     if (selectedValue) {
@@ -191,29 +186,14 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
 
         {/* Footer - Actions */}
         <div className="flex-shrink-0 border-t border-mono-primary/10 p-6 bg-mono-bg">
-          <div className="flex gap-3">
-            <button
-              onClick={handleManualSave}
-              disabled={!selectedValue}
-              className="flex items-center gap-2 px-4 py-3 bg-mono-primary/5 text-mono-text rounded-xl hover:bg-mono-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              <Save className="w-4 h-4" />
-              Save Draft
-            </button>
-
-            <button
-              onClick={handleSubmit}
-              disabled={!selectedValue}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none font-medium"
-            >
-              <Send className="w-4 h-4" />
-              Submit Response
-            </button>
-          </div>
-
-          <p className="text-xs text-mono-text/40 text-center mt-3">
-            Draft is auto-saved every 30 seconds
-          </p>
+          <button
+            onClick={handleSubmit}
+            disabled={!selectedValue}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none font-medium"
+          >
+            <Send className="w-4 h-4" />
+            Submit Response
+          </button>
         </div>
       </div>
 
