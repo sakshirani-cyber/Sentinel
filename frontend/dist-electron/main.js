@@ -65,9 +65,20 @@ function createWindow() {
         movable: true, // Allow dragging by default
         icon: path.join(__dirname, electron_is_dev_1.default ? '../public/logo.png' : '../dist/logo.png')
     });
+    // Remove menu bar
+    win.setMenuBarVisibility(false);
+    // Disable DevTools shortcuts
+    win.webContents.on('before-input-event', (event, input) => {
+        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+            event.preventDefault();
+        }
+        if (input.key === 'F12') {
+            event.preventDefault();
+        }
+    });
     if (electron_is_dev_1.default) {
         win.loadURL('http://localhost:3000');
-        win.webContents.openDevTools();
+        // win.webContents.openDevTools(); // Disabled per user request
     }
     else {
         win.loadFile(path.join(__dirname, '../dist/index.html'));
