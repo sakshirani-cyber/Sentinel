@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
+
 import java.time.Instant;
 
 @Entity
@@ -27,6 +28,7 @@ public class Signal {
     @Column(name = "last_edited")
     private Instant lastEdited;
 
+    @Column(name = "anonymous", nullable = false)
     private Boolean anonymous = false;
 
     @Column(name = "end_timestamp", nullable = false)
@@ -35,7 +37,7 @@ public class Signal {
     @Column(name = "type_of_signal", nullable = false)
     private String typeOfSignal;
 
-    @Column(name = "default_flag")
+    @Column(name = "default_flag", nullable = false)
     private Boolean defaultFlag = false;
 
     @Column(name = "default_option")
@@ -44,5 +46,6 @@ public class Signal {
     @Column(name = "shared_with", columnDefinition = "text[]", nullable = false)
     private String[] sharedWith;
 
+    @Column(name = "status", nullable = false)
     private String status = "ACTIVE";
 }
