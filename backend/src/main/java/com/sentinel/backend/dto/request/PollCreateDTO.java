@@ -1,4 +1,4 @@
-package com.sentinel.backend.dto;
+package com.sentinel.backend.dto.request;
 
 import com.sentinel.backend.util.NormalizationUtils;
 import jakarta.validation.constraints.NotBlank;

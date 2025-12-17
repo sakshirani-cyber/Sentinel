@@ -1,4 +1,4 @@
-package com.sentinel.backend.dto;
+package com.sentinel.backend.dto.request;
 
 import com.sentinel.backend.model.SignalType;
 import com.sentinel.backend.util.NormalizationUtils;
@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 
@@ -20,18 +21,21 @@ public abstract class BaseSignalDTO {
     private Boolean anonymous;
 
     @NotBlank(message = "endTimestamp is required")
-    private String endTimestamp; // ISO 8601
+    private String endTimestamp;
 
     @NotNull(message = "sharedWith cannot be null")
     private String[] sharedWith;
 
-    @NotNull(message = "type is required")
+    @NotBlank(message = "type is required")
     private String type;
 
     @NotNull(message = "localId is required")
     private Long localId;
 
+    @NotNull(message = "defaultFlag is required")
     private Boolean defaultFlag;
+
+    @NotBlank(message = "defaultOption is required")
     private String defaultOption;
 
     public void normalizeCommon() {
@@ -47,19 +51,32 @@ public abstract class BaseSignalDTO {
         }
     }
 
+    private Instant parsedEndUtc;
+
     public void validateCommon() {
         validateType();
-        Instant end;
+
         try {
-            end = Instant.parse(endTimestamp);
+            Instant parsed = Instant.parse(endTimestamp);
+
+            if (parsed.isBefore(Instant.now())) {
+                throw new IllegalArgumentException("endTimestamp must be in the future (UTC)");
+            }
+
+            this.parsedEndUtc = parsed;
+
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("endTimestamp must be ISO-8601 instant (e.g. 2025-12-10T18:30:00Z)");
+            throw new IllegalArgumentException(
+                    "endTimestamp must be UTC ISO-8601 format, e.g. 2025-12-17T16:30:00Z"
+            );
         }
-        if (end.isBefore(Instant.now())) throw new IllegalArgumentException("endTimestamp must be in the future");
 
         if (sharedWith == null || sharedWith.length == 0) {
-            throw new IllegalArgumentException("sharedWith must contain at least one user id");
+            throw new IllegalArgumentException("sharedWith must contain at least one user");
         }
+
+        this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
+
         for (String s : sharedWith) {
             if (s == null || s.trim().isEmpty()) {
                 throw new IllegalArgumentException("sharedWith contains empty/blank user id(s)");
@@ -73,12 +90,8 @@ public abstract class BaseSignalDTO {
         this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
     }
 
-    public Instant parseEndTimestamp() {
-        try {
-            return Instant.parse(endTimestamp);
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("endTimestamp must be ISO-8601 instant (e.g. 2025-12-10T18:30:00Z)");
-        }
+    public Instant getEndTimestampUtc() {
+        return parsedEndUtc;
     }
 
     public void validateType() {

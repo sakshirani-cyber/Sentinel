@@ -1,4 +1,4 @@
-package com.sentinel.backend.dto;
+package com.sentinel.backend.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,8 +13,11 @@ public class SubmitPollRequest {
     @NotBlank(message = "userId is required")
     private String userId;
 
-    @NotBlank(message = "selectedOption is required")
     private String selectedOption;
+
+    private String defaultResponse;
+
+    private String reason;
 
     public void normalize() {
         if (userId != null) userId = userId.trim();

@@ -1,34 +1,38 @@
 package com.sentinel.backend.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
+
 import java.time.Instant;
 
 @Entity
-@Table(name = "poll_result", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"signal_id", "user_id"})
-})
+@Table(name = "poll_result")
 @Data
 public class PollResult {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @EmbeddedId
+    private PollResultId id;
 
-    @Column(name = "signal_id")
-    private Integer signalId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("signalId")
+    @JoinColumn(name = "signal_id")
+    private Signal signal;
 
-    @Column(name = "user_id", nullable = false)
-    private String userId;
-
-    @Column(name = "selected_option", nullable = false)
+    @Column(name = "selected_option")
     private String selectedOption;
+
+    @Column(name = "default_response")
+    private String defaultResponse;
+
+    @Column(name = "reason")
+    private String reason;
 
     @Column(name = "time_of_submission", nullable = false)
     private Instant timeOfSubmission = Instant.now();

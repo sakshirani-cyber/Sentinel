@@ -18,7 +18,6 @@ public final class NormalizationUtils {
         return t.isEmpty() ? null : t;
     }
 
-    /** Trim entries, drop null/blank, keep insertion order */
     public static String[] trimAndUnique(String[] arr) {
         if (arr == null) return new String[0];
         LinkedHashSet<String> set = new LinkedHashSet<>();
@@ -29,12 +28,6 @@ public final class NormalizationUtils {
         return set.toArray(new String[0]);
     }
 
-    /** Same as above but returns list */
-    public static List<String> trimAndUniqueList(String[] arr) {
-        return Arrays.asList(trimAndUnique(arr));
-    }
-
-    /** Normalize for duplicate comparison: lower + trim + sorted */
     public static List<String> normalizeForComparison(String[] arr) {
         if (arr == null) return Collections.emptyList();
         return Arrays.stream(arr)
@@ -48,14 +41,13 @@ public final class NormalizationUtils {
         return q.trim().toLowerCase();
     }
 
-    /** True if there are duplicates ignoring case and whitespace */
     public static boolean hasDuplicatesIgnoreCase(String[] arr) {
         if (arr == null) return false;
         Set<String> set = new HashSet<>();
         for (String s : arr) {
-            if (s == null) return false; // caller validates non-null separately
+            if (s == null) return false;
             String key = s.trim().toLowerCase();
-            if (key.isEmpty()) return true; // treat blank as invalid -> duplicate-like
+            if (key.isEmpty()) return true;
             if (!set.add(key)) return true;
         }
         return false;

@@ -1,6 +1,6 @@
 package com.sentinel.backend.exception;
 
-import com.sentinel.backend.dto.ApiResponse;
+import com.sentinel.backend.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    // Bean validation errors (@Valid)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidationErrors(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldError().getDefaultMessage();
@@ -20,7 +19,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(message));
     }
 
-    // All custom, intentional errors
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<?>> handleIllegalArguementException(IllegalArgumentException ex) {
         String message = ex.getMessage();
@@ -28,14 +26,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(message));
     }
 
-    // All custom, intentional errors
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<?>> handleCustomException(CustomException ex) {
         return ResponseEntity.status(ex.getStatus())
                 .body(ApiResponse.failure(ex.getMessage()));
     }
 
-    // Anything you didn’t expect
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleUnexpected(Exception ex) {
         log.error("Unexpected error occurred", ex);

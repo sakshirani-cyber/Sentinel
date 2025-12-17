@@ -1,4 +1,4 @@
-package com.sentinel.backend.dto;
+package com.sentinel.backend.dto.response;
 
 import lombok.Builder;
 import lombok.Data;
