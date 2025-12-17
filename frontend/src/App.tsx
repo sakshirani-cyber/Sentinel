@@ -32,6 +32,7 @@ export interface Poll {
   publishedAt: string;
   isPersistentFinalAlert?: boolean;
   isEdited?: boolean;
+  updatedAt?: string;
   cloudSignalId?: number;
   syncStatus?: 'synced' | 'pending' | 'error';
 }

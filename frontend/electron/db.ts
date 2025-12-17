@@ -29,6 +29,7 @@ export function initDB() {
                 cloudSignalId INTEGER, -- Backend signal ID
                 syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending', 'error'
                 isEdited INTEGER DEFAULT 0, -- boolean 0/1
+                updatedAt TEXT,
                 createdAt TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -64,6 +65,11 @@ export function initDB() {
             db.exec("ALTER TABLE polls ADD COLUMN isEdited INTEGER DEFAULT 0");
         }
 
+        if (!columns.includes('updatedAt')) {
+            console.log('Migrating database: Adding updatedAt to polls table');
+            db.exec("ALTER TABLE polls ADD COLUMN updatedAt TEXT");
+        }
+
     } catch (error) {
         console.error('Failed to initialize SQLite database:', error);
         throw error;
@@ -88,6 +94,7 @@ interface Poll {
     cloudSignalId?: number;
     syncStatus?: 'synced' | 'pending' | 'error';
     isEdited?: boolean;
+    updatedAt?: string;
 }
 
 interface Response {
@@ -137,12 +144,12 @@ export function createPoll(poll: Poll) {
             localId, question, options, publisherEmail, publisherName, 
             status, deadline, anonymityMode, isPersistentFinalAlert, 
             consumers, defaultResponse, showDefaultToConsumers, publishedAt,
-            cloudSignalId, syncStatus, isEdited
+            cloudSignalId, syncStatus, isEdited, updatedAt
         ) VALUES (
             @localId, @question, @options, @publisherEmail, @publisherName, 
             @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
             @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
-            @cloudSignalId, @syncStatus, @isEdited
+            @cloudSignalId, @syncStatus, @isEdited, @updatedAt
         )
     `);
 
@@ -162,7 +169,8 @@ export function createPoll(poll: Poll) {
         publishedAt: poll.publishedAt,
         cloudSignalId: poll.cloudSignalId || null,
         syncStatus: poll.syncStatus || 'pending',
-        isEdited: poll.isEdited ? 1 : 0
+        isEdited: poll.isEdited ? 1 : 0,
+        updatedAt: poll.updatedAt || new Date().toISOString()
     });
 
     return info;
@@ -188,7 +196,8 @@ export function getPolls(): Poll[] {
         publishedAt: row.publishedAt,
         cloudSignalId: row.cloudSignalId,
         syncStatus: (row.syncStatus as 'synced' | 'pending' | 'error') || 'pending',
-        isEdited: !!row.isEdited
+        isEdited: !!row.isEdited,
+        updatedAt: row.updatedAt
     }));
 }
 
@@ -198,11 +207,13 @@ export function updatePoll(pollId: string, updates: Partial<Poll>, republish: bo
 
     // Always set isEdited to true on update
     updates.isEdited = true;
+    // Set updatedAt to now
+    updates.updatedAt = new Date().toISOString();
 
     const fields = [
         'question', 'options', 'publisherEmail', 'publisherName', 'status',
         'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-        'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited'
+        'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt'
     ];
 
     fields.forEach(field => {

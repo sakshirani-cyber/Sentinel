@@ -67,18 +67,18 @@ function createWindow() {
     });
     // Remove menu bar
     win.setMenuBarVisibility(false);
-    // Disable DevTools shortcuts
-    win.webContents.on('before-input-event', (event, input) => {
-        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
-            event.preventDefault();
-        }
-        if (input.key === 'F12') {
-            event.preventDefault();
-        }
-    });
+    // Disable DevTools shortcuts - DISABLED for debugging
+    // win.webContents.on('before-input-event', (event, input) => {
+    //     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    //         event.preventDefault();
+    //     }
+    //     if (input.key === 'F12') {
+    //         event.preventDefault();
+    //     }
+    // });
     if (electron_is_dev_1.default) {
         win.loadURL('http://localhost:3000');
-        // win.webContents.openDevTools(); // Disabled per user request
+        win.webContents.openDevTools(); // Re-enabled per user request
     }
     else {
         win.loadFile(path.join(__dirname, '../dist/index.html'));
