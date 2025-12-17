@@ -48,98 +48,10 @@ export default function ConsumerDashboard({
   }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
 
 
-  // Track which alerts have been sent for each poll
-  const [sentAlerts, setSentAlerts] = useState<Record<string, number[]>>({});
+  // Track which alerts have been sent for each poll, including the deadline they were sent for
+  const [sentAlerts, setSentAlerts] = useState<Record<string, { deadline: string, alerts: number[] }>>({});
 
-  // Track which polls have been notified about
-  const [notifiedPolls, setNotifiedPolls] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('sentinel_notified_polls');
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
-
-  // Notify when new polls are assigned to the user
-  useEffect(() => {
-    if (Notification.permission !== 'granted') return;
-
-    userPolls.forEach(poll => {
-      // Only notify for incomplete polls
-      const hasResponded = responses.some(r => r.pollId === poll.id && r.consumerEmail === user.email);
-      if (hasResponded || notifiedPolls.has(poll.id)) return;
-
-      // Mark as notified
-      setNotifiedPolls(prev => {
-        const newSet = new Set(prev);
-        newSet.add(poll.id);
-        localStorage.setItem('sentinel_notified_polls', JSON.stringify([...newSet]));
-        return newSet;
-      });
-
-      // Send notification
-      console.log('[Notification] New poll assigned:', poll.question);
-      const notification = new Notification(`New Poll from ${poll.publisherName}`, {
-        body: poll.question,
-        silent: false,
-        icon: '/logo.png'
-      });
-
-      notification.onclick = () => {
-        if ((window as any).electron) {
-          (window as any).electron.ipcRenderer.send('restore-window');
-        }
-        window.focus();
-        setSelectedPoll(poll);
-      };
-    });
-  }, [userPolls, notifiedPolls, responses, user.email]);
-
-  // Track which polls have been notified about updates
-  const [notifiedUpdates, setNotifiedUpdates] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('sentinel_notified_updates');
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
-
-  // Request notification permission on mount
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        console.log('[Notifications] Permission:', permission);
-      });
-    } else {
-      console.log('[Notifications] Current permission:', Notification.permission);
-    }
-  }, []);
-
-  // Notify when polls are updated
-  useEffect(() => {
-    userPolls.forEach(poll => {
-      // Only notify if edited and not yet notified
-      if (poll.isEdited && !notifiedUpdates.has(poll.id)) {
-
-        // Mark as notified
-        setNotifiedUpdates(prev => {
-          const newSet = new Set(prev);
-          newSet.add(poll.id);
-          localStorage.setItem('sentinel_notified_updates', JSON.stringify([...newSet]));
-          return newSet;
-        });
-
-        // Send notification
-        const notification = new Notification(`Poll Updated: ${poll.publisherName}`, {
-          body: `The poll "${poll.question}" has been updated. Please check the new details.`,
-          silent: false,
-          icon: '/logo.png'
-        });
-
-        notification.onclick = () => {
-          if ((window as any).electron) {
-            (window as any).electron.ipcRenderer.send('restore-window');
-          }
-          window.focus();
-          setSelectedPoll(poll);
-        };
-      }
-    });
-  }, [userPolls, notifiedUpdates]);
+  // ... (existing code)
 
   // Check for alerts
   useEffect(() => {
@@ -153,14 +65,22 @@ export default function ConsumerDashboard({
         // Define alert thresholds (60, 30, 15, 1 minute)
         const alertThresholds = [60, 30, 15, 1];
 
-        const pollSentAlerts = sentAlerts[poll.id] || [];
+        // Get sent alerts for this poll
+        const pollAlertData = sentAlerts[poll.id];
+
+        // Check if deadline has changed since last alert
+        let currentSentAlerts: number[] = [];
+        if (pollAlertData && pollAlertData.deadline === poll.deadline) {
+          currentSentAlerts = pollAlertData.alerts;
+        }
 
         alertThresholds.forEach(threshold => {
           // Only send each alert once
-          if (pollSentAlerts.includes(threshold)) return;
+          if (currentSentAlerts.includes(threshold)) return;
 
-          // Check if we're within 15 seconds of the alert time
-          const isAlertTime = minutesUntilDeadline <= threshold && minutesUntilDeadline > (threshold - 0.25);
+          // Check if we're within the alert window
+          // Triggers when minutesUntilDeadline equals the threshold (e.g., 1 means 1m0s to 1m59s)
+          const isAlertTime = minutesUntilDeadline === threshold;
 
           if (isAlertTime) {
             // Double-check: Don't send notification if poll is expired or user already responded
@@ -178,13 +98,24 @@ export default function ConsumerDashboard({
             }
 
             console.log(`[Alert] Triggering ${threshold}-minute alert for poll: ${poll.question}`);
-            console.log(`[Alert] Time until deadline: ${minutesUntilDeadline.toFixed(2)} minutes`);
+            console.log(`[Alert] Time until deadline: ${minutesUntilDeadline} minutes range`);
 
-            // Mark this alert as sent
-            setSentAlerts(prev => ({
-              ...prev,
-              [poll.id]: [...(prev[poll.id] || []), threshold]
-            }));
+            // Mark this alert as sent, updating the deadline if needed
+            setSentAlerts(prev => {
+              const existing = prev[poll.id];
+              // If deadline changed, start fresh. Otherwise append to existing.
+              const alerts = (existing && existing.deadline === poll.deadline)
+                ? [...existing.alerts, threshold]
+                : [threshold];
+
+              return {
+                ...prev,
+                [poll.id]: {
+                  deadline: poll.deadline,
+                  alerts
+                }
+              };
+            });
 
             // Check notification permission
             if (Notification.permission !== 'granted') {
@@ -220,9 +151,7 @@ export default function ConsumerDashboard({
                   // Only auto-submit if device is LOCKED or SLEEPING (not idle!)
                   if ((status === 'locked' || status === 'sleep') && !isExpired) {
                     // Device is truly unavailable - auto-submit default response
-                    console.log(`[Sentinel] Auto-submitting default response due to device status: ${status}`)
-
-                      ;
+                    console.log(`[Sentinel] Auto-submitting default response due to device status: ${status}`);
 
                     const response: Response = {
                       pollId: poll.id,

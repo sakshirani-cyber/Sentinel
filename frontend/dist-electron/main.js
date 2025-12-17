@@ -300,12 +300,12 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
         win.setMovable(!isActive); // Prevent window from being dragged
         if (isActive) {
             win.setAlwaysOnTop(true, 'screen-saver'); // Highest priority
-            win.setFullScreen(true); // Make truly fullscreen
+            win.setKiosk(true); // Strict fullscreen (Kiosk mode)
             win.show();
             win.focus();
         }
         else {
-            win.setFullScreen(false); // Exit fullscreen
+            win.setKiosk(false); // Exit kiosk mode
             win.setAlwaysOnTop(false);
             // Re-enable controls after exiting fullscreen/always-on-top
             // This ensures the window frame is correctly restored

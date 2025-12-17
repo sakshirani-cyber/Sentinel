@@ -1,5 +1,5 @@
 import { Poll, Response } from '../App';
-import { Clock, User, Shield, AlertCircle, Copy, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, User, Shield, AlertCircle, Copy, CheckCircle, XCircle, Edit } from 'lucide-react';
 
 interface SignalCardProps {
   poll: Poll;
@@ -24,15 +24,15 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
     const now = new Date();
     const deadline = new Date(poll.deadline);
     const diff = deadline.getTime() - now.getTime();
-    
+
     if (diff < 0) return { text: 'Expired', isUrgent: true };
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     const isUrgent = hours < 1;
-    
+
     if (days > 0) return { text: `${days}d ${hours}h remaining`, isUrgent: false };
     if (hours > 0) return { text: `${hours}h ${minutes}m remaining`, isUrgent };
     return { text: `${minutes}m remaining`, isUrgent: true };
@@ -42,7 +42,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
     e.stopPropagation();
     const text = `Signal: ${poll.question}\nFrom: ${poll.publisherName}\nDeadline: ${formatDateTime(poll.deadline)}\nID: ${poll.id}`;
     navigator.clipboard.writeText(text);
-    
+
     // Could add a toast notification here
     alert('Signal details copied to clipboard!');
   };
@@ -52,9 +52,8 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
   return (
     <div
       onClick={onClick}
-      className={`bg-mono-bg border-2 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden ${
-        timeRemaining.isUrgent && !isCompleted ? 'border-red-300 bg-red-50' : 'border-mono-primary/20'
-      }`}
+      className={`bg-mono-bg border-2 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden ${timeRemaining.isUrgent && !isCompleted ? 'border-red-300 bg-red-50' : 'border-mono-primary/20'
+        }`}
     >
       <div className="p-5">
         {/* Header */}
@@ -70,14 +69,13 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
               <span>Deadline: {formatDateTime(poll.deadline)}</span>
             </div>
           </div>
-          
+
           {!isCompleted && (
             <div className="text-right">
-              <span className={`inline-block px-3 py-1 rounded-full text-xs ${
-                timeRemaining.isUrgent 
-                  ? 'bg-red-100 text-red-700' 
-                  : 'bg-mono-accent/20 text-mono-primary'
-              }`}>
+              <span className={`inline-block px-3 py-1 rounded-full text-xs ${timeRemaining.isUrgent
+                ? 'bg-red-100 text-red-700'
+                : 'bg-mono-accent/20 text-mono-primary'
+                }`}>
                 {timeRemaining.text}
               </span>
             </div>
@@ -93,7 +91,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
             <Shield className="w-4 h-4" />
             <span className="capitalize">{poll.anonymityMode}</span>
           </div>
-          
+
           <div className="px-2 py-0.5 bg-mono-accent/20 text-mono-primary rounded">
             Poll
           </div>
@@ -116,17 +114,23 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
               Default: {poll.defaultResponse}
             </div>
           )}
+
+          {poll.isEdited && (
+            <div className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded flex items-center gap-1">
+              <Edit className="w-3 h-3" />
+              Edited
+            </div>
+          )}
         </div>
 
         {/* Response Display (if completed) */}
         {isCompleted && userResponse && (
-          <div className={`p-3 rounded-lg mb-3 ${
-            userResponse.isDefault 
-              ? 'bg-red-100 border border-red-200' 
-              : userResponse.skipReason 
+          <div className={`p-3 rounded-lg mb-3 ${userResponse.isDefault
+            ? 'bg-red-100 border border-red-200'
+            : userResponse.skipReason
               ? 'bg-yellow-100 border border-yellow-200'
               : 'bg-mono-accent/20 border border-mono-accent/30'
-          }`}>
+            }`}>
             <div className="flex items-start gap-2">
               {userResponse.isDefault ? (
                 <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -136,10 +140,9 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
                 <CheckCircle className="w-5 h-5 text-mono-primary flex-shrink-0 mt-0.5" />
               )}
               <div className="flex-1">
-                <p className={`text-sm mb-1 ${
-                  userResponse.isDefault ? 'text-red-900' : 
+                <p className={`text-sm mb-1 ${userResponse.isDefault ? 'text-red-900' :
                   userResponse.skipReason ? 'text-yellow-900' : 'text-mono-primary'
-                }`}>
+                  }`}>
                   {userResponse.isDefault ? (
                     <strong>Default response taken</strong>
                   ) : userResponse.skipReason ? (
@@ -148,10 +151,9 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
                     <strong>Your Response:</strong>
                   )}
                 </p>
-                <p className={`text-sm ${
-                  userResponse.isDefault ? 'text-red-700' : 
+                <p className={`text-sm ${userResponse.isDefault ? 'text-red-700' :
                   userResponse.skipReason ? 'text-yellow-700' : 'text-mono-primary'
-                }`}>
+                  }`}>
                   {userResponse.response}
                 </p>
                 {userResponse.skipReason && (

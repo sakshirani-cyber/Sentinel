@@ -21,9 +21,12 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         const date = new Date(dateStr);
         return date > new Date();
     };
+    const isOptionDefault = poll.options.some(o => o.text === poll.defaultResponse);
+    const [customDefault, setCustomDefault] = useState(isOptionDefault ? '' : poll.defaultResponse);
+    const [useCustomDefault, setUseCustomDefault] = useState(!isOptionDefault);
     const [question, setQuestion] = useState(poll.question);
     const [options, setOptions] = useState<string[]>(poll.options.map(o => o.text));
-    const [defaultResponse, setDefaultResponse] = useState(poll.defaultResponse);
+    const [defaultResponse, setDefaultResponse] = useState(isOptionDefault ? poll.defaultResponse : '');
     const [showDefaultToConsumers, setShowDefaultToConsumers] = useState(poll.showDefaultToConsumers);
     const [anonymityMode, setAnonymityMode] = useState<'anonymous' | 'record'>(poll.anonymityMode);
     const [deadline, setDeadline] = useState(poll.deadline.slice(0, 16));
@@ -118,6 +121,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
 
     const handleSave = () => {
         const validOptions = options.filter(o => o.trim());
+        const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
 
         const updates: Partial<Poll> = {
             question,
@@ -125,7 +129,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                 id: `opt-${index}`,
                 text
             })),
-            defaultResponse,
+            defaultResponse: finalDefaultResponse,
             showDefaultToConsumers,
             anonymityMode,
             deadline,
@@ -138,25 +142,25 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         onClose();
     };
 
+    const currentDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
+
     const hasChanges =
         question !== poll.question ||
         JSON.stringify(options) !== JSON.stringify(poll.options.map(o => o.text)) ||
-        defaultResponse !== poll.defaultResponse ||
+        currentDefaultResponse !== poll.defaultResponse ||
         showDefaultToConsumers !== poll.showDefaultToConsumers ||
         anonymityMode !== poll.anonymityMode ||
+        deadline !== poll.deadline.slice(0, 16) ||
         isPersistentFinalAlert !== poll.isPersistentFinalAlert ||
         JSON.stringify(selectedConsumers.sort()) !== JSON.stringify(poll.consumers.sort());
-
-    const isDeadlineExtended = new Date(deadline) > new Date(poll.deadline);
 
     const isValid =
         question.trim() &&
         options.filter(o => o.trim()).length >= 2 &&
-        defaultResponse &&
+        currentDefaultResponse &&
         isDateValid(deadline) &&
         selectedConsumers.length > 0 &&
-        hasChanges &&
-        isDeadlineExtended;
+        hasChanges;
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -227,18 +231,44 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         <label className="block text-mono-text mb-2 font-medium">
                             Default Response <span className="text-red-500">*</span>
                         </label>
-                        <select
-                            value={defaultResponse}
-                            onChange={(e) => setDefaultResponse(e.target.value)}
-                            className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
-                        >
-                            <option value="">Select from options</option>
-                            {options.filter(o => o.trim()).map((option, index) => (
-                                <option key={index} value={option}>
-                                    {option}
-                                </option>
-                            ))}
-                        </select>
+
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 mb-2">
+                                <input
+                                    type="checkbox"
+                                    id="useCustomDefault"
+                                    checked={useCustomDefault}
+                                    onChange={(e) => setUseCustomDefault(e.target.checked)}
+                                    className="w-4 h-4 text-mono-primary rounded border-mono-primary/30 focus:ring-mono-accent"
+                                />
+                                <label htmlFor="useCustomDefault" className="text-sm text-mono-text cursor-pointer">
+                                    Use custom default response
+                                </label>
+                            </div>
+
+                            {useCustomDefault ? (
+                                <input
+                                    type="text"
+                                    value={customDefault}
+                                    onChange={(e) => setCustomDefault(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                                    placeholder="e.g., I don't know, N/A"
+                                />
+                            ) : (
+                                <select
+                                    value={defaultResponse}
+                                    onChange={(e) => setDefaultResponse(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                                >
+                                    <option value="">Select from options</option>
+                                    {options.filter(o => o.trim()).map((option, index) => (
+                                        <option key={index} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
                     </div>
 
                     {/* Settings Grid */}
@@ -300,8 +330,8 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     type="datetime-local"
                                     value={deadline}
                                     onChange={(e) => setDeadline(e.target.value)}
-                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none focus:ring-1 transition-all ${hasChanges && !isDeadlineExtended
-                                        ? 'border-amber-500 focus:border-amber-500 focus:ring-amber-500'
+                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none focus:ring-1 transition-all ${hasChanges && !isDateValid(deadline)
+                                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                                         : 'border-mono-primary/20 focus:border-mono-primary focus:ring-mono-primary'
                                         }`}
                                     min={getMinDateTime()}
@@ -397,19 +427,11 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                 </p>
                             </div>
                         )}
-                        {hasChanges && !isDeadlineExtended && (
-                            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                <p className="text-sm text-amber-800">
-                                    You must extend the deadline when updating a poll
-                                </p>
-                            </div>
-                        )}
-                        {hasChanges && isDeadlineExtended && !isValid && (
+                        {hasChanges && !isDateValid(deadline) && (
                             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
                                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                                 <p className="text-sm text-red-800">
-                                    Please fill all required fields correctly
+                                    Deadline must be in the future
                                 </p>
                             </div>
                         )}
