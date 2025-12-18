@@ -1,10 +1,10 @@
 package com.sentinel.backend.controller;
 
-import com.sentinel.backend.dto.response.ApiResponse;
-import com.sentinel.backend.dto.response.CreatePollResponse;
-import com.sentinel.backend.dto.request.PollCreateDTO;
-import com.sentinel.backend.dto.response.PollResultDTO;
-import com.sentinel.backend.dto.request.SubmitPollRequest;
+import com.sentinel.backend.dto.ApiResponse;
+import com.sentinel.backend.dto.CreatePollResponse;
+import com.sentinel.backend.dto.PollCreateDTO;
+import com.sentinel.backend.dto.PollResultDTO;
+import com.sentinel.backend.dto.SubmitPollRequest;
 import com.sentinel.backend.service.SignalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,14 +33,16 @@ public class SignalController {
 
     private final SignalService signalService;
 
+    // -------- CREATE SIGNAL --------
     @PostMapping("/create/poll")
-    public ResponseEntity<ApiResponse<CreatePollResponse>> createPoll(
+    public ResponseEntity<ApiResponse<CreatePollResponse>> createSignal(
             @RequestBody @Valid PollCreateDTO req) {
 
         CreatePollResponse resp = signalService.createPoll(req);
         return ResponseEntity.ok(ApiResponse.success(CREATED, resp));
     }
 
+    // -------- SUBMIT / UPDATE POLL RESPONSE --------
     @PostMapping("/poll/response")
     public ResponseEntity<ApiResponse<Void>> submitResponse(
             @RequestBody @Valid SubmitPollRequest req) {
@@ -49,6 +51,7 @@ public class SignalController {
         return ResponseEntity.ok(ApiResponse.success(SAVED, null));
     }
 
+    // -------- GET POLL RESULTS --------
     @GetMapping("/{signalId}/poll/results")
     public ResponseEntity<ApiResponse<PollResultDTO>> results(
             @PathVariable Integer signalId) {
@@ -57,6 +60,7 @@ public class SignalController {
         return ResponseEntity.ok(ApiResponse.success(OK, dto));
     }
 
+    // -------- EDIT SIGNAL --------
     @PutMapping("/{signalId}")
     public ResponseEntity<ApiResponse<Void>> edit(
             @PathVariable Integer signalId,
@@ -67,6 +71,7 @@ public class SignalController {
         return ResponseEntity.ok(ApiResponse.success(EDITED, null));
     }
 
+    // -------- DELETE SIGNAL --------
     @DeleteMapping("/{signalId}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Integer signalId) {
@@ -75,6 +80,7 @@ public class SignalController {
         return ResponseEntity.ok(ApiResponse.success(DELETED, null));
     }
 
+    // -------- LOGIN (DEMO ONLY) --------
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<String>> login(
             @RequestParam String email,
