@@ -8,10 +8,10 @@ import lombok.Data;
 @Data
 public class PollCreateDTO extends BaseSignalDTO {
 
-    @NotBlank(message = "question is required")
+    @NotBlank(message = "Question is required")
     private String question;
 
-    @NotNull(message = "options must be provided")
+    @NotNull(message = "Options must be provided")
     private String[] options;
 
     public void normalizePoll() {

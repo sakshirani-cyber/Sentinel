@@ -13,28 +13,28 @@ import java.util.Arrays;
 @Data
 public abstract class BaseSignalDTO {
 
-    @NotBlank(message = "createdBy is required")
+    @NotBlank(message = "Created By is required")
     private String createdBy;
 
-    @NotNull(message = "anonymous flag is required")
+    @NotNull(message = "Anonymous flag is required")
     private Boolean anonymous;
 
-    @NotBlank(message = "endTimestamp is required")
+    @NotBlank(message = "End Time Stamp is required")
     private String endTimestamp;
 
-    @NotNull(message = "sharedWith cannot be null")
+    @NotNull(message = "Shared With List cannot be null")
     private String[] sharedWith;
 
-    @NotBlank(message = "type is required")
+    @NotBlank(message = "Type is required")
     private String type;
 
-    @NotNull(message = "localId is required")
+    @NotNull(message = "Local ID is required")
     private Long localId;
 
-    @NotNull(message = "defaultFlag is required")
+    @NotNull(message = "Default Flag is required")
     private Boolean defaultFlag;
 
-    @NotBlank(message = "defaultOption is required")
+    @NotBlank(message = "Default option is required")
     private String defaultOption;
 
     public void normalizeCommon() {
