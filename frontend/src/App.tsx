@@ -175,6 +175,7 @@ function App() {
       if (!poll) throw new Error('Poll not found');
 
       const updatedPoll = { ...poll, ...updates };
+      console.log('[App] handleUpdatePoll called:', { pollId, updates, republish, cloudSignalId: poll.cloudSignalId });
 
       // Try to update on backend if synced via Electron IPC
       if (poll.cloudSignalId && (window as any).electron?.backend) {

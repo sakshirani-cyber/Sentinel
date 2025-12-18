@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Poll, Response } from '../App';
+import { mapResultsToResponses, PollResultDTO } from '../services/pollService';
 import { Clock, Users, BarChart3, Eye, Trash2, Calendar, Edit, PenTool } from 'lucide-react';
 import AnalyticsView from './AnalyticsView';
 import EditPollModal from './EditPollModal';
@@ -18,6 +19,8 @@ export default function PublishedPolls({
   onUpdatePoll
 }: PublishedPollsProps) {
   const [selectedPollForAnalytics, setSelectedPollForAnalytics] = useState<Poll | null>(null);
+  const [analyticsResponses, setAnalyticsResponses] = useState<Response[]>([]);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [selectedPollForDetails, setSelectedPollForDetails] = useState<Poll | null>(null);
   const [selectedPollForEdit, setSelectedPollForEdit] = useState<Poll | null>(null);
 
@@ -55,6 +58,50 @@ export default function PublishedPolls({
   const sortedPolls = [...polls].sort((a, b) => {
     return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
   });
+
+  const handleAnalyticsClick = async (poll: Poll) => {
+    setSelectedPollForAnalytics(poll);
+    setLoadingAnalytics(true);
+    setAnalyticsResponses([]); // Clear previous
+
+    try {
+      let fetchedResponses: Response[] = [];
+
+      // 1. Try to fetch from Backend if synced
+      if (poll.cloudSignalId && (window as any).electron?.backend) {
+        console.log('[PublishedPolls] Fetching analytics from backend for:', poll.cloudSignalId);
+        try {
+          const result = await (window as any).electron.backend.getPollResults(poll.cloudSignalId);
+          console.log('[PublishedPolls] Backend analytics result:', result);
+
+          if (result.success && result.data) {
+            // Convert backend DTO to frontend Response[]
+            fetchedResponses = mapResultsToResponses(result.data, poll);
+            console.log('[PublishedPolls] Mapped responses:', fetchedResponses);
+          } else {
+            console.warn('[PublishedPolls] Backend fetch failed or empty, falling back to local:', result.error);
+            // Fallback to local
+            fetchedResponses = responses.filter(r => r.pollId === poll.id);
+          }
+        } catch (error) {
+          console.error('[PublishedPolls] Error fetching from backend:', error);
+          // Fallback to local
+          fetchedResponses = responses.filter(r => r.pollId === poll.id);
+        }
+      } else {
+        // 2. Use local data if not synced
+        console.log('[PublishedPolls] Poll not synced, using local data');
+        fetchedResponses = responses.filter(r => r.pollId === poll.id);
+      }
+
+      setAnalyticsResponses(fetchedResponses);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      alert('Failed to load analytics');
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
 
   if (polls.length === 0) {
     return (
@@ -147,10 +194,15 @@ export default function PublishedPolls({
                     More
                   </button>
                   <button
-                    onClick={() => setSelectedPollForAnalytics(poll)}
+                    onClick={() => handleAnalyticsClick(poll)}
                     className="flex items-center gap-2 px-4 py-2 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-primary/90 transition-colors text-sm font-medium"
+                    disabled={loadingAnalytics && selectedPollForAnalytics?.id === poll.id}
                   >
-                    <BarChart3 className="w-4 h-4" />
+                    {loadingAnalytics && selectedPollForAnalytics?.id === poll.id ? (
+                      <div className="w-4 h-4 border-2 border-mono-bg/30 border-t-mono-bg rounded-full animate-spin" />
+                    ) : (
+                      <BarChart3 className="w-4 h-4" />
+                    )}
                     Analytics
                   </button>
                   {!isCompleted && (
@@ -186,8 +238,11 @@ export default function PublishedPolls({
       {selectedPollForAnalytics && (
         <AnalyticsView
           poll={selectedPollForAnalytics}
-          responses={responses.filter(r => r.pollId === selectedPollForAnalytics.id)}
-          onClose={() => setSelectedPollForAnalytics(null)}
+          responses={analyticsResponses}
+          onClose={() => {
+            setSelectedPollForAnalytics(null);
+            setAnalyticsResponses([]);
+          }}
         />
       )}
 

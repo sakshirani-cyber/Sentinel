@@ -10,7 +10,9 @@ interface AnalyticsViewProps {
 export default function AnalyticsView({ poll, responses, onClose }: AnalyticsViewProps) {
   const totalConsumers = poll.consumers.length;
   const totalResponses = responses.length;
-  const responseRate = totalConsumers > 0 ? (totalResponses / totalConsumers) * 100 : 0;
+  // Use unique responders who manually submitted (exclude defaults) to avoid > 100% rate
+  const uniqueManualResponders = new Set(responses.filter(r => !r.isDefault).map(r => r.consumerEmail)).size;
+  const responseRate = totalConsumers > 0 ? Math.min((uniqueManualResponders / totalConsumers) * 100, 100) : 0;
 
   const submittedResponses = responses.filter(r => !r.isDefault);
   const defaultResponses = responses.filter(r => r.isDefault);

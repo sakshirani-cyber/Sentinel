@@ -138,6 +138,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
             isEdited: true
         };
 
+        console.log('[EditPollModal] Saving updates:', { updates, republish });
         onUpdate(poll.id, updates, republish);
         onClose();
     };

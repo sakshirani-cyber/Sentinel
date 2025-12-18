@@ -469,6 +469,7 @@ public class SignalServiceImpl implements SignalService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public String login(String email, String password) {
         String sql = """
         SELECT role

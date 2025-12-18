@@ -23,19 +23,36 @@ export interface CreatePollResponse {
     localId: number;
 }
 
+export interface UserVoteDTO {
+    userId: string;
+    selectedOption: string;
+    submittedAt: string; // Instant from backend
+}
+
 export interface SubmitPollRequest {
     signalId: number;
     userId: string;
     selectedOption: string;
+    defaultResponse?: string;
+    reason?: string;
 }
 
 export interface PollResultDTO {
     signalId: number;
     totalAssigned: number;
     totalResponded: number;
+
     optionCounts: Record<string, number>;
-    optionToUsers: Record<string, string[]> | null; // null if anonymous
-    archivedOptions: Record<string, string[]>;
+    optionVotes: Record<string, UserVoteDTO[]>;
+
+    archivedOptions: Record<string, UserVoteDTO[]>;
+    removedUsers: Record<string, UserVoteDTO[]>;
+
+    defaultResponses: UserVoteDTO[];
+    reasonResponses: Record<string, string>;
+
+    defaultCount: number;
+    reasonCount: number;
 }
 
 // ============================================================================
@@ -72,38 +89,58 @@ export function mapPollToDTO(poll: Poll): PollCreateDTO {
 export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[] {
     const responses: Response[] = [];
 
-    if (dto.optionToUsers) {
-        // Non-anonymous: map users to responses
-        for (const [option, users] of Object.entries(dto.optionToUsers)) {
-            for (const user of users) {
+    // 1. Process standard votes (optionVotes)
+    if (dto.optionVotes) {
+        for (const [option, votes] of Object.entries(dto.optionVotes)) {
+            for (const vote of votes) {
                 responses.push({
                     pollId: poll.id,
-                    consumerEmail: user,
-                    response: option,
-                    submittedAt: new Date().toISOString(),
+                    consumerEmail: vote.userId,
+                    response: option, // The selected option
+                    submittedAt: vote.submittedAt || new Date().toISOString(),
                     isDefault: false,
                     skipReason: undefined,
                 });
             }
         }
+    }
 
-        // Add users who haven't responded (default responses)
-        const respondedUsers = new Set(responses.map(r => r.consumerEmail));
-        for (const consumer of poll.consumers) {
-            if (!respondedUsers.has(consumer)) {
-                responses.push({
-                    pollId: poll.id,
-                    consumerEmail: consumer,
-                    response: poll.defaultResponse || '',
-                    submittedAt: poll.deadline,
-                    isDefault: true,
-                    skipReason: undefined,
-                });
-            }
+    // 2. Process default responses
+    if (dto.defaultResponses) {
+        for (const vote of dto.defaultResponses) {
+            responses.push({
+                pollId: poll.id,
+                consumerEmail: vote.userId,
+                response: vote.selectedOption, // Usually the default option text
+                submittedAt: vote.submittedAt || poll.deadline,
+                isDefault: true,
+                skipReason: undefined, // Or could be "Default Response Triggered"
+            });
         }
     }
-    // If anonymous, we can't create individual Response objects
-    // Frontend will need to handle this differently in analytics
+
+    // 3. Process reason responses (if any - handling as skipReason or normal response?)
+    // This depends on how the frontend expects 'reason'. 
+    // If 'reason' implies a skipped vote / mandatory default, let's look for overlap.
+    // For now, if a user isn't in optionVotes or defaultResponses, consider checking reasonResponses
+    // But typically reasonResponses might be auxiliary data. 
+    // Let's stick to optionVotes + defaultResponses as primary sources of 'Response' objects.
+
+    // 4. Fill in missing users (if any remain) as strictly default (client-side fallback)
+    // This logic mimics the original behavior, ensuring every consumer has a response.
+    const respondedUsers = new Set(responses.map(r => r.consumerEmail));
+    for (const consumer of poll.consumers) {
+        if (!respondedUsers.has(consumer)) {
+            responses.push({
+                pollId: poll.id,
+                consumerEmail: consumer,
+                response: poll.defaultResponse || '',
+                submittedAt: poll.deadline,
+                isDefault: true,
+                skipReason: undefined,
+            });
+        }
+    }
 
     return responses;
 }
@@ -120,8 +157,10 @@ class PollService {
      */
     async createPoll(poll: Poll): Promise<CreatePollResponse> {
         const dto = mapPollToDTO(poll);
+        // Note: The actual endpoint path is handled in apiClient / backendApi.ts configuration
+        // We use the full path here to match the new backend requirement
         const response = await apiClient.post<ApiResponse<CreatePollResponse>>(
-            this.basePath,
+            `${this.basePath}/create/poll`,
             dto
         );
         return response.data.data;
@@ -130,11 +169,19 @@ class PollService {
     /**
      * Submit or update a vote for a poll
      */
-    async submitVote(signalId: number, userId: string, selectedOption: string): Promise<void> {
+    async submitVote(
+        signalId: number,
+        userId: string,
+        selectedOption: string,
+        defaultResponse?: string,
+        reason?: string
+    ): Promise<void> {
         const request: SubmitPollRequest = {
             signalId,
             userId,
             selectedOption,
+            defaultResponse,
+            reason
         };
         await apiClient.post<ApiResponse<void>>(
             `${this.basePath}/poll/response`,
@@ -146,10 +193,19 @@ class PollService {
      * Get poll results/analytics
      */
     async getPollResults(signalId: number): Promise<PollResultDTO> {
-        const response = await apiClient.get<ApiResponse<PollResultDTO>>(
-            `${this.basePath}/${signalId}/poll/results`
-        );
-        return response.data.data;
+        console.log(`[PollService] Fetching results for signalId: ${signalId}`);
+        console.log(`[PollService] API URL: ${this.basePath}/${signalId}/poll/results`);
+
+        try {
+            const response = await apiClient.get<ApiResponse<PollResultDTO>>(
+                `${this.basePath}/${signalId}/poll/results`
+            );
+            console.log('[PollService] Results received:', response.data.data);
+            return response.data.data;
+        } catch (error) {
+            console.error('[PollService] Error fetching results:', error);
+            throw error;
+        }
     }
 
     /**
@@ -182,3 +238,4 @@ class PollService {
 // Export singleton instance
 export const pollService = new PollService();
 export default pollService;
+

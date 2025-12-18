@@ -35,19 +35,36 @@ interface CreatePollResponse {
     localId: number;
 }
 
+interface UserVoteDTO {
+    userId: string;
+    selectedOption: string;
+    submittedAt: string; // Instant from backend
+}
+
 interface SubmitPollRequest {
     signalId: number;
     userId: string;
     selectedOption: string;
+    defaultResponse?: string;
+    reason?: string;
 }
 
 interface PollResultDTO {
     signalId: number;
     totalAssigned: number;
     totalResponded: number;
+
     optionCounts: Record<string, number>;
-    optionToUsers: Record<string, string[]> | null;
-    archivedOptions: Record<string, string[]>;
+    optionVotes: Record<string, UserVoteDTO[]>;
+
+    archivedOptions: Record<string, UserVoteDTO[]>;
+    removedUsers: Record<string, UserVoteDTO[]>;
+
+    defaultResponses: UserVoteDTO[];
+    reasonResponses: Record<string, string>;
+
+    defaultCount: number;
+    reasonCount: number;
 }
 
 interface ApiResponse<T> {
@@ -84,13 +101,13 @@ function mapPollToDTO(poll: any): PollCreateDTO {
 
 export async function createPoll(poll: any): Promise<CreatePollResponse> {
     console.log('[Backend API] Creating poll:', poll.question);
-    console.log('[Backend API] Request URL:', `${API_BASE_URL}/api/signals`);
+    console.log('[Backend API] Request URL:', `${API_BASE_URL}/api/signals/create/poll`);
 
     const dto = mapPollToDTO(poll);
     console.log('[Backend API] Poll DTO:', dto);
 
     const response = await apiClient.post<ApiResponse<CreatePollResponse>>(
-        '/api/signals',
+        '/api/signals/create/poll',
         dto
     );
 
@@ -101,25 +118,37 @@ export async function createPoll(poll: any): Promise<CreatePollResponse> {
 export async function submitVote(
     signalId: number,
     userId: string,
-    selectedOption: string
+    selectedOption: string,
+    defaultResponse?: string,
+    reason?: string
 ): Promise<void> {
-    console.log('[Backend API] Submitting vote:', { signalId, userId, selectedOption });
+    console.log('[Backend API] Submitting vote:', { signalId, userId, selectedOption, defaultResponse, reason });
 
-    const request: SubmitPollRequest = { signalId, userId, selectedOption };
+    const request: SubmitPollRequest = {
+        signalId,
+        userId,
+        selectedOption,
+        defaultResponse,
+        reason
+    };
     await apiClient.post<ApiResponse<void>>('/api/signals/poll/response', request);
 
     console.log('[Backend API] Vote submitted successfully');
 }
 
 export async function getPollResults(signalId: number): Promise<PollResultDTO> {
-    console.log('[Backend API] Fetching poll results for signalId:', signalId);
-
-    const response = await apiClient.get<ApiResponse<PollResultDTO>>(
-        `/api/signals/${signalId}/poll/results`
-    );
-
-    console.log('[Backend API] Poll results:', response.data.data);
-    return response.data.data;
+    console.log(`[Backend API] Fetching poll results for signalId: ${signalId}`);
+    try {
+        console.log(`[Backend API] Request URL: ${API_BASE_URL}/api/signals/${signalId}/poll/results`);
+        const response = await apiClient.get<ApiResponse<PollResultDTO>>(
+            `/api/signals/${signalId}/poll/results`
+        );
+        console.log('[Backend API] Poll results RAW DATA:', JSON.stringify(response.data.data, null, 2));
+        return response.data.data;
+    } catch (error) {
+        console.error('[Backend API] Error fetching poll results:', error);
+        throw error;
+    }
 }
 
 export async function editPoll(
@@ -135,6 +164,7 @@ export async function editPoll(
         dto,
         { params: { republish } }
     );
+    console.log('[Backend API] Poll edit response received');
 
     console.log('[Backend API] Poll edited successfully');
 }
@@ -159,3 +189,4 @@ export async function login(email: string, password: string): Promise<string> {
     console.log('[Backend API] Login success, role:', response.data.data);
     return response.data.data;
 }
+

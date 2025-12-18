@@ -44,29 +44,43 @@ function mapPollToDTO(poll) {
 // ============================================================================
 async function createPoll(poll) {
     console.log('[Backend API] Creating poll:', poll.question);
-    console.log('[Backend API] Request URL:', `${API_BASE_URL}/api/signals`);
+    console.log('[Backend API] Request URL:', `${API_BASE_URL}/api/signals/create/poll`);
     const dto = mapPollToDTO(poll);
     console.log('[Backend API] Poll DTO:', dto);
-    const response = await apiClient.post('/api/signals', dto);
+    const response = await apiClient.post('/api/signals/create/poll', dto);
     console.log('[Backend API] Create poll response:', response.data);
     return response.data.data;
 }
-async function submitVote(signalId, userId, selectedOption) {
-    console.log('[Backend API] Submitting vote:', { signalId, userId, selectedOption });
-    const request = { signalId, userId, selectedOption };
+async function submitVote(signalId, userId, selectedOption, defaultResponse, reason) {
+    console.log('[Backend API] Submitting vote:', { signalId, userId, selectedOption, defaultResponse, reason });
+    const request = {
+        signalId,
+        userId,
+        selectedOption,
+        defaultResponse,
+        reason
+    };
     await apiClient.post('/api/signals/poll/response', request);
     console.log('[Backend API] Vote submitted successfully');
 }
 async function getPollResults(signalId) {
-    console.log('[Backend API] Fetching poll results for signalId:', signalId);
-    const response = await apiClient.get(`/api/signals/${signalId}/poll/results`);
-    console.log('[Backend API] Poll results:', response.data.data);
-    return response.data.data;
+    console.log(`[Backend API] Fetching poll results for signalId: ${signalId}`);
+    try {
+        console.log(`[Backend API] Request URL: ${API_BASE_URL}/api/signals/${signalId}/poll/results`);
+        const response = await apiClient.get(`/api/signals/${signalId}/poll/results`);
+        console.log('[Backend API] Poll results RAW DATA:', JSON.stringify(response.data.data, null, 2));
+        return response.data.data;
+    }
+    catch (error) {
+        console.error('[Backend API] Error fetching poll results:', error);
+        throw error;
+    }
 }
 async function editPoll(signalId, poll, republish) {
     console.log('[Backend API] Editing poll:', { signalId, republish });
     const dto = mapPollToDTO(poll);
     await apiClient.put(`/api/signals/${signalId}`, dto, { params: { republish } });
+    console.log('[Backend API] Poll edit response received');
     console.log('[Backend API] Poll edited successfully');
 }
 async function deletePoll(signalId) {

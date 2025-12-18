@@ -1,6 +1,6 @@
-/// <reference path="../types/electron.d.ts" />
 import { useState, useEffect } from 'react';
 import { User, Poll, Response } from '../App';
+import { mapResultsToResponses } from '../services/pollService';
 import { Clock, CheckCircle, LogOut, ArrowRightLeft, AlertTriangle, BarChart3 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import SignalCard from './SignalCard';
@@ -31,6 +31,49 @@ export default function ConsumerDashboard({
   const [persistentAlertPoll, setPersistentAlertPoll] = useState<Poll | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [selectedPollForAnalytics, setSelectedPollForAnalytics] = useState<Poll | null>(null);
+  const [analyticsResponses, setAnalyticsResponses] = useState<Response[]>([]);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  const handleAnalyticsClick = async (poll: Poll) => {
+    setSelectedPollForAnalytics(poll);
+    setLoadingAnalytics(true);
+    setAnalyticsResponses([]); // Clear previous
+
+    try {
+      let fetchedResponses: Response[] = [];
+
+      // 1. Try to fetch from Backend if synced
+      if (poll.cloudSignalId && (window as any).electron?.backend) {
+        console.log('[ConsumerDashboard] Fetching analytics from backend for:', poll.cloudSignalId);
+        try {
+          const result = await (window as any).electron.backend.getPollResults(poll.cloudSignalId);
+          console.log('[ConsumerDashboard] Backend analytics result:', result);
+
+          if (result.success && result.data) {
+            // Convert backend DTO to frontend Response[]
+            fetchedResponses = mapResultsToResponses(result.data, poll);
+          } else {
+            console.warn('[ConsumerDashboard] Backend fetch failed or empty, falling back to local:', result.error);
+            fetchedResponses = responses.filter(r => r.pollId === poll.id);
+          }
+        } catch (error) {
+          console.error('[ConsumerDashboard] Error fetching from backend:', error);
+          fetchedResponses = responses.filter(r => r.pollId === poll.id);
+        }
+      } else {
+        // 2. Use local data if not synced
+        console.log('[ConsumerDashboard] Poll not synced, using local data');
+        fetchedResponses = responses.filter(r => r.pollId === poll.id);
+      }
+
+      setAnalyticsResponses(fetchedResponses);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      alert('Failed to load analytics');
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
 
   // Get polls assigned to this user
   const userPolls = polls.filter(p => p.consumers.includes(user.email));
@@ -646,16 +689,18 @@ export default function ConsumerDashboard({
                           <BarChart3 className="w-4 h-4" />
                           <span>{responseCount} responses</span>
                         </div>
-                        <div className="px-2 py-1 bg-mono-accent/20 text-mono-primary rounded text-xs font-medium">
-                          {responseRate.toFixed(1)}% response rate
-                        </div>
                       </div>
 
                       <button
-                        onClick={() => setSelectedPollForAnalytics(poll)}
-                        className="flex items-center gap-2 px-4 py-2 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-primary/90 transition-colors text-sm font-medium"
+                        onClick={() => handleAnalyticsClick(poll)}
+                        disabled={loadingAnalytics && selectedPollForAnalytics?.id === poll.id}
+                        className="flex items-center gap-2 px-4 py-2 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-primary/90 transition-colors text-sm font-medium disabled:opacity-70"
                       >
-                        <BarChart3 className="w-4 h-4" />
+                        {loadingAnalytics && selectedPollForAnalytics?.id === poll.id ? (
+                          <div className="w-4 h-4 border-2 border-mono-bg/30 border-t-mono-bg rounded-full animate-spin" />
+                        ) : (
+                          <BarChart3 className="w-4 h-4" />
+                        )}
                         View Analytics
                       </button>
                     </div>
@@ -691,8 +736,11 @@ export default function ConsumerDashboard({
       {selectedPollForAnalytics && (
         <AnalyticsView
           poll={selectedPollForAnalytics}
-          responses={responses.filter(r => r.pollId === selectedPollForAnalytics.id)}
-          onClose={() => setSelectedPollForAnalytics(null)}
+          responses={analyticsResponses}
+          onClose={() => {
+            setSelectedPollForAnalytics(null);
+            setAnalyticsResponses([]);
+          }}
         />
       )}
 
