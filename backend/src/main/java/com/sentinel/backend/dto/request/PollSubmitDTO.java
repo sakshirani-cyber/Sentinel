@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-public class SubmitPollRequest {
+public class PollSubmitDTO {
 
     @NotNull(message = "Signal ID is required")
     private Integer signalId;

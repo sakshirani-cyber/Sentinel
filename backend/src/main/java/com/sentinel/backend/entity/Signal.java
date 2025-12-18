@@ -48,4 +48,7 @@ public class Signal {
     private String[] sharedWith;
 
     private String status = "ACTIVE";
+
+    @Column(name = "last_edited_by")
+    private String lastEditedBy;
 }
