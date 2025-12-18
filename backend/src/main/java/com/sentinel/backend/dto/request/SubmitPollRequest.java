@@ -7,10 +7,10 @@ import lombok.Data;
 @Data
 public class SubmitPollRequest {
 
-    @NotNull(message = "signalId is required")
+    @NotNull(message = "Signal ID is required")
     private Integer signalId;
 
-    @NotBlank(message = "userId is required")
+    @NotBlank(message = "User ID is required")
     private String userId;
 
     private String selectedOption;
