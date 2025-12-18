@@ -26,21 +26,21 @@ public class PollCreateDTO extends BaseSignalDTO {
 
     public void validatePoll() {
         if (question == null || question.trim().isEmpty()) {
-            throw new IllegalArgumentException("question cannot be blank");
+            throw new IllegalArgumentException("Question cannot be blank");
         }
 
         if (options == null || options.length < 2) {
-            throw new IllegalArgumentException("options must contain at least 2 values");
+            throw new IllegalArgumentException("Options must contain at least 2 values");
         }
 
         for (String o : options) {
             if (o == null || o.trim().isEmpty()) {
-                throw new IllegalArgumentException("options cannot contain empty or blank values");
+                throw new IllegalArgumentException("Options cannot contain empty or blank values");
             }
         }
 
         if (NormalizationUtils.hasDuplicatesIgnoreCase(options)) {
-            throw new IllegalArgumentException("options contain duplicate values (case-insensitive)");
+            throw new IllegalArgumentException("Options contain duplicate values (case-insensitive)");
         }
 
         this.options = NormalizationUtils.trimAndUnique(options);
