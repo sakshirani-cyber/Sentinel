@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-public class PollCreateDTO extends BaseSignalDTO {
+public class PollCreateDTO extends SignalDTO {
 
     @NotBlank(message = "Question is required")
     private String question;

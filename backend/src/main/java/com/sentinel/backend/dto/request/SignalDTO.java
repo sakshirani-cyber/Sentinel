@@ -11,7 +11,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 
 @Data
-public abstract class BaseSignalDTO {
+public abstract class SignalDTO {
 
     @NotBlank(message = "Created By is required")
     private String createdBy;

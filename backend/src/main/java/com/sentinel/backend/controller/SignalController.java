@@ -1,7 +1,8 @@
 package com.sentinel.backend.controller;
 
 import com.sentinel.backend.dto.request.PollCreateDTO;
-import com.sentinel.backend.dto.request.SubmitPollRequest;
+import com.sentinel.backend.dto.request.PollEditDTO;
+import com.sentinel.backend.dto.request.PollSubmitDTO;
 import com.sentinel.backend.dto.response.ApiResponse;
 import com.sentinel.backend.dto.response.CreatePollResponse;
 import com.sentinel.backend.dto.response.PollResultDTO;
@@ -43,7 +44,7 @@ public class SignalController {
 
     @PostMapping("/poll/response")
     public ResponseEntity<ApiResponse<Void>> submitResponse(
-            @RequestBody @Valid SubmitPollRequest req) {
+            @RequestBody @Valid PollSubmitDTO req) {
 
         signalService.submitOrUpdateVote(req);
         return ResponseEntity.ok(ApiResponse.success(SAVED, null));
@@ -57,13 +58,11 @@ public class SignalController {
         return ResponseEntity.ok(ApiResponse.success(OK, dto));
     }
 
-    @PutMapping("/{signalId}")
+    @PutMapping("/poll/edit")
     public ResponseEntity<ApiResponse<Void>> edit(
-            @PathVariable Integer signalId,
-            @RequestParam(defaultValue = "true") boolean republish,
-            @RequestBody @Valid PollCreateDTO dto) {
+            @RequestBody @Valid PollEditDTO dto) {
 
-        signalService.editSignal(signalId, republish, dto);
+        signalService.editSignal(dto);
         return ResponseEntity.ok(ApiResponse.success(EDITED, null));
     }
 

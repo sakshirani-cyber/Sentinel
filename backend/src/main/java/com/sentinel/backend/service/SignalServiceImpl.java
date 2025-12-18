@@ -1,9 +1,10 @@
 package com.sentinel.backend.service;
 
+import com.sentinel.backend.dto.request.PollEditDTO;
 import com.sentinel.backend.dto.response.CreatePollResponse;
 import com.sentinel.backend.dto.request.PollCreateDTO;
 import com.sentinel.backend.dto.response.PollResultDTO;
-import com.sentinel.backend.dto.request.SubmitPollRequest;
+import com.sentinel.backend.dto.request.PollSubmitDTO;
 import com.sentinel.backend.dto.helper.UserVoteDTO;
 import com.sentinel.backend.entity.Poll;
 import com.sentinel.backend.entity.PollResult;
@@ -165,7 +166,7 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     @Transactional
-    public void submitOrUpdateVote(SubmitPollRequest req) {
+    public void submitOrUpdateVote(PollSubmitDTO req) {
 
         req.normalize();
 
@@ -366,14 +367,14 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     @Transactional
-    public void editSignal(Integer signalId, boolean republish, PollCreateDTO dto) {
+    public void editSignal(PollEditDTO dto) {
 
         dto.normalizeCommon();
         dto.normalizePoll();
         dto.validateCommon();
         dto.validatePoll();
 
-        Signal signal = signalRepository.findById(signalId)
+        Signal signal = signalRepository.findById(dto.getSignalId())
                 .orElseThrow(() ->
                         new CustomException("Signal not found", HttpStatus.NOT_FOUND));
 
@@ -388,7 +389,7 @@ public class SignalServiceImpl implements SignalService {
             );
         }
 
-        Poll poll = pollRepository.findById(signalId)
+        Poll poll = pollRepository.findById(dto.getSignalId())
                 .orElseThrow(() ->
                         new CustomException("Poll not found", HttpStatus.NOT_FOUND));
 
@@ -404,7 +405,7 @@ public class SignalServiceImpl implements SignalService {
                 pollRepository.findActivePollsByQuestion(normalizedQ);
 
         for (Poll p : activeWithSameQ) {
-            if (p.getSignalId().equals(signalId)) continue;
+            if (p.getSignalId().equals(dto.getSignalId())) continue;
 
             List<String> opts =
                     NormalizationUtils.normalizeForComparison(p.getOptions());
@@ -426,8 +427,8 @@ public class SignalServiceImpl implements SignalService {
             );
         }
 
-        if (republish) {
-            pollResultRepository.deleteByIdSignalId(signalId);
+        if (dto.getRepublish()) {
+            pollResultRepository.deleteByIdSignalId(dto.getSignalId());
         }
 
         poll.setQuestion(dto.getQuestion());
@@ -437,15 +438,12 @@ public class SignalServiceImpl implements SignalService {
         signal.setDefaultFlag(dto.getDefaultFlag());
         signal.setDefaultOption(dto.getDefaultOption());
         signal.setSharedWith(dto.getSharedWith());
+        signal.setLastEditedBy(dto.getLastEditedBy());
         signal.setLastEdited(now);
 
         Instant newEnd = dto.getEndTimestampUtc();
 
-        if (!republish && signal.getEndTimestamp().isBefore(newEnd)) {
-            signal.setEndTimestamp(newEnd);
-        } else if (republish) {
-            signal.setEndTimestamp(newEnd);
-        }
+        signal.setEndTimestamp(newEnd);
 
         pollRepository.save(poll);
         signalRepository.save(signal);
