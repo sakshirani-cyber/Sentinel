@@ -59,31 +59,31 @@ public abstract class BaseSignalDTO {
             Instant parsed = Instant.parse(endTimestamp);
 
             if (parsed.isBefore(Instant.now())) {
-                throw new IllegalArgumentException("endTimestamp must be in the future (UTC)");
+                throw new IllegalArgumentException("End Time Stamp must be in the future (UTC)");
             }
 
             this.parsedEndUtc = parsed;
 
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException(
-                    "endTimestamp must be UTC ISO-8601 format, e.g. 2025-12-17T16:30:00Z"
+                    "End Time Stamp must be UTC ISO-8601 format, e.g. 2025-12-17T16:30:00Z"
             );
         }
 
         if (sharedWith == null || sharedWith.length == 0) {
-            throw new IllegalArgumentException("sharedWith must contain at least one user");
+            throw new IllegalArgumentException("Shared With List must contain at least one user");
         }
 
         this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
 
         for (String s : sharedWith) {
             if (s == null || s.trim().isEmpty()) {
-                throw new IllegalArgumentException("sharedWith contains empty/blank user id(s)");
+                throw new IllegalArgumentException("Shared With List contains empty/blank user id(s)");
             }
         }
 
         if (NormalizationUtils.hasDuplicatesIgnoreCase(sharedWith)) {
-            throw new IllegalArgumentException("sharedWith contains duplicate user ids (case-insensitive)");
+            throw new IllegalArgumentException("Shared With List contains duplicate user ids (case-insensitive)");
         }
 
         this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
@@ -95,7 +95,7 @@ public abstract class BaseSignalDTO {
 
     public void validateType() {
         if (type == null || type.trim().isEmpty()) {
-            throw new IllegalArgumentException("type is required");
+            throw new IllegalArgumentException("Type is required");
         }
 
         try {
