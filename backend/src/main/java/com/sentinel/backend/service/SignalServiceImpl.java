@@ -316,7 +316,7 @@ public class SignalServiceImpl implements SignalService {
 
         if (anonymous) {
             dto.setOptionVotes(null);
-            dto.setArchivedOptions(null);
+            dto.setRemovedOptions(null);
             dto.setRemovedUsers(null);
             dto.setDefaultResponses(null);
             dto.setReasonResponses(null);
@@ -331,7 +331,7 @@ public class SignalServiceImpl implements SignalService {
                         ))
         );
 
-        dto.setArchivedOptions(
+        dto.setRemovedOptions(
                 archivedOptions.isEmpty() ? null :
                         archivedOptions.entrySet().stream()
                                 .collect(Collectors.toMap(
