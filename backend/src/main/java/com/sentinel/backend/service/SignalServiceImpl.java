@@ -101,8 +101,6 @@ public class SignalServiceImpl implements SignalService {
         Signal signal = getEditablePollSignal(dto.getSignalId());
         Poll poll = getPoll(dto.getSignalId());
 
-        validateEditConflicts(dto, signal);
-
         if (dto.getRepublish()) {
             pollResultRepository.deleteByIdSignalId(dto.getSignalId());
         }
@@ -402,19 +400,6 @@ public class SignalServiceImpl implements SignalService {
         if (Boolean.TRUE.equals(dto.getDefaultFlag())
                 && !hasText(dto.getDefaultOption())) {
             throw new CustomException("defaultOption required", HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    private void validateEditConflicts(PollEditDTO dto, Signal signal) {
-
-        String q = NormalizationUtils.normalizeQuestion(dto.getQuestion());
-        List<String> opts = NormalizationUtils.normalizeForComparison(dto.getOptions());
-
-        for (Poll p : pollRepository.findActivePollsByQuestion(q)) {
-            if (!p.getSignalId().equals(signal.getId())
-                    && opts.equals(NormalizationUtils.normalizeForComparison(p.getOptions()))) {
-                throw new CustomException("Similar active poll exists", HttpStatus.CONFLICT);
-            }
         }
     }
 
