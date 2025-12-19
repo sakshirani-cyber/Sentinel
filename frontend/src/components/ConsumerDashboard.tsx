@@ -105,21 +105,21 @@ export default function ConsumerDashboard({
           // Transform ActivePollDTO to Poll format if necessary or use directly
           // We need to map ActivePollDTO to our Poll interface to be compatible with SignalCard
           const mappedPolls = result.data.map((dto: any) => ({
-            id: (dto.id ? dto.id.toString() : `temp-${Date.now()}-${Math.random()}`), // Use cloud ID or fallback
+            id: (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`), // Use cloud ID or fallback
 
             question: dto.question,
             options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })), // Default color
             publisherEmail: dto.publisherEmail,
             publisherName: dto.publisherName,
-            deadline: dto.deadline,
+            deadline: dto.endTimestamp,
             status: 'active',
             consumers: [user.email], // Implicit since we fetched for this user
-            defaultResponse: dto.defaultResponse,
-            showDefaultToConsumers: dto.showDefaultToConsumers,
-            anonymityMode: dto.anonymityMode === 'ANONYMOUS' ? 'anonymous' : 'record',
-            isPersistentFinalAlert: dto.isPersistentFinalAlert,
+            defaultResponse: dto.defaultOption,
+            showDefaultToConsumers: dto.defaultFlag,
+            anonymityMode: dto.anonymous ? 'anonymous' : 'record',
+            isPersistentFinalAlert: dto.persistentFinalAlert,
             publishedAt: new Date().toISOString(), // Optional fallback
-            cloudSignalId: dto.id,
+            cloudSignalId: dto.signalId,
             isEdited: !!dto.lastEditedBy, // If lastEditedBy is present, it's edited
             updatedAt: dto.lastEditedBy ? new Date().toISOString() : undefined // Fallback
           }));
@@ -135,15 +135,17 @@ export default function ConsumerDashboard({
     }
   };
 
-  // Poll for updates (publish/edit/expiry) - every 10 seconds? 
+  // Poll for updates (publish/edit/expiry)
   // User asked for: "whenever user goes to upcoming", "everytime publisher publishes", "whenever poll is edited"
   // Implementing interval polling covers publish and edit scenarios effectively without complex websockets
   useEffect(() => {
-    if (activeTab === 'incomplete') {
-      fetchActivePolls();
-      const interval = setInterval(fetchActivePolls, 5000); // Check every 5s for near real-time updates
-      return () => clearInterval(interval);
-    }
+    fetchActivePolls(); // Immediate fetch on mount or tab change
+
+    // Poll faster when on incomplete tab, slower on other tabs to keep badge count updated
+    const pollInterval = activeTab === 'incomplete' ? 5000 : 15000;
+    const interval = setInterval(fetchActivePolls, pollInterval);
+
+    return () => clearInterval(interval);
   }, [activeTab, user.email]);
 
   // Merge backend polls with prop polls (or strictly use backend polls for 'incomplete' tab)
@@ -158,14 +160,8 @@ export default function ConsumerDashboard({
   // Derived lists for compatibility with existing render logic
   const userPolls = displayPolls.filter(p => p.consumers.includes(user.email));
 
-  // Get incomplete polls (active polls where user hasn't responded AND deadline hasn't passed)
-  const incompletePolls = activeTab === 'incomplete'
-    ? backendActivePolls // Backend is source of truth for incomplete
-    : userPolls.filter(p => {
-      const hasResponded = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
-      const isExpired = new Date(p.deadline) < new Date();
-      return !hasResponded && p.status === 'active' && !isExpired;
-    }).sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+  // Get incomplete polls - ALWAYS use backend data for accurate badge count
+  const incompletePolls = backendActivePolls;
 
   // Get completed polls (moved here to access userPolls)
   const completedPolls = userPolls.filter(p => {
@@ -355,8 +351,11 @@ export default function ConsumerDashboard({
               setSelectedPoll(poll);
             };
 
-            // Only 1-minute alert can be persistent
-            if (threshold === 1 && poll.isPersistentFinalAlert) {
+            // Only 1-minute alert can be persistent - check using client time
+            const timeUntilDeadline = new Date(poll.deadline).getTime() - new Date().getTime();
+            const isWithinOneMinute = timeUntilDeadline <= 60000 && timeUntilDeadline > 0;
+
+            if (threshold === 1 && poll.isPersistentFinalAlert && isWithinOneMinute) {
               // Check device status before showing persistent alert
               if ((window as any).electron) {
                 (window as any).electron.getDeviceStatus().then((status: string) => {

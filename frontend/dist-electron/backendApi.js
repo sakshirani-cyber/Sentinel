@@ -79,9 +79,16 @@ async function getPollResults(signalId) {
 }
 async function editPoll(signalId, poll, republish) {
     console.log('[Backend API] Editing poll:', { signalId, republish });
-    const dto = mapPollToDTO(poll);
-    await apiClient.put(`/api/signals/${signalId}`, dto, { params: { republish } });
-    console.log('[Backend API] Poll edit response received');
+    const baseDTO = mapPollToDTO(poll);
+    // PollEditDTO extends PollCreateDTO with additional fields
+    const editDTO = {
+        ...baseDTO,
+        signalId,
+        republish,
+        lastEditedBy: poll.publisherEmail // or get from current user
+    };
+    console.log('[Backend API] Edit DTO:', editDTO);
+    await apiClient.put('/api/signals/poll/edit', editDTO);
     console.log('[Backend API] Poll edited successfully');
 }
 async function deletePoll(signalId) {

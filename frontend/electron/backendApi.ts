@@ -31,7 +31,7 @@ interface PollCreateDTO {
 }
 
 interface CreatePollResponse {
-    cloudSignalId: number;
+    signalId: number;
     localId: number;
 }
 
@@ -88,14 +88,14 @@ export interface ActivePollDTO {
 }
 
 export interface ActivePollDTO {
-    id: number;
+    signalId: number;
     question: string;
     options: string[];
-    deadline: string;
-    anonymityMode: string;
-    defaultResponse: string;
-    showDefaultToConsumers: boolean;
-    isPersistentFinalAlert: boolean;
+    endTimestamp: string;
+    anonymous: boolean;
+    defaultOption: string;
+    defaultFlag: boolean;
+    persistentFinalAlert: boolean;
     publisherName: string;
     publisherEmail: string;
     lastEditedBy?: string;
@@ -186,14 +186,22 @@ export async function editPoll(
 ): Promise<void> {
     console.log('[Backend API] Editing poll:', { signalId, republish });
 
-    const dto = mapPollToDTO(poll);
-    await apiClient.put<ApiResponse<void>>(
-        `/api/signals/${signalId}`,
-        dto,
-        { params: { republish } }
-    );
-    console.log('[Backend API] Poll edit response received');
+    const baseDTO = mapPollToDTO(poll);
 
+    // PollEditDTO extends PollCreateDTO with additional fields
+    const editDTO = {
+        ...baseDTO,
+        signalId,
+        republish,
+        lastEditedBy: poll.publisherEmail // or get from current user
+    };
+
+    console.log('[Backend API] Edit DTO:', editDTO);
+
+    await apiClient.put<ApiResponse<void>>(
+        '/api/signals/poll/edit',
+        editDTO
+    );
     console.log('[Backend API] Poll edited successfully');
 }
 

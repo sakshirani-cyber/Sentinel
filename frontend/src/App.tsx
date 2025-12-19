@@ -138,7 +138,7 @@ function App() {
           console.log('[Frontend] Backend create poll result:', backendResult);
 
           if (backendResult.success) {
-            newPoll.cloudSignalId = backendResult.data.cloudSignalId;
+            newPoll.cloudSignalId = backendResult.data.signalId;
             newPoll.syncStatus = 'synced';
             console.log('[Frontend] Poll synced to backend, cloudSignalId:', newPoll.cloudSignalId);
           } else {
@@ -173,6 +173,12 @@ function App() {
     try {
       const poll = polls.find(p => p.id === pollId);
       if (!poll) throw new Error('Poll not found');
+
+      // CRITICAL: Require cloudSignalId for editing
+      if (!poll.cloudSignalId) {
+        alert('Cannot edit this poll: It was not successfully synced to the server. Please create a new poll instead.');
+        return;
+      }
 
       const updatedPoll = { ...poll, ...updates };
       console.log('[App] handleUpdatePoll called:', { pollId, updates, republish, cloudSignalId: poll.cloudSignalId });
