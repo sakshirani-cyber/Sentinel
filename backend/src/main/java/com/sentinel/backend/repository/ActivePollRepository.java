@@ -13,7 +13,7 @@ public class ActivePollRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public List<ActivePollDTO> findActivePollsForUser(String userEmail) {
+    public List<ActivePollDTO> findActivePollsForUser(String userId) {
 
         String sql = """
             SELECT
@@ -24,7 +24,8 @@ public class ActivePollRepository {
                 s.anonymous,
                 s.default_option,
                 s.default_flag,
-                s.created_by AS publisher
+                s.created_by AS publisher,
+                s.persistent_alert AS persistent_alert
             FROM signal s
             JOIN poll p ON p.signal_id = s.id
             WHERE s.status = 'ACTIVE'
@@ -55,11 +56,12 @@ public class ActivePollRepository {
                             rs.getBoolean("anonymous"),
                             rs.getString("default_option"),
                             rs.getBoolean("default_flag"),
-                            rs.getString("publisher")
+                            rs.getString("publisher"),
+                            rs.getBoolean("persistent_alert")
                     );
                 },
-                userEmail,
-                userEmail
+                userId,
+                userId
         );
     }
 }

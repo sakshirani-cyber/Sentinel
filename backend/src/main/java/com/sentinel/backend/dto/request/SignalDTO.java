@@ -37,6 +37,9 @@ public abstract class SignalDTO {
     @NotBlank(message = "Default option is required")
     private String defaultOption;
 
+    @NotNull(message = "Persistent Flag is required")
+    private Boolean persistentAlert;
+
     public void normalizeCommon() {
         if (createdBy != null) createdBy = createdBy.trim();
         if (endTimestamp != null) endTimestamp = endTimestamp.trim();

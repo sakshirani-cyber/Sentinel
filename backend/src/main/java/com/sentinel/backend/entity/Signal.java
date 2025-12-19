@@ -51,4 +51,7 @@ public class Signal {
 
     @Column(name = "last_edited_by")
     private String lastEditedBy;
+
+    @Column(name = "persistent_alert")
+    private Boolean persistentAlert;
 }
