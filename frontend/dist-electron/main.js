@@ -194,6 +194,16 @@ electron_1.app.whenReady().then(async () => {
                 return { success: false, error: error.message };
             }
         });
+        electron_1.ipcMain.handle('backend-get-active-polls', async (_event, userEmail) => {
+            try {
+                const polls = await backendApi.getActivePolls(userEmail);
+                return { success: true, data: polls };
+            }
+            catch (error) {
+                console.error('Backend API - Get Active Polls Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
     }
     catch (error) {
         console.error('Failed to initialize Database:', error);

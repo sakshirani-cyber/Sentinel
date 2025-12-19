@@ -140,8 +140,6 @@ export default function PublishedPolls({
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm text-mono-text/40">Signal ID:</span>
-                      <span className="text-sm text-mono-text/60 font-mono">{poll.id.split('-')[1]}...</span>
                       {poll.isEdited && (
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-mono-accent/20 text-mono-primary text-xs rounded-full font-medium border border-mono-accent/30">
                           <PenTool className="w-3 h-3" />

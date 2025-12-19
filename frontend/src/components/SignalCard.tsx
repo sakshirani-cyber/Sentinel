@@ -169,9 +169,8 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
           </div>
         )}
 
-        {/* Signal ID and Copy */}
-        <div className="flex items-center justify-between pt-3 border-t border-mono-primary/20">
-          <span className="text-xs text-mono-text/60 font-mono">ID: {poll.id}</span>
+        {/* Copy button only */}
+        <div className="flex items-center justify-end pt-3 border-t border-mono-primary/20">
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-mono-text/70 hover:text-mono-text hover:bg-mono-primary/5 rounded transition-colors"

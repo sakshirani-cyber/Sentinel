@@ -73,6 +73,34 @@ interface ApiResponse<T> {
     data: T;
 }
 
+export interface ActivePollDTO {
+    id: number;
+    question: string;
+    options: string[];
+    deadline: string;
+    anonymityMode: string;
+    defaultResponse: string;
+    showDefaultToConsumers: boolean;
+    isPersistentFinalAlert: boolean;
+    publisherName: string;
+    publisherEmail: string;
+    lastEditedBy?: string;
+}
+
+export interface ActivePollDTO {
+    id: number;
+    question: string;
+    options: string[];
+    deadline: string;
+    anonymityMode: string;
+    defaultResponse: string;
+    showDefaultToConsumers: boolean;
+    isPersistentFinalAlert: boolean;
+    publisherName: string;
+    publisherEmail: string;
+    lastEditedBy?: string;
+}
+
 // ============================================================================
 // Data Transformation
 // ============================================================================
@@ -188,5 +216,14 @@ export async function login(email: string, password: string): Promise<string> {
 
     console.log('[Backend API] Login success, role:', response.data.data);
     return response.data.data;
+}
+
+export async function getActivePolls(userEmail: string): Promise<ActivePollDTO[]> {
+    console.log('[Backend API] Fetching active polls for:', userEmail);
+    const response = await apiClient.get<ActivePollDTO[]>('/api/polls/active', {
+        params: { userEmail }
+    });
+    console.log('[Backend API] Active polls received:', response.data.length);
+    return response.data;
 }
 

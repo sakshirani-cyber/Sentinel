@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('electron', {
             ipcRenderer.invoke('backend-edit-poll', { signalId, poll, republish }),
         deletePoll: (signalId: number) => ipcRenderer.invoke('backend-delete-poll', signalId),
         login: (email: string, password: string) => ipcRenderer.invoke('backend-login', { email, password }),
+        getActivePolls: (userEmail: string) => ipcRenderer.invoke('backend-get-active-polls', userEmail),
     },
     getDeviceStatus: () => ipcRenderer.invoke('get-device-status')
 });

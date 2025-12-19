@@ -75,20 +75,9 @@ export default function ConsumerDashboard({
     }
   };
 
-  // Get polls assigned to this user
-  const userPolls = polls.filter(p => p.consumers.includes(user.email));
 
-  // Get incomplete polls (active polls where user hasn't responded AND deadline hasn't passed)
-  const incompletePolls = userPolls.filter(p => {
-    const hasResponded = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
-    const isExpired = new Date(p.deadline) < new Date();
-    return !hasResponded && p.status === 'active' && !isExpired;
-  }).sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
 
-  // Get completed polls
-  const completedPolls = userPolls.filter(p => {
-    return responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
-  }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
+
 
 
   // Track which alerts have been sent for each poll, including the deadline they were sent for
@@ -99,6 +88,89 @@ export default function ConsumerDashboard({
     const saved = localStorage.getItem('sentinel_notified_polls');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+
+  // State for active polls fetched from backend
+  const [backendActivePolls, setBackendActivePolls] = useState<any[]>([]);
+  const [loadingActivePolls, setLoadingActivePolls] = useState(false);
+
+  // Fetch active polls from backend
+  const fetchActivePolls = async () => {
+    if ((window as any).electron?.backend) {
+      setLoadingActivePolls(true);
+      try {
+        console.log('[ConsumerDashboard] Fetching active polls from backend...');
+        const result = await (window as any).electron.backend.getActivePolls(user.email);
+        if (result.success && result.data) {
+          console.log('[ConsumerDashboard] Active polls fetched:', result.data);
+          // Transform ActivePollDTO to Poll format if necessary or use directly
+          // We need to map ActivePollDTO to our Poll interface to be compatible with SignalCard
+          const mappedPolls = result.data.map((dto: any) => ({
+            id: (dto.id ? dto.id.toString() : `temp-${Date.now()}-${Math.random()}`), // Use cloud ID or fallback
+
+            question: dto.question,
+            options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })), // Default color
+            publisherEmail: dto.publisherEmail,
+            publisherName: dto.publisherName,
+            deadline: dto.deadline,
+            status: 'active',
+            consumers: [user.email], // Implicit since we fetched for this user
+            defaultResponse: dto.defaultResponse,
+            showDefaultToConsumers: dto.showDefaultToConsumers,
+            anonymityMode: dto.anonymityMode === 'ANONYMOUS' ? 'anonymous' : 'record',
+            isPersistentFinalAlert: dto.isPersistentFinalAlert,
+            publishedAt: new Date().toISOString(), // Optional fallback
+            cloudSignalId: dto.id,
+            isEdited: !!dto.lastEditedBy, // If lastEditedBy is present, it's edited
+            updatedAt: dto.lastEditedBy ? new Date().toISOString() : undefined // Fallback
+          }));
+          setBackendActivePolls(mappedPolls);
+        } else {
+          console.warn('[ConsumerDashboard] Failed to fetch active polls:', result.error);
+        }
+      } catch (error) {
+        console.error('[ConsumerDashboard] Error in fetchActivePolls:', error);
+      } finally {
+        setLoadingActivePolls(false);
+      }
+    }
+  };
+
+  // Poll for updates (publish/edit/expiry) - every 10 seconds? 
+  // User asked for: "whenever user goes to upcoming", "everytime publisher publishes", "whenever poll is edited"
+  // Implementing interval polling covers publish and edit scenarios effectively without complex websockets
+  useEffect(() => {
+    if (activeTab === 'incomplete') {
+      fetchActivePolls();
+      const interval = setInterval(fetchActivePolls, 5000); // Check every 5s for near real-time updates
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, user.email]);
+
+  // Merge backend polls with prop polls (or strictly use backend polls for 'incomplete' tab)
+  // Logic: If we occupy 'incomplete' tab, we prefer backend polls.
+  // But we must filter out ones we've already responded to (if backend returns ALL active polls regardless of response status).
+  // The service method is `getActivePollsForUser`. Assuming it returns ONLY polls the user HAS NOT responded to?
+  // User prompt: "we are getting all the upcoming polls from the local db(polls which have not been filled). but now i want to get tha from the backend api."
+  // So assuming backend returns only unfilled ones.
+
+  const displayPolls = activeTab === 'incomplete' ? backendActivePolls : polls;
+
+  // Derived lists for compatibility with existing render logic
+  const userPolls = displayPolls.filter(p => p.consumers.includes(user.email));
+
+  // Get incomplete polls (active polls where user hasn't responded AND deadline hasn't passed)
+  const incompletePolls = activeTab === 'incomplete'
+    ? backendActivePolls // Backend is source of truth for incomplete
+    : userPolls.filter(p => {
+      const hasResponded = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
+      const isExpired = new Date(p.deadline) < new Date();
+      return !hasResponded && p.status === 'active' && !isExpired;
+    }).sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+
+  // Get completed polls (moved here to access userPolls)
+  const completedPolls = userPolls.filter(p => {
+    return responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
+  }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
 
   // Notify when new polls are assigned to the user
   useEffect(() => {

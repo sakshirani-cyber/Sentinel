@@ -170,6 +170,16 @@ app.whenReady().then(async () => {
             }
         });
 
+        ipcMain.handle('backend-get-active-polls', async (_event, userEmail) => {
+            try {
+                const polls = await backendApi.getActivePolls(userEmail);
+                return { success: true, data: polls };
+            } catch (error: any) {
+                console.error('Backend API - Get Active Polls Error:', error.message);
+                return { success: false, error: error.message };
+            }
+        });
+
     } catch (error) {
         console.error('Failed to initialize Database:', error);
     }

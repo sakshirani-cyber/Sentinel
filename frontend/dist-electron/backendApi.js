@@ -9,6 +9,7 @@ exports.getPollResults = getPollResults;
 exports.editPoll = editPoll;
 exports.deletePoll = deletePoll;
 exports.login = login;
+exports.getActivePolls = getActivePolls;
 const axios_1 = __importDefault(require("axios"));
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
@@ -93,5 +94,13 @@ async function login(email, password) {
     const response = await apiClient.post('/api/signals/login', null, { params: { email, password } });
     console.log('[Backend API] Login success, role:', response.data.data);
     return response.data.data;
+}
+async function getActivePolls(userEmail) {
+    console.log('[Backend API] Fetching active polls for:', userEmail);
+    const response = await apiClient.get('/api/polls/active', {
+        params: { userEmail }
+    });
+    console.log('[Backend API] Active polls received:', response.data.length);
+    return response.data;
 }
 //# sourceMappingURL=backendApi.js.map
