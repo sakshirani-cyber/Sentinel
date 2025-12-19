@@ -17,16 +17,16 @@ public class ActivePollService {
 
     @Cacheable(
             value = "activePolls",
-            key = "#userEmail"
+            key = "#userId"
     )
-    public List<ActivePollDTO> getActivePollsForUser(String userEmail) {
-        return activePollRepository.findActivePollsForUser(userEmail);
+    public List<ActivePollDTO> getActivePollsForUser(String userId) {
+        return activePollRepository.findActivePollsForUser(userId);
     }
 
     @CacheEvict(
             value = "activePolls",
-            key = "#userEmail"
+            key = "#userId"
     )
-    public void evictUserCache(String userEmail) {
+    public void evictUserCache(String userId) {
     }
 }

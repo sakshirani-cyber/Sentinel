@@ -19,8 +19,8 @@ public class ActivePollController {
 
     @GetMapping("/active")
     public List<ActivePollDTO> getActivePolls(
-            @RequestParam String userEmail
+            @RequestParam String userId
     ) {
-        return activePollService.getActivePollsForUser(userEmail);
+        return activePollService.getActivePollsForUser(userId);
     }
 }

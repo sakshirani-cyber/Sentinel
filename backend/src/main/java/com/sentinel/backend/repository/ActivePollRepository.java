@@ -21,11 +21,14 @@ public class ActivePollRepository {
                 p.question,
                 p.options,
                 s.end_timestamp,
-                s.anonymous
+                s.anonymous,
+                s.default_option,
+                s.default_flag,
+                s.created_by AS publisher
             FROM signal s
             JOIN poll p ON p.signal_id = s.id
             WHERE s.status = 'ACTIVE'
-              AND s.end_timestamp > NOW()
+              AND s.end_timestamp > (NOW() AT TIME ZONE 'UTC')
               AND ? = ANY (s.shared_with)
               AND NOT EXISTS (
                   SELECT 1
@@ -38,13 +41,23 @@ public class ActivePollRepository {
 
         return jdbcTemplate.query(
                 sql,
-                (rs, i) -> new ActivePollDTO(
-                        rs.getInt("signal_id"),
-                        rs.getString("question"),
-                        (String[]) rs.getArray("options").getArray(),
-                        rs.getTimestamp("end_timestamp").toInstant(),
-                        rs.getBoolean("anonymous")
-                ),
+                (rs, i) -> {
+                    var array = rs.getArray("options");
+                    String[] options = array != null
+                            ? (String[]) array.getArray()
+                            : new String[0];
+
+                    return new ActivePollDTO(
+                            rs.getInt("signal_id"),
+                            rs.getString("question"),
+                            options,
+                            rs.getTimestamp("end_timestamp").toInstant(),
+                            rs.getBoolean("anonymous"),
+                            rs.getString("default_option"),
+                            rs.getBoolean("default_flag"),
+                            rs.getString("publisher")
+                    );
+                },
                 userEmail,
                 userEmail
         );
