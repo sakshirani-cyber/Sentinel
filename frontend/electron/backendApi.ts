@@ -26,6 +26,7 @@ interface PollCreateDTO {
     localId: number;
     defaultFlag?: boolean;
     defaultOption?: string;
+    persistentAlert: boolean;
     question: string;
     options: string[];
 }
@@ -74,20 +75,6 @@ interface ApiResponse<T> {
 }
 
 export interface ActivePollDTO {
-    id: number;
-    question: string;
-    options: string[];
-    deadline: string;
-    anonymityMode: string;
-    defaultResponse: string;
-    showDefaultToConsumers: boolean;
-    isPersistentFinalAlert: boolean;
-    publisherName: string;
-    publisherEmail: string;
-    lastEditedBy?: string;
-}
-
-export interface ActivePollDTO {
     signalId: number;
     question: string;
     options: string[];
@@ -95,10 +82,8 @@ export interface ActivePollDTO {
     anonymous: boolean;
     defaultOption: string;
     defaultFlag: boolean;
-    persistentFinalAlert: boolean;
-    publisherName: string;
     publisherEmail: string;
-    lastEditedBy?: string;
+    persistentAlert: boolean;
 }
 
 // ============================================================================
@@ -118,6 +103,7 @@ function mapPollToDTO(poll: any): PollCreateDTO {
         localId,
         defaultFlag: !!poll.defaultResponse,
         defaultOption: poll.defaultResponse || poll.options[0]?.text || '',
+        persistentAlert: !!poll.isPersistentFinalAlert, // Add required field
         question: poll.question,
         options: poll.options.map((o: any) => o.text),
     };

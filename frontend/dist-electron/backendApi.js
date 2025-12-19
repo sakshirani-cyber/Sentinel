@@ -36,6 +36,7 @@ function mapPollToDTO(poll) {
         localId,
         defaultFlag: !!poll.defaultResponse,
         defaultOption: poll.defaultResponse || poll.options[0]?.text || '',
+        persistentAlert: !!poll.isPersistentFinalAlert, // Add required field
         question: poll.question,
         options: poll.options.map((o) => o.text),
     };

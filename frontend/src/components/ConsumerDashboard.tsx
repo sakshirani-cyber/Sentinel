@@ -105,23 +105,23 @@ export default function ConsumerDashboard({
           // Transform ActivePollDTO to Poll format if necessary or use directly
           // We need to map ActivePollDTO to our Poll interface to be compatible with SignalCard
           const mappedPolls = result.data.map((dto: any) => ({
-            id: (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`), // Use cloud ID or fallback
+            id: (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`),
 
             question: dto.question,
-            options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })), // Default color
+            options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })),
             publisherEmail: dto.publisherEmail,
-            publisherName: dto.publisherName,
+            publisherName: dto.publisherEmail, // Backend doesn't send name, use email
             deadline: dto.endTimestamp,
             status: 'active',
-            consumers: [user.email], // Implicit since we fetched for this user
+            consumers: [user.email],
             defaultResponse: dto.defaultOption,
             showDefaultToConsumers: dto.defaultFlag,
             anonymityMode: dto.anonymous ? 'anonymous' : 'record',
-            isPersistentFinalAlert: dto.persistentFinalAlert,
-            publishedAt: new Date().toISOString(), // Optional fallback
+            isPersistentFinalAlert: dto.persistentAlert, // Map persistentAlert to isPersistentFinalAlert
+            publishedAt: new Date().toISOString(),
             cloudSignalId: dto.signalId,
-            isEdited: !!dto.lastEditedBy, // If lastEditedBy is present, it's edited
-            updatedAt: dto.lastEditedBy ? new Date().toISOString() : undefined // Fallback
+            isEdited: false, // Backend doesn't send lastEditedBy anymore
+            updatedAt: undefined
           }));
           setBackendActivePolls(mappedPolls);
         } else {
@@ -287,8 +287,6 @@ export default function ConsumerDashboard({
           if (currentSentAlerts.includes(threshold)) return;
 
           // Check if we're within the alert window
-          // Triggers when minutesUntilDeadline equals the threshold (e.g., 1 means 1m0s to 1m59s)
-          // For 1-minute alert, trigger if <= 1 minute left (covers 0m 0s to 1m 59s case) to ensure it's not missed
           const isAlertTime = threshold === 1
             ? minutesUntilDeadline <= 1 && minutesUntilDeadline >= 0
             : minutesUntilDeadline === threshold;
@@ -309,12 +307,10 @@ export default function ConsumerDashboard({
             }
 
             console.log(`[Alert] Triggering ${threshold}-minute alert for poll: ${poll.question}`);
-            console.log(`[Alert] Time until deadline: ${minutesUntilDeadline} minutes range`);
 
-            // Mark this alert as sent, updating the deadline if needed
+            // Mark this alert as sent
             setSentAlerts(prev => {
               const existing = prev[poll.id];
-              // If deadline changed, start fresh. Otherwise append to existing.
               const alerts = (existing && existing.deadline === poll.deadline)
                 ? [...existing.alerts, threshold]
                 : [threshold];
@@ -339,72 +335,72 @@ export default function ConsumerDashboard({
             const notification = new Notification(`Sentinel Alert: ${poll.publisherName}`, {
               body: `${threshold} min left: ${poll.question}`,
               silent: false,
-              icon: '/logo.png' // Add app logo to notification
+              icon: '/logo.png'
             });
 
             notification.onclick = () => {
-              // Restore and focus the window
               if ((window as any).electron) {
                 (window as any).electron.ipcRenderer.send('restore-window');
               }
               window.focus();
               setSelectedPoll(poll);
             };
+          }
+        });
 
-            // Only 1-minute alert can be persistent - check using client time
-            const timeUntilDeadline = new Date(poll.deadline).getTime() - new Date().getTime();
-            const isWithinOneMinute = timeUntilDeadline <= 60000 && timeUntilDeadline > 0;
+        // PERSISTENT ALERT CHECK - runs every second during last minute
+        // Check this OUTSIDE the notification loop so it runs continuously
+        const timeUntilDeadline = new Date(poll.deadline).getTime() - new Date().getTime();
+        const isWithinOneMinute = timeUntilDeadline <= 60000 && timeUntilDeadline > 0;
 
-            if (threshold === 1 && poll.isPersistentFinalAlert && isWithinOneMinute) {
-              // Check device status before showing persistent alert
-              if ((window as any).electron) {
-                (window as any).electron.getDeviceStatus().then((status: string) => {
-                  // Check if poll is expired before taking action
-                  const isExpired = new Date(poll.deadline) < new Date();
+        // Debug logging
+        if (poll.isPersistentFinalAlert && minutesUntilDeadline <= 1) {
+          console.log(`[Persistent Alert Debug] Poll: "${poll.question}"`);
+          console.log(`  - poll.isPersistentFinalAlert: ${poll.isPersistentFinalAlert}`);
+          console.log(`  - isWithinOneMinute: ${isWithinOneMinute} (timeUntil: ${Math.floor(timeUntilDeadline / 1000)}s)`);
+        }
 
-                  // Only auto-submit if device is LOCKED or SLEEPING (not idle!)
-                  if ((status === 'locked' || status === 'sleep') && !isExpired) {
-                    // Device is truly unavailable - auto-submit default response
-                    console.log(`[Sentinel] Auto-submitting default response due to device status: ${status}`);
+        if (poll.isPersistentFinalAlert && isWithinOneMinute && !showPersistentAlert) {
+          // Check device status before showing persistent alert
+          if ((window as any).electron) {
+            (window as any).electron.getDeviceStatus().then((status: string) => {
+              const isExpired = new Date(poll.deadline) < new Date();
 
-                    const response: Response = {
-                      pollId: poll.id,
-                      consumerEmail: user.email,
-                      response: poll.defaultResponse || '',
-                      submittedAt: new Date().toISOString(),
-                      isDefault: true,
-                      skipReason: `Auto-submitted: Device was ${status}`
-                    };
+              if ((status === 'locked' || status === 'sleep') && !isExpired) {
+                console.log(`[Sentinel] Auto-submitting default response due to device status: ${status}`);
 
-                    onSubmitResponse(response);
+                const response: Response = {
+                  pollId: poll.id,
+                  consumerEmail: user.email,
+                  response: poll.defaultResponse || '',
+                  submittedAt: new Date().toISOString(),
+                  isDefault: true,
+                  skipReason: `Auto-submitted: Device was ${status}`
+                };
 
-                    // Clear draft if exists
-                    setDrafts(prev => {
-                      const newDrafts = { ...prev };
-                      delete newDrafts[poll.id];
-                      return newDrafts;
-                    });
-                  } else if (isExpired) {
-                    // Poll is expired - dismiss persistent alert if shown
-                    console.log(`[Sentinel] Poll expired - dismissing persistent alert`);
-                    setShowPersistentAlert(false);
-                    setPersistentAlertPoll(null);
-                  } else {
-                    // Device is active OR idle - show persistent alert for both
-                    console.log(`[Sentinel] Showing persistent alert (device status: ${status})`);
-                    (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
-                    setPersistentAlertPoll(poll);
-                    setShowPersistentAlert(true);
-                  }
+                onSubmitResponse(response);
+
+                setDrafts(prev => {
+                  const newDrafts = { ...prev };
+                  delete newDrafts[poll.id];
+                  return newDrafts;
                 });
+              } else if (isExpired) {
+                console.log(`[Sentinel] Poll expired - dismissing persistent alert`);
+                setShowPersistentAlert(false);
+                setPersistentAlertPoll(null);
               } else {
-                // Fallback for non-electron env (dev)
+                console.log(`[Sentinel] ✅ SHOWING PERSISTENT ALERT (device status: ${status})`);
+                (window as any).electron.ipcRenderer.send('set-persistent-alert-active', true);
                 setPersistentAlertPoll(poll);
                 setShowPersistentAlert(true);
               }
-            }
+            });
+          } else {
+            setPersistentAlertPoll(poll);
+            setShowPersistentAlert(true);
           }
-        });
+        }
       });
     }, 1000); // Check every 1 second
 
@@ -508,6 +504,9 @@ export default function ConsumerDashboard({
   const getUserResponse = (pollId: string) => {
     return responses.find(r => r.pollId === pollId && r.consumerEmail === user.email);
   };
+
+  // Debug: Log persistent alert state on every render
+  console.log('[RENDER DEBUG] showPersistentAlert:', showPersistentAlert, '| persistentAlertPoll:', persistentAlertPoll?.question || 'null');
 
   return (
     <div className="min-h-screen bg-mono-bg">

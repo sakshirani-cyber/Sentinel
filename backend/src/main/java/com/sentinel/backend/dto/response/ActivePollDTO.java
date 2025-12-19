@@ -14,4 +14,8 @@ public class ActivePollDTO {
     private String[] options;
     private Instant endTimestamp;
     private Boolean anonymous;
+    private String defaultOption;
+    private Boolean defaultFlag;
+    private String publisherEmail;
+    private Boolean persistentAlert;
 }
