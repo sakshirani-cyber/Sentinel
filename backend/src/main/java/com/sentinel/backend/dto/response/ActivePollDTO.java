@@ -17,4 +17,5 @@ public class ActivePollDTO {
     private String defaultOption;
     private Boolean defaultFlag;
     private String publisherEmail;
+    private Boolean persistentAlert;
 }
