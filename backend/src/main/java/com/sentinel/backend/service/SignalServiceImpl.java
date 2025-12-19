@@ -209,7 +209,7 @@ public class SignalServiceImpl implements SignalService {
 
     protected void ensureDefaultsForExpired(Signal signal) {
 
-        if (!ACTIVE.equals(signal.getStatus()) || signal.getEndTimestamp() == null) return;
+        if (signal.getEndTimestamp() == null) return;
         if (Instant.now().isBefore(signal.getEndTimestamp())) return;
 
         if (!hasText(signal.getDefaultOption())) {
@@ -222,22 +222,25 @@ public class SignalServiceImpl implements SignalService {
 
         List<PollResult> inserts = new ArrayList<>();
 
-        for (String u : signal.getSharedWith()) {
-            if (!responded.contains(u)) {
-                PollResultId id = new PollResultId(signal.getId(), u);
+        for (String userId : signal.getSharedWith()) {
+            if (!responded.contains(userId)) {
+
+                PollResultId id = new PollResultId(signal.getId(), userId);
+
                 PollResult pr = new PollResult();
                 pr.setId(id);
                 pr.setSignal(signal);
+                pr.setSelectedOption(null);
                 pr.setDefaultResponse(signal.getDefaultOption());
+                pr.setReason(null);
                 pr.setTimeOfSubmission(signal.getEndTimestamp());
+
                 inserts.add(pr);
             }
         }
 
         if (!inserts.isEmpty()) pollResultRepository.saveAll(inserts);
 
-        signal.setStatus(COMPLETED);
-        signalRepository.save(signal);
     }
 
     private Signal getValidActivePollSignal(Integer signalId, String userId) {
