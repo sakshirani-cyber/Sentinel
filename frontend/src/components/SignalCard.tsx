@@ -1,5 +1,5 @@
 import { Poll, Response } from '../App';
-import { Clock, User, Shield, AlertCircle, Copy, CheckCircle, XCircle, Edit } from 'lucide-react';
+import { Clock, User, Shield, AlertCircle, CheckCircle, XCircle, Edit } from 'lucide-react';
 
 interface SignalCardProps {
   poll: Poll;
@@ -36,15 +36,6 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
     if (days > 0) return { text: `${days}d ${hours}h remaining`, isUrgent: false };
     if (hours > 0) return { text: `${hours}h ${minutes}m remaining`, isUrgent };
     return { text: `${minutes}m remaining`, isUrgent: true };
-  };
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const text = `Signal: ${poll.question}\nFrom: ${poll.publisherName}\nDeadline: ${formatDateTime(poll.deadline)}\nID: ${poll.id}`;
-    navigator.clipboard.writeText(text);
-
-    // Could add a toast notification here
-    alert('Signal details copied to clipboard!');
   };
 
   const timeRemaining = getTimeRemaining();
@@ -170,14 +161,8 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
         )}
 
         {/* Copy button only */}
-        <div className="flex items-center justify-end pt-3 border-t border-mono-primary/20">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-mono-text/70 hover:text-mono-text hover:bg-mono-primary/5 rounded transition-colors"
-          >
-            <Copy className="w-3 h-3" />
-            Copy
-          </button>
+        <div className="flex items-center justify-end gap-2">
+          {/* Removed copy button */}
         </div>
       </div>
     </div>
