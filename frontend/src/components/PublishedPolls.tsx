@@ -280,8 +280,8 @@ export default function PublishedPolls({
       {/* Details Modal */}
       {selectedPollForDetails && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-mono-primary/10 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
+          <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-mono-primary/10 animate-in zoom-in-95 duration-200">
+            <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
               <h2 className="text-mono-text text-lg font-medium">Poll Details</h2>
               <button
                 onClick={() => setSelectedPollForDetails(null)}
