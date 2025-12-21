@@ -138,13 +138,15 @@ export async function submitVote(
 ): Promise<void> {
     console.log('[Backend API] Submitting vote:', { signalId, userId, selectedOption, defaultResponse, reason });
 
-    const request: SubmitPollRequest = {
+    const request: any = {
         signalId,
-        userId,
-        selectedOption,
-        defaultResponse,
-        reason
+        userId
     };
+    if (selectedOption !== undefined) request.selectedOption = selectedOption;
+    if (defaultResponse !== undefined) request.defaultResponse = defaultResponse;
+    if (reason !== undefined) request.reason = reason;
+
+    console.log('[Backend API] Request object:', request);
     await apiClient.post<ApiResponse<void>>('/api/signals/poll/response', request);
 
     console.log('[Backend API] Vote submitted successfully');

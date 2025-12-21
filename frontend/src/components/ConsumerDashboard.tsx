@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { User, Poll, Response } from '../App';
 import { mapResultsToResponses } from '../services/pollService';
 import { Clock, CheckCircle, LogOut, ArrowRightLeft, AlertTriangle, BarChart3 } from 'lucide-react';
@@ -15,6 +15,8 @@ interface ConsumerDashboardProps {
   onSubmitResponse: (response: Response) => void;
   onSwitchMode: () => void;
   onLogout: () => void;
+  successMessage?: string | null;
+  onClearMessage?: () => void;
 }
 
 export default function ConsumerDashboard({
@@ -23,7 +25,9 @@ export default function ConsumerDashboard({
   responses,
   onSubmitResponse,
   onSwitchMode,
-  onLogout
+  onLogout,
+  successMessage,
+  onClearMessage
 }: ConsumerDashboardProps) {
   const [activeTab, setActiveTab] = useState<'incomplete' | 'completed' | 'analytics'>('incomplete');
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
@@ -161,12 +165,33 @@ export default function ConsumerDashboard({
   const userPolls = displayPolls.filter(p => p.consumers.includes(user.email));
 
   // Get incomplete polls - ALWAYS use backend data for accurate badge count
-  const incompletePolls = backendActivePolls;
+  // BUT we must also filter out polls we've processed locally but backend hasn't updated yet (optimistic UI)
+  // Threshold: If we have a local response from the last 60 seconds, treat it as "just submitted".
+  // If the response is older, and the poll is STILL in backendActivePolls, it means the poll was likely 
+  // redirected/republished or the backend cleared the response (Republish = ON).
+  const incompletePolls = useMemo(() => {
+    const now = Date.now();
+    return backendActivePolls.filter(p => {
+      const latestResp = responses
+        .filter(r => r.pollId === p.id && r.consumerEmail === user.email)
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
+
+      if (!latestResp) return true;
+
+      const isSubmittingNow = (now - new Date(latestResp.submittedAt).getTime()) < 60000;
+      return !isSubmittingNow;
+    });
+  }, [backendActivePolls, responses, user.email]);
 
   // Get completed polls (moved here to access userPolls)
-  const completedPolls = userPolls.filter(p => {
-    return responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
-  }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
+  // Logic: Poll is completed if we have a response AND it's not currently in incompletePolls (handles move-back on republish)
+  const completedPolls = useMemo(() => {
+    return userPolls.filter(p => {
+      const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
+      const isReassigned = incompletePolls.some(ip => ip.id === p.id);
+      return hasResponse && !isReassigned;
+    }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
+  }, [userPolls, responses, incompletePolls, user.email]);
 
   // Notify when new polls are assigned to the user
   useEffect(() => {
@@ -253,7 +278,7 @@ export default function ConsumerDashboard({
         };
       }
     });
-  }, [userPolls, notifiedUpdates]);
+  }, [incompletePolls, notifiedUpdates]);
 
   // Check for alerts
   useEffect(() => {
@@ -450,7 +475,8 @@ export default function ConsumerDashboard({
     setDrafts(prev => ({ ...prev, [pollId]: value }));
   };
 
-  const handleSubmit = (pollId: string, value: string) => {
+  const handleSubmit = async (pollId: string, value: string) => {
+    // Optimistic UI update
     const response: Response = {
       pollId,
       consumerEmail: user.email,
@@ -458,12 +484,18 @@ export default function ConsumerDashboard({
       submittedAt: new Date().toISOString(),
       isDefault: false
     };
-    onSubmitResponse(response);
 
-    // Unlock window when submitting from persistent alert
-    if ((window as any).electron) {
-      (window as any).electron.ipcRenderer.send('set-persistent-alert-active', false);
-      (window as any).electron.ipcRenderer.send('set-always-on-top', false);
+    await onSubmitResponse(response);
+    setSelectedPoll(null);
+
+    // If this was from persistent alert, close it
+    if (showPersistentAlert && persistentAlertPoll?.id === pollId) {
+      setShowPersistentAlert(false);
+      setPersistentAlertPoll(null);
+      if ((window as any).electron) {
+        (window as any).electron.ipcRenderer.send('set-persistent-alert-active', false);
+        (window as any).electron.ipcRenderer.send('set-always-on-top', false);
+      }
     }
 
     // Clear draft
@@ -472,24 +504,20 @@ export default function ConsumerDashboard({
       delete newDrafts[pollId];
       return newDrafts;
     });
-
-    // Close persistent alert if it was open
-    setShowPersistentAlert(false);
-    setPersistentAlertPoll(null);
-    setSelectedPoll(null);
   };
 
-  const handleSkip = (pollId: string, reason: string) => {
+  const handleSkip = async (pollId: string, reason: string) => {
+    // Submit response as skipped with default/placeholder logic
     const poll = polls.find(p => p.id === pollId);
     const response: Response = {
       pollId,
       consumerEmail: user.email,
-      response: poll?.defaultResponse || '',
+      response: poll?.defaultResponse || 'Skipped', // Ensure non-empty value for SQL/Backend validation
       submittedAt: new Date().toISOString(),
       isDefault: true,
       skipReason: reason
     };
-    onSubmitResponse(response);
+    await onSubmitResponse(response);
 
     // Unlock window when alert is dismissed
     if ((window as any).electron) {
@@ -572,6 +600,25 @@ export default function ConsumerDashboard({
           </div>
         </div>
       </header>
+
+      {/* Success Message Banner */}
+      {successMessage && (
+        <div className="bg-green-500 text-white px-4 py-3 shadow-md flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-medium">{successMessage}</span>
+          </div>
+          {onClearMessage && (
+            <button
+              onClick={onClearMessage}
+              className="text-white/80 hover:text-white transition-colors"
+              aria-label="Close message"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Navigation Tabs */}
       <div className="bg-mono-primary/5 border-b border-mono-primary/10">
@@ -727,7 +774,6 @@ export default function ConsumerDashboard({
                   const pollResponses = responses.filter(r => r.pollId === poll.id);
                   const responseCount = pollResponses.length;
                   const totalConsumers = poll.consumers.length;
-                  const responseRate = totalConsumers > 0 ? (responseCount / totalConsumers) * 100 : 0;
 
                   return (
                     <div

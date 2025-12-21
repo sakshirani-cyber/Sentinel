@@ -1,19 +1,27 @@
 import { useState } from 'react';
-import { Shield, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Sparkles, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import logo from '../assets/logo.png';
 
 interface AuthPageProps {
-    onLogin: (email: string, password: string) => void;
+    onLogin: (email: string, password: string) => Promise<void>;
+    error?: string | null;
+    success?: string | null;
 }
 
-export default function AuthPage({ onLogin }: AuthPageProps) {
+export default function AuthPage({ onLogin, error, success }: AuthPageProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (email && password) {
-            onLogin(email, password);
+            setIsLoading(true);
+            try {
+                await onLogin(email, password);
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -109,6 +117,26 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
                         </div>
 
                         <div className="relative p-8">
+                            {/* Error Message */}
+                            {error && (
+                                <div className="mb-4 p-4 bg-red-500/10 border-2 border-red-500/30 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                        <p className="text-red-500 font-medium text-sm">{error}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Success Message */}
+                            {success && (
+                                <div className="mb-4 p-4 bg-green-500/10 border-2 border-green-500/30 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                        <p className="text-green-500 font-medium text-sm">{success}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             <form onSubmit={handleSubmit} className="space-y-5">
                                 <div>
                                     <label htmlFor="email" className="block text-mono-text/70 mb-2">
@@ -152,10 +180,20 @@ export default function AuthPage({ onLogin }: AuthPageProps) {
 
                                 <button
                                     type="submit"
-                                    className="relative w-full bg-mono-primary text-mono-bg py-4 rounded-xl hover:bg-mono-accent hover:text-mono-primary transition-all shadow-lg flex items-center justify-center gap-2 group overflow-hidden"
+                                    disabled={isLoading}
+                                    className="relative w-full bg-mono-primary text-mono-bg py-4 rounded-xl hover:bg-mono-accent hover:text-mono-primary transition-all shadow-lg flex items-center justify-center gap-2 group overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-mono-primary"
                                 >
-                                    <span className="relative">Sign in</span>
-                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform relative" />
+                                    {isLoading ? (
+                                        <>
+                                            <Loader className="w-5 h-5 animate-spin" />
+                                            <span className="relative">Signing in...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="relative">Sign in</span>
+                                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform relative" />
+                                        </>
+                                    )}
                                 </button>
                             </form>
 

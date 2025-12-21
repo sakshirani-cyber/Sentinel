@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Poll, Response } from '../App';
-import { mapResultsToResponses, PollResultDTO } from '../services/pollService';
-import { Clock, Users, BarChart3, Eye, Trash2, Calendar, Edit, PenTool } from 'lucide-react';
+import { mapResultsToResponses } from '../services/pollService';
+import { Clock, Users, BarChart3, Trash2, Calendar, Edit, PenTool, X, Eye } from 'lucide-react';
 import AnalyticsView from './AnalyticsView';
 import EditPollModal from './EditPollModal';
 
@@ -22,6 +22,8 @@ export default function PublishedPolls({
   const [analyticsResponses, setAnalyticsResponses] = useState<Response[]>([]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [selectedPollForDetails, setSelectedPollForDetails] = useState<Poll | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [detailsStats, setDetailsStats] = useState<{ total: number; responded: number } | null>(null);
   const [selectedPollForEdit, setSelectedPollForEdit] = useState<Poll | null>(null);
 
   const formatDateTime = (dateString: string) => {
@@ -53,6 +55,28 @@ export default function PublishedPolls({
 
   const getResponseCount = (pollId: string) => {
     return responses.filter(r => r.pollId === pollId).length;
+  };
+
+  const handleDetailsClick = async (poll: Poll) => {
+    setSelectedPollForDetails(poll);
+    setDetailsStats(null);
+
+    if (poll.cloudSignalId && (window as any).electron?.backend) {
+      setLoadingDetails(true);
+      try {
+        const result = await (window as any).electron.backend.getPollResults(poll.cloudSignalId);
+        if (result.success && result.data) {
+          setDetailsStats({
+            total: result.data.totalAssigned,
+            responded: result.data.totalResponded
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching poll details stats:', error);
+      } finally {
+        setLoadingDetails(false);
+      }
+    }
   };
 
   const sortedPolls = [...polls].sort((a, b) => {
@@ -185,7 +209,7 @@ export default function PublishedPolls({
 
                 <div className="flex gap-2 pt-4 border-t border-mono-primary/5">
                   <button
-                    onClick={() => setSelectedPollForDetails(poll)}
+                    onClick={() => handleDetailsClick(poll)}
                     className="flex items-center gap-2 px-4 py-2 bg-mono-primary/5 text-mono-text rounded-lg hover:bg-mono-primary/10 transition-colors text-sm font-medium"
                   >
                     <Eye className="w-4 h-4" />
@@ -263,10 +287,42 @@ export default function PublishedPolls({
                 onClick={() => setSelectedPollForDetails(null)}
                 className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors"
               >
-                <Eye className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
+              {/* Sync Status / Real-time Stats */}
+              <div className="flex items-center justify-between p-4 bg-mono-accent/10 border border-mono-accent/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="w-5 h-5 text-mono-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-mono-primary">Real-time Stats</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {loadingDetails ? (
+                    <div className="flex items-center gap-2 text-sm text-mono-text/60">
+                      <div className="w-4 h-4 border-2 border-mono-primary/30 border-t-mono-primary rounded-full animate-spin" />
+                      Syncing...
+                    </div>
+                  ) : detailsStats ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-mono-text">
+                        {detailsStats.responded} / {detailsStats.total} Responded
+                      </p>
+                      <div className="w-24 bg-mono-primary/10 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-mono-accent h-full transition-all duration-500"
+                          style={{ width: `${detailsStats.total > 0 ? (detailsStats.responded / detailsStats.total) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-mono-text/40">Stats unavailable</p>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <p className="text-sm text-mono-text/60 mb-1 font-medium">Question</p>
                 <p className="text-mono-text text-lg">{selectedPollForDetails.question}</p>
@@ -302,10 +358,6 @@ export default function PublishedPolls({
                   <div className="p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
                     <span className="text-xs text-mono-text/60 block">Persistent Alert</span>
                     <span className="text-mono-text font-medium">{selectedPollForDetails.isPersistentAlert ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
-                    <span className="text-xs text-mono-text/60 block">Alert Timing</span>
-                    <span className="text-mono-text font-medium">{selectedPollForDetails.alertBeforeMinutes} min before</span>
                   </div>
                 </div>
               </div>

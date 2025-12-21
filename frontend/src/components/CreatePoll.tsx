@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User, Poll } from '../App';
-import { Plus, X, Eye, Check, AlertCircle, Upload } from 'lucide-react';
+import { Plus, X, Eye, Check, Upload, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PollPreview from './PollPreview';
 
@@ -25,6 +25,8 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Set minimum datetime to current time
   const getMinDateTime = () => {
@@ -44,7 +46,9 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   ];
 
   const handleAddOption = () => {
-    setOptions([...options, '']);
+    if (options.length < 10) {
+      setOptions([...options, '']);
+    }
   };
 
   const handleRemoveOption = (index: number) => {
@@ -124,46 +128,66 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
     return uniqueOptions.size !== validOptions.length;
   };
 
-  const handlePublish = () => {
-    const validOptions = options.filter(o => o.trim());
-    const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
+  const handlePublish = async () => {
+    setShowErrors(true); // Always show errors when clicking publish
+    if (!isValid) {
+      // Small delay to allow showErrors to trigger re-render and display error messages
+      setTimeout(() => {
+        const firstError = document.querySelector('.text-red-500');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+      return;
+    }
 
-    const poll: Poll = {
-      id: `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      publisherEmail: user.email,
-      publisherName: user.name,
-      question,
-      options: validOptions.map((text, index) => ({
-        id: `opt-${index}`,
-        text: text.trim()
-      })),
-      defaultResponse: finalDefaultResponse,
-      showDefaultToConsumers,
-      anonymityMode,
-      deadline,
-      isPersistentFinalAlert,
-      consumers: selectedConsumers,
-      publishedAt: new Date().toISOString(),
-      status: 'active',
-      isPersistentAlert: false,
-      alertBeforeMinutes: 15
-    };
+    setIsPublishing(true);
+    try {
+      const validOptions = options.filter(o => o.trim());
+      const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
 
-    onCreatePoll(poll);
+      const poll: Poll = {
+        id: `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        publisherEmail: user.email,
+        publisherName: user.name,
+        question,
+        options: validOptions.map((text, index) => ({
+          id: `opt-${index}`,
+          text: text.trim()
+        })),
+        defaultResponse: finalDefaultResponse,
+        showDefaultToConsumers,
+        anonymityMode,
+        deadline,
+        isPersistentFinalAlert,
+        consumers: selectedConsumers,
+        publishedAt: new Date().toISOString(),
+        status: 'active',
+        isPersistentAlert: false,
+        alertBeforeMinutes: 15
+      };
 
-    // Reset form
-    setQuestion('');
-    setOptions(['', '']);
-    setDefaultResponse('');
-    setCustomDefault('');
-    setUseCustomDefault(false);
-    setShowDefaultToConsumers(false);
-    setAnonymityMode('record');
-    setDeadline('');
-    setIsPersistentFinalAlert(false);
-    setSelectedConsumers([]);
-    setShowPreview(false);
-    setUploadStats(null);
+      await onCreatePoll(poll);
+
+      // Reset form
+      setQuestion('');
+      setOptions(['', '']);
+      setDefaultResponse('');
+      setCustomDefault('');
+      setUseCustomDefault(false);
+      setShowDefaultToConsumers(false);
+      setAnonymityMode('record');
+      setDeadline('');
+      setIsPersistentFinalAlert(false);
+      setSelectedConsumers([]);
+      setShowPreview(false);
+      setUploadStats(null);
+      setShowErrors(false);
+    } catch (error) {
+      console.error('Error publishing poll:', error);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const isDateValid = (dateStr: string) => {
@@ -201,10 +225,16 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !question.trim()
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-slate-300 focus:ring-blue-500'
+                }`}
               placeholder="e.g., Are you on leave tomorrow?"
               autoFocus
             />
+            {showErrors && !question.trim() && (
+              <p className="text-red-500 text-xs mt-1">Question is required</p>
+            )}
           </div>
 
           {/* Options */}
@@ -220,7 +250,10 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                     type="text"
                     value={option}
                     onChange={(e) => handleOptionChange(index, e.target.value)}
-                    className="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`flex-1 px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !option.trim()
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-slate-300 focus:ring-blue-500'
+                      }`}
                     placeholder={`Option ${index + 1}`}
                   />
                   {options.length > 2 && (
@@ -233,12 +266,19 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   )}
                 </div>
               ))}
+              {showErrors && options.filter(o => o.trim()).length < 2 && (
+                <p className="text-red-500 text-xs mt-1">At least 2 options are required</p>
+              )}
+              {showErrors && hasDuplicateOptions() && (
+                <p className="text-red-500 text-xs mt-1">Duplicate options are not allowed</p>
+              )}
               <button
                 onClick={handleAddOption}
-                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                disabled={options.length >= 10}
+                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
-                Add Option
+                Add Option {options.length >= 10 && <span className="text-xs text-slate-500">(Limit reached)</span>}
               </button>
             </div>
           </div>
@@ -271,14 +311,20 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   type="text"
                   value={customDefault}
                   onChange={(e) => setCustomDefault(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !customDefault.trim()
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-slate-300 focus:ring-blue-500'
+                    }`}
                   placeholder="e.g., I don't know, N/A, They are on leave tomorrow"
                 />
               ) : (
                 <select
                   value={defaultResponse}
                   onChange={(e) => setDefaultResponse(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !defaultResponse
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-slate-300 focus:ring-blue-500'
+                    }`}
                 >
                   <option value="">Select from options</option>
                   {options.filter(o => o.trim()).map((option, index) => (
@@ -287,6 +333,9 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                     </option>
                   ))}
                 </select>
+              )}
+              {showErrors && !(useCustomDefault ? customDefault.trim() : defaultResponse) && (
+                <p className="text-red-500 text-xs mt-1">Default response is required</p>
               )}
             </div>
           </div>
@@ -318,7 +367,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-2 focus:ring-blue-500"
               />
               <label htmlFor="persistent" className="text-slate-700">
-                Make final alert (1 min before deadline) persistent
+                Make final alert (1 min) persistent
                 <p className="text-sm text-slate-500 mt-1">
                   The 1-minute warning will require action before it can be dismissed
                 </p>
@@ -374,9 +423,15 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               type="datetime-local"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !isDateValid(deadline)
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-slate-300 focus:ring-blue-500'
+                }`}
               min={getMinDateTime()}
             />
+            {showErrors && !isDateValid(deadline) && (
+              <p className="text-red-500 text-xs mt-1">Please select a valid future date</p>
+            )}
             <p className="text-sm text-slate-500 mt-2">
               Notifications will be sent at 60, 30, 15, and 1 minute before this deadline
             </p>
@@ -459,6 +514,9 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 </label>
               ))}
             </div>
+            {showErrors && selectedConsumers.length === 0 && (
+              <p className="text-red-500 text-xs mt-1">At least one consumer must be selected</p>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -474,34 +532,26 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
 
             <button
               onClick={handlePublish}
-              disabled={!isValid}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+              disabled={isPublishing}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md min-w-[140px] justify-center"
             >
-              <Check className="w-4 h-4" />
-              Publish Poll
+              {isPublishing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  Publish Poll
+                </>
+              )}
             </button>
           </div>
 
-          {!isValid && (
-            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
-                <p>Please ensure:</p>
-                <ul className="list-disc list-inside ml-1">
-                  {!question.trim() && <li>Question is filled</li>}
-                  {options.filter(o => o.trim()).length < 2 && <li>At least 2 options are provided</li>}
-                  {hasDuplicateOptions() && <li>Options don't have duplicates (case-insensitive)</li>}
-                  {!(useCustomDefault ? customDefault.trim() : defaultResponse) && <li>Default response is selected</li>}
-                  {!isDateValid(deadline) && <li>Deadline is in the future</li>}
-                  {selectedConsumers.length === 0 && <li>At least one consumer is selected</li>}
-                </ul>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Preview Modal */}
       {showPreview && (
         <PollPreview
           poll={{

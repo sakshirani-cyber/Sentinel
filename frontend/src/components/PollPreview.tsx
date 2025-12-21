@@ -1,5 +1,5 @@
 import { Poll } from '../App';
-import { X, Clock, User, Shield, AlertCircle, Bell } from 'lucide-react';
+import { X, Clock, User, Shield, AlertCircle } from 'lucide-react';
 
 interface PollPreviewProps {
   poll: Poll;
@@ -22,13 +22,13 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
     const now = new Date();
     const deadline = new Date(poll.deadline);
     const diff = deadline.getTime() - now.getTime();
-    
+
     if (diff < 0) return 'Expired';
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (days > 0) return `${days}d ${hours}h remaining`;
     if (hours > 0) return `${hours}h ${minutes}m remaining`;
     return `${minutes}m remaining`;
@@ -55,27 +55,6 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-8">
-          {/* Notification Preview */}
-          <div>
-            <h3 className="text-slate-900 mb-3 flex items-center gap-2">
-              <Bell className="w-5 h-5" />
-              Desktop Notification View
-            </h3>
-            <div className="bg-white border-2 border-blue-500 rounded-xl shadow-lg p-4 max-w-md">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-white">S</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-900">New Signal from {poll.publisherName}</p>
-                  <p className="text-sm text-slate-600 truncate">{poll.question}</p>
-                </div>
-              </div>
-              <button className="w-full bg-blue-600 text-white py-2 rounded-lg">
-                Fill
-              </button>
-            </div>
-          </div>
 
           {/* Consumer Dashboard View */}
           <div>
@@ -98,11 +77,10 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs ${
-                      getTimeRemaining().includes('remaining') 
-                        ? 'bg-amber-100 text-amber-700' 
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs ${getTimeRemaining().includes('remaining')
+                        ? 'bg-amber-100 text-amber-700'
                         : 'bg-red-100 text-red-700'
-                    }`}>
+                      }`}>
                       {getTimeRemaining()}
                     </span>
                   </div>
@@ -176,7 +154,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                       <strong>Persistent Alert Enabled</strong>
                     </p>
                     <p className="text-sm text-amber-700">
-                      An alert will appear {poll.alertBeforeMinutes} minutes before the deadline. 
+                      An alert will appear {poll.alertBeforeMinutes} minutes before the deadline.
                       Consumers must either fill the poll or provide a reason to skip.
                     </p>
                   </div>

@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Poll } from '../App';
-import { AlertTriangle, ArrowRight, SkipForward } from 'lucide-react';
+import { AlertTriangle, ArrowRight, SkipForward, Loader } from 'lucide-react';
 
 interface PersistentAlertProps {
   poll: Poll;
-  onSkip: (pollId: string, reason: string) => void;
+  onSkip: (pollId: string, reason: string) => Promise<void>;
   onFill: () => void;
 }
 
 export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAlertProps) {
   const [showReasonInput, setShowReasonInput] = useState(false);
   const [skipReason, setSkipReason] = useState('');
+  const [isSkipping, setIsSkipping] = useState(false);
 
   const getMinutesRemaining = () => {
     const now = new Date();
@@ -20,9 +21,14 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
     return minutes;
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (skipReason.trim()) {
-      onSkip(poll.id, skipReason);
+      setIsSkipping(true);
+      try {
+        await onSkip(poll.id, skipReason);
+      } finally {
+        setIsSkipping(false);
+      }
     }
   };
 
@@ -108,10 +114,17 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
                 </button>
                 <button
                   onClick={handleSkip}
-                  disabled={!skipReason.trim()}
-                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all"
+                  disabled={!skipReason.trim() || isSkipping}
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all flex items-center justify-center gap-2"
                 >
-                  Confirm Skip
+                  {isSkipping ? (
+                    <>
+                      <Loader className="w-5 h-5 animate-spin" />
+                      <span>Skipping...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Skip</span>
+                  )}
                 </button>
               </div>
             </div>

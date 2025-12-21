@@ -142,9 +142,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: false, error: error.message };
             }
         });
-        electron_1.ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption }) => {
+        electron_1.ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption, defaultResponse, reason }) => {
             try {
-                await backendApi.submitVote(signalId, userId, selectedOption);
+                await backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason);
                 return { success: true };
             }
             catch (error) {

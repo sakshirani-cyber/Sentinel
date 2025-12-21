@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { Poll } from '../App';
-import { X, Send, AlertCircle, Clock, Shield, ArrowLeft } from 'lucide-react';
+import { X, Send, AlertCircle, Clock, Shield, ArrowLeft, Loader } from 'lucide-react';
 
 interface SignalDetailProps {
   poll: Poll;
   draft?: string;
   onSaveDraft: (pollId: string, value: string) => void;
-  onSubmit: (pollId: string, value: string) => void;
+  onSubmit: (pollId: string, value: string) => Promise<void>;
   onClose: () => void;
   isPersistentContext?: boolean; // New prop to indicate if opened from persistent alert
 }
@@ -15,6 +15,7 @@ interface SignalDetailProps {
 export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClose, isPersistentContext = false }: SignalDetailProps) {
   const [selectedValue, setSelectedValue] = useState(draft || '');
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     // Auto-save draft every 30 seconds
@@ -35,8 +36,13 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
     }
   };
 
-  const confirmSubmit = () => {
-    onSubmit(poll.id, selectedValue);
+  const confirmSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(poll.id, selectedValue);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatDateTime = (dateString: string) => {
@@ -228,9 +234,17 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
               </button>
               <button
                 onClick={confirmSubmit}
-                className="flex-1 px-4 py-3 bg-mono-primary text-mono-bg rounded-xl hover:bg-mono-primary/90 transition-colors font-medium"
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-3 bg-mono-primary text-mono-bg rounded-xl hover:bg-mono-primary/90 transition-colors font-medium flex items-center justify-center gap-2"
               >
-                Confirm
+                {isSubmitting ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Confirm</span>
+                )}
               </button>
             </div>
           </div>

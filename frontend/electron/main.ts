@@ -118,9 +118,9 @@ app.whenReady().then(async () => {
             }
         });
 
-        ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption }) => {
+        ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption, defaultResponse, reason }) => {
             try {
-                await backendApi.submitVote(signalId, userId, selectedOption);
+                await backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason);
                 return { success: true };
             } catch (error: any) {
                 console.error('Backend API - Submit Vote Error:', error.message);

@@ -53,6 +53,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   // We need a view mode state to allow publishers to switch to consumer view
   const [viewMode, setViewMode] = useState<'publisher' | 'consumer'>('publisher');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginSuccess, setLoginSuccess] = useState<string | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -85,6 +88,9 @@ function App() {
   }, [user]);
 
   const handleLogin = async (email: string, password: string) => {
+    setLoginError(null);
+    setLoginSuccess(null);
+
     try {
       if ((window as any).electron?.backend) {
         console.log('[Frontend] Attempting login via backend:', email);
@@ -92,7 +98,11 @@ function App() {
 
         if (result.success) {
           console.log('[Frontend] Login successful, role:', result.data);
-          const role = result.data; // "PUBLISHER" or "CONSUMER"
+
+          setLoginSuccess('Login successful! Loading dashboard...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          const role = result.data;
           const isPublisher = role === 'PUBLISHER';
 
           const userData: User = {
@@ -104,10 +114,9 @@ function App() {
           setUser(userData);
         } else {
           console.error('[Frontend] Login failed:', result.error);
-          alert('Login failed: ' + result.error);
+          setLoginError(result.error || 'Login failed');
         }
       } else {
-        // Fallback for dev without electron (shouldn't happen in prod)
         console.warn('[Frontend] Backend API not available, using mock login');
         const isPublisher = email.toLowerCase().startsWith('hr') || email.toLowerCase().includes('admin');
         const userData: User = {
@@ -120,12 +129,14 @@ function App() {
       }
     } catch (error) {
       console.error('[Frontend] Login error:', error);
-      alert('Login error occurred');
+      setLoginError('An error occurred during login');
     }
   };
 
   const handleLogout = () => {
     setUser(null);
+    setLoginSuccess(null);
+    setLoginError(null);
   };
 
   const handleCreatePoll = async (newPoll: Poll) => {
@@ -158,6 +169,13 @@ function App() {
         const result = await (window as any).electron.db.createPoll(newPoll);
         if (result.success) {
           setPolls(prev => [...prev, newPoll]);
+
+          // Redirect to consumer view with success message
+          setViewMode('consumer');
+          setSuccessMessage('Poll published successfully!');
+
+          // Clear message after 5 seconds
+          setTimeout(() => setSuccessMessage(null), 5000);
         } else {
           console.error('Failed to create poll locally:', result.error);
           alert('Failed to create poll: ' + result.error);
@@ -279,17 +297,90 @@ function App() {
 
   const handleSubmitResponse = async (response: Response) => {
     try {
-      const poll = polls.find(p => p.id === response.pollId);
-      if (!poll) throw new Error('Poll not found');
+      // Find poll by ID or by cloudSignalId (for backend polls)
+      let poll = polls.find(p => p.id === response.pollId);
+
+      // If not found, try to find by cloudSignalId (backend polls use signalId.toString() as ID)
+      if (!poll) {
+        poll = polls.find(p => p.cloudSignalId?.toString() === response.pollId);
+      }
+
+      if (!poll) {
+        // Poll might be a backend-only poll (from Consumer Dashboard's backendActivePolls)
+        // In this case, pollId is actually the signalId
+        console.log('[Frontend] Poll not in local array, assuming backend-only poll');
+        const cloudSignalId = parseInt(response.pollId);
+        if (!isNaN(cloudSignalId) && (window as any).electron?.backend) {
+          console.log('[Frontend] Calling backend to submit vote for backend-only poll:', response.pollId, {
+            reason: response.skipReason
+          });
+
+          // For backend-only polls, we don't have the local poll object to get defaultResponse
+          // We rely on response.response being set correctly by ConsumerDashboard
+          let finalSelectedOption: any = undefined;
+          let finalReason: any = undefined;
+
+          if (response.skipReason) {
+            finalReason = response.skipReason;
+          } else {
+            finalSelectedOption = response.response || "No Option Selected";
+          }
+
+          try {
+            const backendResult = await (window as any).electron.backend.submitVote(
+              cloudSignalId,
+              response.consumerEmail,
+              finalSelectedOption,
+              undefined,
+              finalReason
+            );
+            console.log('[Frontend] Backend submit vote result:', backendResult);
+
+            if (backendResult.success) {
+              // Just add to responses without local DB since poll isn't in local DB
+              setResponses(prev => [...prev, response]);
+              return; // Success, exit early
+            } else {
+              throw new Error(backendResult.error || 'Failed to submit vote to backend');
+            }
+          } catch (backendError) {
+            console.error('[Frontend] Backend error:', backendError);
+            throw backendError;
+          }
+        } else {
+          throw new Error('Poll not found');
+        }
+      }
 
       // Try to submit to backend if poll is synced via Electron IPC
       if (poll.cloudSignalId && (window as any).electron?.backend) {
-        console.log('[Frontend] Calling backend to submit vote:', { cloudSignalId: poll.cloudSignalId, userId: response.consumerEmail, option: response.response });
+        console.log('[Frontend] Calling backend to submit vote:', {
+          cloudSignalId: poll.cloudSignalId,
+          userId: response.consumerEmail,
+          option: response.response,
+          reason: response.skipReason
+        });
+
+        // Ensure we only send ONE response type to the backend
+        let finalSelectedOption: any = undefined;
+        let finalDefaultResponse: any = undefined;
+        let finalReason: any = undefined;
+
+        if (response.skipReason) {
+          finalReason = response.skipReason;
+        } else if (response.isDefault) {
+          finalDefaultResponse = response.response || poll.defaultResponse;
+        } else {
+          finalSelectedOption = response.response;
+        }
+
         try {
           const backendResult = await (window as any).electron.backend.submitVote(
             poll.cloudSignalId,
             response.consumerEmail,
-            response.response
+            finalSelectedOption,
+            finalDefaultResponse,
+            finalReason
           );
           console.log('[Frontend] Backend submit vote result:', backendResult);
 
@@ -305,15 +396,34 @@ function App() {
         console.log('[Frontend] Skipping backend vote - poll not synced or backend unavailable');
       }
 
-      // Always save to local DB
+      // Try to save to local DB, but handle gracefully if poll doesn't exist in local DB
       if ((window as any).electron) {
-        const result = await (window as any).electron.db.submitResponse(response);
-        if (result.success) {
-          setResponses(prev => [...prev, response]);
-        } else {
-          console.error('Failed to submit response:', result.error);
-          alert('Failed to submit response: ' + result.error);
+        try {
+          const result = await (window as any).electron.db.submitResponse(response);
+          if (result.success) {
+            setResponses(prev => [...prev, response]);
+          } else {
+            // Check if it's a FOREIGN KEY error
+            if (result.error && result.error.includes('FOREIGN KEY')) {
+              console.log('[Frontend] Poll not in local DB, skipping local save (response submitted to backend)');
+              setResponses(prev => [...prev, response]);
+            } else {
+              console.error('Failed to submit response:', result.error);
+              alert('Failed to submit response: ' + result.error);
+            }
+          }
+        } catch (dbError: any) {
+          // If it's a FOREIGN KEY error, the poll isn't in local DB
+          if (dbError.message && dbError.message.includes('FOREIGN KEY')) {
+            console.log('[Frontend] Poll not in local DB (caught exception), skipping local save');
+            setResponses(prev => [...prev, response]);
+          } else {
+            throw dbError;
+          }
         }
+      } else {
+        // No electron, just add to state
+        setResponses(prev => [...prev, response]);
       }
     } catch (error) {
       console.error('Error submitting response:', error);
@@ -330,7 +440,7 @@ function App() {
   }
 
   if (!user) {
-    return <AuthPage onLogin={handleLogin} />;
+    return <AuthPage onLogin={handleLogin} error={loginError} success={loginSuccess} />;
   }
 
   if (viewMode === 'publisher' && user.isPublisher) {
@@ -356,6 +466,8 @@ function App() {
       onSubmitResponse={handleSubmitResponse}
       onSwitchMode={() => user.isPublisher && setViewMode('publisher')}
       onLogout={handleLogout}
+      successMessage={successMessage}
+      onClearMessage={() => setSuccessMessage(null)}
     />
   );
 }

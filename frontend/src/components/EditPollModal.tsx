@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Poll } from '../App';
-import { Plus, X, Save, AlertCircle, Upload, Check } from 'lucide-react';
+import { Plus, X, Check, Upload, AlertCircle, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface EditPollModalProps {
@@ -12,7 +12,7 @@ interface EditPollModalProps {
 export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModalProps) {
     const getMinDateTime = () => {
         const now = new Date();
-        now.setMinutes(now.getMinutes());
+        now.setMinutes(now.getMinutes() + 1); // Move 1 minute ahead in case of slight delay
         return now.toISOString().slice(0, 16);
     };
 
@@ -35,6 +35,8 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [republish, setRepublish] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
+    const [showErrors, setShowErrors] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const availableConsumers = Array.from(new Set([
         ...poll.consumers,
@@ -46,7 +48,9 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     ]));
 
     const handleAddOption = () => {
-        setOptions([...options, '']);
+        if (options.length < 10) {
+            setOptions([...options, '']);
+        }
     };
 
     const handleRemoveOption = (index: number) => {
@@ -119,28 +123,54 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         }
     };
 
-    const handleSave = () => {
-        const validOptions = options.filter(o => o.trim());
-        const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
+    // Check for duplicate options (case-insensitive)
+    const hasDuplicateOptions = () => {
+        const validOptions = options.filter(o => o.trim()).map(o => o.trim().toLowerCase());
+        const uniqueOptions = new Set(validOptions);
+        return uniqueOptions.size !== validOptions.length;
+    };
 
-        const updates: Partial<Poll> = {
-            question,
-            options: validOptions.map((text, index) => ({
-                id: `opt-${index}`,
-                text
-            })),
-            defaultResponse: finalDefaultResponse,
-            showDefaultToConsumers,
-            anonymityMode,
-            deadline,
-            isPersistentFinalAlert,
-            consumers: selectedConsumers,
-            isEdited: true
-        };
+    const handleSave = async () => {
+        setShowErrors(true);
+        if (!isValid) {
+            // Small delay to allow showErrors to trigger re-render and display error messages
+            setTimeout(() => {
+                const firstError = document.querySelector('.text-red-500');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50);
+            return;
+        }
 
-        console.log('[EditPollModal] Saving updates:', { updates, republish });
-        onUpdate(poll.id, updates, republish);
-        onClose();
+        setIsSaving(true);
+        try {
+            const validOptions = options.filter(o => o.trim());
+            const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
+
+            const updates: Partial<Poll> = {
+                question,
+                options: validOptions.map((text, index) => ({
+                    id: `opt-${index}`,
+                    text
+                })),
+                defaultResponse: finalDefaultResponse,
+                showDefaultToConsumers,
+                anonymityMode,
+                deadline,
+                isPersistentFinalAlert,
+                consumers: selectedConsumers,
+                isEdited: true
+            };
+
+            console.log('[EditPollModal] Saving updates:', { updates, republish });
+            await onUpdate(poll.id, updates, republish);
+            onClose();
+        } catch (error) {
+            console.error('Error saving poll:', error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const currentDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
@@ -153,11 +183,12 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         anonymityMode !== poll.anonymityMode ||
         deadline !== poll.deadline.slice(0, 16) ||
         isPersistentFinalAlert !== poll.isPersistentFinalAlert ||
-        JSON.stringify(selectedConsumers.sort()) !== JSON.stringify(poll.consumers.sort());
+        JSON.stringify([...selectedConsumers].sort()) !== JSON.stringify([...poll.consumers].sort());
 
     const isValid =
         question.trim() &&
         options.filter(o => o.trim()).length >= 2 &&
+        !hasDuplicateOptions() &&
         currentDefaultResponse &&
         isDateValid(deadline) &&
         selectedConsumers.length > 0 &&
@@ -188,8 +219,14 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                             type="text"
                             value={question}
                             onChange={(e) => setQuestion(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                            className={`w-full px-4 py-3 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !question.trim()
+                                ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+                                : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
+                                }`}
                         />
+                        {showErrors && !question.trim() && (
+                            <p className="text-red-500 text-xs mt-1">Question is required</p>
+                        )}
                     </div>
 
                     {/* Options */}
@@ -204,7 +241,10 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                         type="text"
                                         value={option}
                                         onChange={(e) => handleOptionChange(index, e.target.value)}
-                                        className="flex-1 px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                                        className={`flex-1 px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !option.trim()
+                                            ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+                                            : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
+                                            }`}
                                         placeholder={`Option ${index + 1}`}
                                     />
                                     {options.length > 2 && (
@@ -217,12 +257,19 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     )}
                                 </div>
                             ))}
+                            {showErrors && options.filter(o => o.trim()).length < 2 && (
+                                <p className="text-red-500 text-xs mt-1">At least 2 options are required</p>
+                            )}
+                            {showErrors && hasDuplicateOptions() && (
+                                <p className="text-red-500 text-xs mt-1">Duplicate options are not allowed</p>
+                            )}
                             <button
                                 onClick={handleAddOption}
-                                className="flex items-center gap-2 px-4 py-2 text-mono-primary hover:bg-mono-primary/5 rounded-xl transition-colors font-medium"
+                                disabled={options.length >= 10}
+                                className="flex items-center gap-2 px-4 py-2 text-mono-primary hover:bg-mono-primary/5 rounded-xl transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Plus className="w-4 h-4" />
-                                Add Option
+                                Add Option {options.length >= 10 && <span className="text-xs text-mono-text/60">(Limit reached)</span>}
                             </button>
                         </div>
                     </div>
@@ -252,14 +299,20 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     type="text"
                                     value={customDefault}
                                     onChange={(e) => setCustomDefault(e.target.value)}
-                                    className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !(customDefault || '').trim()
+                                        ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+                                        : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
+                                        }`}
                                     placeholder="e.g., I don't know, N/A"
                                 />
                             ) : (
                                 <select
                                     value={defaultResponse}
                                     onChange={(e) => setDefaultResponse(e.target.value)}
-                                    className="w-full px-4 py-2 rounded-xl border border-mono-primary/20 bg-mono-bg focus:outline-none focus:border-mono-primary focus:ring-1 focus:ring-mono-primary transition-all"
+                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !defaultResponse
+                                        ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+                                        : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
+                                        }`}
                                 >
                                     <option value="">Select from options</option>
                                     {options.filter(o => o.trim()).map((option, index) => (
@@ -268,6 +321,9 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                         </option>
                                     ))}
                                 </select>
+                            )}
+                            {showErrors && !currentDefaultResponse && (
+                                <p className="text-red-500 text-xs mt-1">Default response is required</p>
                             )}
                         </div>
                     </div>
@@ -331,16 +387,58 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     type="datetime-local"
                                     value={deadline}
                                     onChange={(e) => setDeadline(e.target.value)}
-                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none focus:ring-1 transition-all ${hasChanges && !isDateValid(deadline)
+                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none focus:ring-1 transition-all ${(showErrors || hasChanges) && !isDateValid(deadline)
                                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                                         : 'border-mono-primary/20 focus:border-mono-primary focus:ring-mono-primary'
                                         }`}
                                     min={getMinDateTime()}
                                 />
+                                {showErrors && !isDateValid(deadline) && (
+                                    <p className="text-red-500 text-xs mt-1">Deadline must be in the future</p>
+                                )}
                                 <p className="text-sm text-mono-text/60 mt-2">
                                     Notifications will be sent at 60, 30, 15, and 1 minute before deadline
                                 </p>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Anonymity Mode */}
+                    <div>
+                        <label className="block text-mono-text mb-3 font-medium">
+                            Response Tracking <span className="text-red-500">*</span>
+                        </label>
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-3 p-3 border border-mono-primary/20 rounded-xl cursor-pointer hover:bg-mono-primary/5 transition-colors bg-mono-primary/5">
+                                <input
+                                    type="radio"
+                                    name="anonymity"
+                                    checked={anonymityMode === 'record'}
+                                    onChange={() => setAnonymityMode('record')}
+                                    className="w-4 h-4 text-mono-primary"
+                                />
+                                <div>
+                                    <p className="text-mono-text font-medium">Record Responses</p>
+                                    <p className="text-sm text-mono-text/60">
+                                        You will see individual consumer emails and their responses
+                                    </p>
+                                </div>
+                            </label>
+                            <label className="flex items-center gap-3 p-3 border border-mono-primary/20 rounded-xl cursor-pointer hover:bg-mono-primary/5 transition-colors bg-mono-primary/5">
+                                <input
+                                    type="radio"
+                                    name="anonymity"
+                                    checked={anonymityMode === 'anonymous'}
+                                    onChange={() => setAnonymityMode('anonymous')}
+                                    className="w-4 h-4 text-mono-primary"
+                                />
+                                <div>
+                                    <p className="text-mono-text font-medium">Anonymous</p>
+                                    <p className="text-sm text-mono-text/60">
+                                        Responses will be anonymous - you won't see who responded
+                                    </p>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
@@ -416,6 +514,9 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                 </label>
                             ))}
                         </div>
+                        {showErrors && selectedConsumers.length === 0 && (
+                            <p className="text-red-500 text-xs mt-1">At least one consumer must be selected</p>
+                        )}
                     </div>
 
                     {/* Validation Messages */}
@@ -425,14 +526,6 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                 <AlertCircle className="w-5 h-5 text-mono-text/60 flex-shrink-0 mt-0.5" />
                                 <p className="text-sm text-mono-text/70">
                                     Make changes to enable saving
-                                </p>
-                            </div>
-                        )}
-                        {hasChanges && !isDateValid(deadline) && (
-                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-                                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                                <p className="text-sm text-red-800">
-                                    Deadline must be in the future
                                 </p>
                             </div>
                         )}
@@ -449,11 +542,20 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={!isValid}
-                        className="flex items-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none font-medium"
+                        disabled={isSaving}
+                        className="flex items-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none font-medium min-w-[140px] justify-center"
                     >
-                        <Save className="w-4 h-4" />
-                        Save Changes
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Saving...
+                            </>
+                        ) : (
+                            <>
+                                <Check className="w-4 h-4" />
+                                Save Changes
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

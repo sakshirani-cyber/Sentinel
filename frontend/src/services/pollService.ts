@@ -119,25 +119,33 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
         }
     }
 
-    // 3. Process reason responses (if any - handling as skipReason or normal response?)
-    // This depends on how the frontend expects 'reason'. 
-    // If 'reason' implies a skipped vote / mandatory default, let's look for overlap.
-    // For now, if a user isn't in optionVotes or defaultResponses, consider checking reasonResponses
-    // But typically reasonResponses might be auxiliary data. 
-    // Let's stick to optionVotes + defaultResponses as primary sources of 'Response' objects.
+    // 3. Map reasonResponses to the corresponding user's response
+    if (dto.reasonResponses) {
+        for (const response of responses) {
+            const reason = dto.reasonResponses[response.consumerEmail];
+            if (reason) {
+                response.skipReason = reason;
+                // If the response was marked as default (e.g. "Skipped" or default option), keep it as default
+                // but ensure the reason is attached so AnalyticsView can display it.
+            }
+        }
+    }
 
     // 4. Fill in missing users (if any remain) as strictly default (client-side fallback)
     // This logic mimics the original behavior, ensuring every consumer has a response.
     const respondedUsers = new Set(responses.map(r => r.consumerEmail));
     for (const consumer of poll.consumers) {
         if (!respondedUsers.has(consumer)) {
+            // Check if there's a reason-only response (unlikely given backend logic, but safe to check)
+            const reason = dto.reasonResponses && dto.reasonResponses[consumer];
+
             responses.push({
                 pollId: poll.id,
                 consumerEmail: consumer,
                 response: poll.defaultResponse || '',
                 submittedAt: poll.deadline,
                 isDefault: true,
-                skipReason: undefined,
+                skipReason: reason,
             });
         }
     }
