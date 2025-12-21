@@ -46,14 +46,14 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
           <div>
-            <h2 className="text-slate-900 mb-1">Poll Analytics</h2>
-            <p className="text-sm text-slate-600">{poll.question}</p>
+            <h2 className="text-mono-text mb-1 text-lg font-medium">Poll Analytics</h2>
+            <p className="text-sm text-mono-text/60">{poll.question}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-colors"
+            className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -117,9 +117,9 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
                       </span>
                       <span className="text-slate-600">{count} ({percentage.toFixed(1)}%)</span>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-mono-primary/10 rounded-full h-2 overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 h-full transition-all duration-500"
+                        className="bg-mono-accent h-full transition-all duration-500"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
@@ -250,10 +250,10 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-200 bg-slate-50">
+        <div className="p-6 border-t border-mono-primary/10 bg-mono-bg">
           <button
             onClick={onClose}
-            className="w-full bg-slate-700 text-white py-3 rounded-lg hover:bg-slate-800 transition-colors"
+            className="w-full bg-mono-primary text-mono-bg py-3 rounded-xl hover:bg-mono-accent hover:text-mono-primary transition-all font-medium shadow-lg"
           >
             Close Analytics
           </button>

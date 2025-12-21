@@ -416,6 +416,7 @@
   button,
   input:where([type="button"], [type="reset"], [type="submit"]) {
     appearance: button;
+    cursor: pointer;
   }
 
   ::file-selector-button {
@@ -493,6 +494,7 @@
 
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) label,
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) button {
+    cursor: pointer;
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
@@ -2741,4 +2743,12 @@ select:focus {
   border-color: var(--mono-primary, #1F2937) !important;
   --tw-ring-color: var(--mono-accent, #BEF264) !important;
   outline-color: var(--mono-accent, #BEF264) !important;
+}
+
+@layer utilities {
+
+  button,
+  [role="button"] {
+    cursor: pointer !important;
+  }
 }

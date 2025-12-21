@@ -771,8 +771,6 @@ export default function ConsumerDashboard({
             ) : (
               <div className="space-y-4">
                 {userPolls.map(poll => {
-                  const pollResponses = responses.filter(r => r.pollId === poll.id);
-                  const responseCount = pollResponses.length;
                   const totalConsumers = poll.consumers.length;
 
                   return (
@@ -800,10 +798,6 @@ export default function ConsumerDashboard({
                         <div className="flex items-center gap-2 text-mono-text/60">
                           <AlertTriangle className="w-4 h-4" />
                           <span>{totalConsumers} consumers</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-mono-primary font-medium">
-                          <BarChart3 className="w-4 h-4" />
-                          <span>{responseCount} responses</span>
                         </div>
                       </div>
 

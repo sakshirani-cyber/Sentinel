@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Poll, Response } from '../App';
 import { mapResultsToResponses } from '../services/pollService';
 import { Clock, Users, BarChart3, Trash2, Calendar, Edit, PenTool, X, Eye } from 'lucide-react';
@@ -51,10 +51,6 @@ export default function PublishedPolls({
     if (days > 0) return `${days}d ${hours}h left`;
     if (hours > 0) return `${hours}h ${minutes}m left`;
     return `${minutes}m left`;
-  };
-
-  const getResponseCount = (pollId: string) => {
-    return responses.filter(r => r.pollId === pollId).length;
   };
 
   const handleDetailsClick = async (poll: Poll) => {
@@ -152,7 +148,6 @@ export default function PublishedPolls({
 
       <div className="space-y-4">
         {sortedPolls.map((poll) => {
-          const responseCount = getResponseCount(poll.id);
           const isCompleted = poll.status === 'completed' || new Date(poll.deadline) < new Date();
 
           return (
@@ -197,10 +192,6 @@ export default function PublishedPolls({
                   <div className="flex items-center gap-2 text-mono-text/60">
                     <Users className="w-4 h-4" />
                     <span>{poll.consumers.length} consumers</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-mono-primary font-medium">
-                    <BarChart3 className="w-4 h-4" />
-                    <span>{responseCount} responses</span>
                   </div>
                   <div className="px-2 py-1 bg-mono-primary/5 text-mono-text/70 rounded text-xs capitalize border border-mono-primary/10">
                     {poll.anonymityMode}

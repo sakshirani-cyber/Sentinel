@@ -107,7 +107,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
           )}
 
           {poll.isEdited && (
-            <div className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded flex items-center gap-1">
+            <div className="px-2 py-0.5 bg-mono-accent/20 text-mono-primary rounded flex items-center gap-1 border border-mono-accent/30">
               <Edit className="w-3 h-3" />
               Edited
             </div>
