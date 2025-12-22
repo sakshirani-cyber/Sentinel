@@ -133,20 +133,26 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
 
     // 4. Fill in missing users (if any remain) as strictly default (client-side fallback)
     // This logic mimics the original behavior, ensuring every consumer has a response.
-    const respondedUsers = new Set(responses.map(r => r.consumerEmail));
-    for (const consumer of poll.consumers) {
-        if (!respondedUsers.has(consumer)) {
-            // Check if there's a reason-only response (unlikely given backend logic, but safe to check)
-            const reason = dto.reasonResponses && dto.reasonResponses[consumer];
+    // BUT only do this if the poll is COMPLETED (deadline passed).
+    // If it's still active, these users should remain "Pending".
+    const isCompleted = new Date(poll.deadline) <= new Date();
 
-            responses.push({
-                pollId: poll.id,
-                consumerEmail: consumer,
-                response: poll.defaultResponse || '',
-                submittedAt: poll.deadline,
-                isDefault: true,
-                skipReason: reason,
-            });
+    if (isCompleted) {
+        const respondedUsers = new Set(responses.map(r => r.consumerEmail));
+        for (const consumer of poll.consumers) {
+            if (!respondedUsers.has(consumer)) {
+                // Check if there's a reason-only response (unlikely given backend logic, but safe to check)
+                const reason = dto.reasonResponses && dto.reasonResponses[consumer];
+
+                responses.push({
+                    pollId: poll.id,
+                    consumerEmail: consumer,
+                    response: poll.defaultResponse || '',
+                    submittedAt: poll.deadline,
+                    isDefault: true,
+                    skipReason: reason,
+                });
+            }
         }
     }
 
