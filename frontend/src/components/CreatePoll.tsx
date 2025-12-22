@@ -36,7 +36,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   };
 
   // Mock consumers list - in real app, this would come from backend
-  const availableConsumers = [
+  const availableConsumers = Array.from(new Set([
     "consumer1@test.com",
     "consumer2@test.com",
     "consumer3@test.com",
@@ -58,7 +58,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
     "publisher9@test.com",
     "publisher10@test.com",
     user.email
-  ];
+  ]));
 
   const handleAddOption = () => {
     if (options.length < 10) {
