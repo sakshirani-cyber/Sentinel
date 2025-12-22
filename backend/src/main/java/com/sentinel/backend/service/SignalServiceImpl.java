@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.sentinel.backend.constant.Constants.ACTIVE;
+import static com.sentinel.backend.constant.Constants.COMPLETED;
 import static com.sentinel.backend.constant.Constants.POLL;
 import static com.sentinel.backend.constant.Constants.REMOVED;
 import static com.sentinel.backend.constant.Queries.GET_ROLE_BY_EMAIL_AND_PASSWORD;
@@ -231,7 +232,6 @@ public class SignalServiceImpl implements SignalService {
                 pr.setSelectedOption(null);
                 pr.setDefaultResponse(signal.getDefaultOption());
                 pr.setReason(null);
-                pr.setTimeOfSubmission(signal.getEndTimestamp());
 
                 inserts.add(pr);
             }
@@ -239,6 +239,8 @@ public class SignalServiceImpl implements SignalService {
 
         if (!inserts.isEmpty()) pollResultRepository.saveAll(inserts);
 
+        signal.setStatus(COMPLETED);
+        signalRepository.save(signal);
     }
 
     private Signal getValidActivePollSignal(Integer signalId, String userId) {
@@ -288,7 +290,6 @@ public class SignalServiceImpl implements SignalService {
                     return x;
                 });
 
-        pr.setTimeOfSubmission(Instant.now());
         pr.setSelectedOption(opt ? req.getSelectedOption() : null);
         pr.setDefaultResponse(def ? req.getDefaultResponse() : null);
         pr.setReason(rea ? req.getReason() : null);

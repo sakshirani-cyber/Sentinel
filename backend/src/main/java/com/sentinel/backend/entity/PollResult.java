@@ -34,6 +34,12 @@ public class PollResult {
     @Column(name = "reason")
     private String reason;
 
-    @Column(name = "time_of_submission", nullable = false)
-    private Instant timeOfSubmission = Instant.now();
+    @Column(
+            name = "time_of_submission",
+            nullable = false,
+            updatable = false,
+            insertable = false
+    )
+    private Instant timeOfSubmission;
+
 }

@@ -30,6 +30,7 @@ public class Signal {
     @Column(name = "last_edited")
     private Instant lastEdited;
 
+    @Column(nullable = false)
     private Boolean anonymous = false;
 
     @Column(name = "end_timestamp", nullable = false)
@@ -38,7 +39,7 @@ public class Signal {
     @Column(name = "type_of_signal", nullable = false)
     private String typeOfSignal;
 
-    @Column(name = "default_flag")
+    @Column(name = "default_flag", nullable = false)
     private Boolean defaultFlag = false;
 
     @Column(name = "default_option")
@@ -47,11 +48,12 @@ public class Signal {
     @Column(name = "shared_with", columnDefinition = "text[]", nullable = false)
     private String[] sharedWith;
 
+    @Column(nullable = false)
     private String status = "ACTIVE";
 
     @Column(name = "last_edited_by")
     private String lastEditedBy;
 
-    @Column(name = "persistent_alert")
-    private Boolean persistentAlert;
+    @Column(name = "persistent_alert", nullable = false)
+    private Boolean persistentAlert = false;
 }
