@@ -216,10 +216,33 @@ export async function login(email: string, password: string): Promise<string> {
 
 export async function getActivePolls(userEmail: string): Promise<ActivePollDTO[]> {
     console.log('[Backend API] Fetching active polls for:', userEmail);
-    const response = await apiClient.get<ActivePollDTO[]>('/api/polls/active', {
-        params: { userEmail }
-    });
-    console.log('[Backend API] Active polls received:', response.data.length);
-    return response.data;
+    try {
+        const response = await apiClient.get<ActivePollDTO[]>('/api/polls/active', {
+            params: { userId: userEmail } // Backend expects 'userId' as the parameter name
+        });
+        console.log(`[Backend API] Success! Received ${response.data.length} polls.`);
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            console.error('[Backend API] 500 Internal Server Error Details:', {
+                status: error.response.status,
+                data: error.response.data,
+                config: error.config.url
+            });
+        }
+        throw error;
+    }
 }
 
+
+// ============================================================================
+// Error Handling Utility
+// ============================================================================
+
+export function extractBackendError(error: any): string {
+    if (error.response && error.response.data) {
+        const data = error.response.data;
+        return data.message || data.error || error.message;
+    }
+    return error.message;
+}

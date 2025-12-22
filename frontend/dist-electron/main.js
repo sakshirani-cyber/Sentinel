@@ -138,8 +138,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: true, data: result };
             }
             catch (error) {
-                console.error('Backend API - Create Poll Error:', error.message);
-                return { success: false, error: error.message };
+                const errorMessage = backendApi.extractBackendError(error);
+                console.error('Backend API - Create Poll Error:', errorMessage);
+                return { success: false, error: errorMessage };
             }
         });
         electron_1.ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption, defaultResponse, reason }) => {
@@ -148,8 +149,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: true };
             }
             catch (error) {
-                console.error('Backend API - Submit Vote Error:', error.message);
-                return { success: false, error: error.message };
+                const errorMessage = backendApi.extractBackendError(error);
+                console.error('Backend API - Submit Vote Error:', errorMessage);
+                return { success: false, error: errorMessage };
             }
         });
         electron_1.ipcMain.handle('backend-get-results', async (_event, signalId) => {
@@ -158,8 +160,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: true, data: result };
             }
             catch (error) {
-                console.error('Backend API - Get Results Error:', error.message);
-                return { success: false, error: error.message };
+                const errorMessage = backendApi.extractBackendError(error);
+                console.error('Backend API - Get Results Error:', errorMessage);
+                return { success: false, error: errorMessage };
             }
         });
         electron_1.ipcMain.handle('backend-edit-poll', async (_event, { signalId, poll, republish }) => {
@@ -168,8 +171,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: true };
             }
             catch (error) {
-                console.error('Backend API - Edit Poll Error:', error.message);
-                return { success: false, error: error.message };
+                const errorMessage = backendApi.extractBackendError(error);
+                console.error('Backend API - Edit Poll Error:', errorMessage);
+                return { success: false, error: errorMessage };
             }
         });
         electron_1.ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
@@ -178,8 +182,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: true };
             }
             catch (error) {
-                console.error('Backend API - Delete Poll Error:', error.message);
-                return { success: false, error: error.message };
+                const errorMessage = backendApi.extractBackendError(error);
+                console.error('Backend API - Delete Poll Error:', errorMessage);
+                return { success: false, error: errorMessage };
             }
         });
         electron_1.ipcMain.handle('backend-login', async (_event, { email, password }) => {
@@ -190,8 +195,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: true, data: role };
             }
             catch (error) {
-                console.error('[IPC Handler] backend-login error:', error.message);
-                return { success: false, error: error.message };
+                const errorMessage = backendApi.extractBackendError(error);
+                console.error('[IPC Handler] backend-login error:', errorMessage);
+                return { success: false, error: errorMessage };
             }
         });
         electron_1.ipcMain.handle('backend-get-active-polls', async (_event, userEmail) => {
@@ -200,8 +206,9 @@ electron_1.app.whenReady().then(async () => {
                 return { success: true, data: polls };
             }
             catch (error) {
-                console.error('Backend API - Get Active Polls Error:', error.message);
-                return { success: false, error: error.message };
+                const errorMessage = backendApi.extractBackendError(error);
+                console.error('Backend API - Get Active Polls Error:', errorMessage);
+                return { success: false, error: errorMessage };
             }
         });
     }
@@ -353,7 +360,10 @@ electron_1.ipcMain.handle('db-create-poll', async (_event, poll) => {
 });
 electron_1.ipcMain.handle('db-get-polls', async () => {
     try {
-        return (0, db_1.getPolls)();
+        console.log('[IPC Main] Handling db-get-polls request');
+        const polls = (0, db_1.getPolls)();
+        console.log(`[IPC Main] Sending ${polls.length} polls to frontend`);
+        return polls;
     }
     catch (error) {
         console.error('Error getting polls:', error);
@@ -372,7 +382,10 @@ electron_1.ipcMain.handle('db-submit-response', async (_event, response) => {
 });
 electron_1.ipcMain.handle('db-get-responses', async () => {
     try {
-        return (0, db_1.getResponses)();
+        console.log('[IPC Main] Handling db-get-responses request');
+        const responses = (0, db_1.getResponses)();
+        console.log(`[IPC Main] Sending ${responses.length} responses to frontend`);
+        return responses;
     }
     catch (error) {
         console.error('Error getting responses:', error);

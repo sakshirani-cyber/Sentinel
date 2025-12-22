@@ -10,6 +10,7 @@ exports.editPoll = editPoll;
 exports.deletePoll = deletePoll;
 exports.login = login;
 exports.getActivePolls = getActivePolls;
+exports.extractBackendError = extractBackendError;
 const axios_1 = __importDefault(require("axios"));
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
@@ -109,10 +110,32 @@ async function login(email, password) {
 }
 async function getActivePolls(userEmail) {
     console.log('[Backend API] Fetching active polls for:', userEmail);
-    const response = await apiClient.get('/api/polls/active', {
-        params: { userEmail }
-    });
-    console.log('[Backend API] Active polls received:', response.data.length);
-    return response.data;
+    try {
+        const response = await apiClient.get('/api/polls/active', {
+            params: { userId: userEmail } // Backend expects 'userId' as the parameter name
+        });
+        console.log(`[Backend API] Success! Received ${response.data.length} polls.`);
+        return response.data;
+    }
+    catch (error) {
+        if (error.response) {
+            console.error('[Backend API] 500 Internal Server Error Details:', {
+                status: error.response.status,
+                data: error.response.data,
+                config: error.config.url
+            });
+        }
+        throw error;
+    }
+}
+// ============================================================================
+// Error Handling Utility
+// ============================================================================
+function extractBackendError(error) {
+    if (error.response && error.response.data) {
+        const data = error.response.data;
+        return data.message || data.error || error.message;
+    }
+    return error.message;
 }
 //# sourceMappingURL=backendApi.js.map

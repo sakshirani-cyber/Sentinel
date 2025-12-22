@@ -162,6 +162,16 @@ export default function ConsumerDashboard({
   const displayPolls = activeTab === 'incomplete' ? backendActivePolls : polls;
 
   // Derived lists for compatibility with existing render logic
+  const combinedItems = [
+    ...polls.filter(p => p.consumers.map(c => c.toLowerCase()).includes(user.email.toLowerCase())),
+    ...(backendActivePolls.filter(bp => !polls.some(p => p.cloudSignalId === bp.cloudSignalId)))
+  ];
+
+  console.log('[ConsumerDashboard] Rendering combined polls:', {
+    localCount: polls.filter(p => p.consumers.map(c => c.toLowerCase()).includes(user.email.toLowerCase())).length,
+    backendCount: backendActivePolls.length,
+    combinedTotal: combinedItems.length
+  });
   const userPolls = displayPolls.filter(p => p.consumers.includes(user.email));
 
   // Get incomplete polls - ALWAYS use backend data for accurate badge count

@@ -177,8 +177,10 @@ export function createPoll(poll: Poll) {
 }
 
 export function getPolls(): Poll[] {
+    console.log('[SQLite DB] Fetching all polls...');
     const stmt = db.prepare('SELECT * FROM polls');
     const rows = stmt.all();
+    console.log(`[SQLite DB] Found ${rows.length} polls in local database.`);
 
     return rows.map((row: any) => ({
         id: row.localId,
@@ -271,8 +273,10 @@ export function submitResponse(response: Response) {
 }
 
 export function getResponses(): Response[] {
+    console.log('[SQLite DB] Fetching all responses...');
     const stmt = db.prepare('SELECT * FROM responses');
     const rows = stmt.all();
+    console.log(`[SQLite DB] Found ${rows.length} responses in local database.`);
 
     return rows.map((row: any) => ({
         pollId: row.pollLocalId,

@@ -62,8 +62,10 @@ function App() {
     const loadData = async () => {
       try {
         if ((window as any).electron) {
+          console.log('[App] Fetching data from local DB...');
           const loadedPolls = await (window as any).electron.db.getPolls();
           const loadedResponses = await (window as any).electron.db.getResponses();
+          console.log(`[App] Received ${loadedPolls.length} polls and ${loadedResponses.length} responses from local DB.`);
           setPolls(loadedPolls);
           setResponses(loadedResponses);
         }
