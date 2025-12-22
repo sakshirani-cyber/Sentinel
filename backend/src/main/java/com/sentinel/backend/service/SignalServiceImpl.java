@@ -35,8 +35,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.sentinel.backend.constant.Constants.ACTIVE;
-import static com.sentinel.backend.constant.Constants.COMPLETED;
 import static com.sentinel.backend.constant.Constants.POLL;
+import static com.sentinel.backend.constant.Constants.REMOVED;
+import static com.sentinel.backend.constant.Queries.GET_ROLE_BY_EMAIL_AND_PASSWORD;
 import static org.springframework.util.StringUtils.hasText;
 
 @Service
@@ -142,10 +143,7 @@ public class SignalServiceImpl implements SignalService {
     public String login(String email, String password) {
         try {
             return jdbcTemplate.queryForObject(
-                    """
-                    SELECT role FROM users
-                    WHERE email = ? AND password = ?
-                    """,
+                    GET_ROLE_BY_EMAIL_AND_PASSWORD,
                     String.class,
                     email,
                     password
@@ -178,7 +176,7 @@ public class SignalServiceImpl implements SignalService {
         }
 
         if (Boolean.TRUE.equals(dto.getDefaultFlag()) && !hasText(dto.getDefaultOption())) {
-            throw new CustomException("defaultOption required", HttpStatus.BAD_REQUEST);
+            throw new CustomException("Default Option required", HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -213,7 +211,7 @@ public class SignalServiceImpl implements SignalService {
         if (Instant.now().isBefore(signal.getEndTimestamp())) return;
 
         if (!hasText(signal.getDefaultOption())) {
-            throw new CustomException("defaultOption required", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new CustomException("Default Option required", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         Set<String> responded =
@@ -378,7 +376,7 @@ public class SignalServiceImpl implements SignalService {
                                 e -> e.getValue().toArray(new UserVoteDTO[0]))));
 
         dto.setRemovedUsers(removedUsers.isEmpty() ? null :
-                Map.of("removed", removedUsers.toArray(new UserVoteDTO[0])));
+                Map.of(REMOVED, removedUsers.toArray(new UserVoteDTO[0])));
 
         dto.setDefaultResponses(defaultResponses.isEmpty() ? null :
                 defaultResponses.toArray(new UserVoteDTO[0]));
@@ -402,7 +400,7 @@ public class SignalServiceImpl implements SignalService {
 
         if (Boolean.TRUE.equals(dto.getDefaultFlag())
                 && !hasText(dto.getDefaultOption())) {
-            throw new CustomException("defaultOption required", HttpStatus.BAD_REQUEST);
+            throw new CustomException("Default Option required", HttpStatus.BAD_REQUEST);
         }
     }
 
