@@ -16,7 +16,7 @@ import lombok.Data;
 public class Poll {
 
     @Id
-    @Column(name = "signal_id")
+    @Column(name = "signal_id", nullable = false)
     private Integer signalId;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)

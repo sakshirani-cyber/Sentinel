@@ -14,9 +14,9 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class PollResultId implements Serializable {
 
-    @Column(name = "signal_id")
+    @Column(name = "signal_id", nullable = false)
     private Integer signalId;
 
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private String userId;
 }
