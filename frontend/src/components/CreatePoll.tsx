@@ -37,11 +37,26 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
 
   // Mock consumers list - in real app, this would come from backend
   const availableConsumers = [
-    'alice@company.com',
-    'bob@company.com',
-    'charlie@company.com',
-    'diana@company.com',
-    'eve@company.com',
+    "consumer1@test.com",
+    "consumer2@test.com",
+    "consumer3@test.com",
+    "consumer4@test.com",
+    "consumer5@test.com",
+    "consumer6@test.com",
+    "consumer7@test.com",
+    "consumer8@test.com",
+    "consumer9@test.com",
+    "consumer10@test.com",
+    "publisher1@test.com",
+    "publisher2@test.com",
+    "publisher3@test.com",
+    "publisher4@test.com",
+    "publisher5@test.com",
+    "publisher6@test.com",
+    "publisher7@test.com",
+    "publisher8@test.com",
+    "publisher9@test.com",
+    "publisher10@test.com",
     user.email
   ];
 

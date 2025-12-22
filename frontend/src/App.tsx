@@ -120,7 +120,10 @@ function App() {
         }
       } else {
         console.warn('[Frontend] Backend API not available, using mock login');
-        const isPublisher = email.toLowerCase().startsWith('hr') || email.toLowerCase().includes('admin');
+        const isPublisher =
+          email.toLowerCase().startsWith('hr') ||
+          email.toLowerCase().includes('admin') ||
+          email.toLowerCase().startsWith('publisher');
         const userData: User = {
           name: email.split('@')[0],
           email: email,
