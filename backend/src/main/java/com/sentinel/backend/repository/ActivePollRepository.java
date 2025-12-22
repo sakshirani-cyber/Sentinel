@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import static com.sentinel.backend.constant.Queries.FIND_ACTIVE_POLLS_FOR_USER;
+
 @Repository
 @RequiredArgsConstructor
 public class ActivePollRepository {
@@ -15,33 +17,8 @@ public class ActivePollRepository {
 
     public List<ActivePollDTO> findActivePollsForUser(String userId) {
 
-        String sql = """
-            SELECT
-                s.id AS signal_id,
-                p.question,
-                p.options,
-                s.end_timestamp,
-                s.anonymous,
-                s.default_option,
-                s.default_flag,
-                s.created_by AS publisher,
-                s.persistent_alert AS persistent_alert
-            FROM signal s
-            JOIN poll p ON p.signal_id = s.id
-            WHERE s.status = 'ACTIVE'
-              AND s.end_timestamp > (NOW() AT TIME ZONE 'UTC')
-              AND ? = ANY (s.shared_with)
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM poll_result r
-                  WHERE r.signal_id = s.id
-                    AND r.user_id = ?
-              )
-            ORDER BY s.end_timestamp ASC
-        """;
-
         return jdbcTemplate.query(
-                sql,
+                FIND_ACTIVE_POLLS_FOR_USER,
                 (rs, i) -> {
                     var array = rs.getArray("options");
                     String[] options = array != null

@@ -8,8 +8,8 @@ public class Constants {
     public static final String DELETED = "Deleted";
     public static final String POLL = "POLL";
     public static final String ACTIVE = "ACTIVE";
-    public static final String COMPLETED = "COMPLETED";
 
+    public static final String REMOVED = "removed";
     private Constants() {
     }
 }
