@@ -101,94 +101,101 @@ Comment=Sentinel Signal Enforcement
 }
 
 app.whenReady().then(async () => {
+    // Register Backend API IPC Handlers (bypass CORS by making calls from main process)
+    console.log('[Main] Registering Backend API IPC handlers...');
+
+    ipcMain.handle('backend-create-poll', async (_event, poll) => {
+        console.log(`[IPC Handler] backend-create-poll called for poll: ${poll.question}`);
+        try {
+            const result = await backendApi.createPoll(poll);
+            return { success: true, data: result };
+        } catch (error: any) {
+            const errorMessage = backendApi.extractBackendError(error);
+            console.error('[IPC Handler] backend-create-poll error:', errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    });
+
+    ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption, defaultResponse, reason }) => {
+        console.log(`[IPC Handler] backend-submit-vote called for signalId: ${signalId}, user: ${userId}`);
+        try {
+            await backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason);
+            return { success: true };
+        } catch (error: any) {
+            const errorMessage = backendApi.extractBackendError(error);
+            console.error('[IPC Handler] backend-submit-vote error:', errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    });
+
+    ipcMain.handle('backend-get-results', async (_event, signalId) => {
+        console.log(`[IPC Handler] backend-get-results called for signalId: ${signalId}`);
+        try {
+            const result = await backendApi.getPollResults(signalId);
+            return { success: true, data: result };
+        } catch (error: any) {
+            const errorMessage = backendApi.extractBackendError(error);
+            console.error('[IPC Handler] backend-get-results error:', errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    });
+
+    ipcMain.handle('backend-edit-poll', async (_event, { signalId, poll, republish }) => {
+        console.log(`[IPC Handler] backend-edit-poll called for signalId: ${signalId}`);
+        try {
+            await backendApi.editPoll(signalId, poll, republish);
+            return { success: true };
+        } catch (error: any) {
+            const errorMessage = backendApi.extractBackendError(error);
+            console.error('[IPC Handler] backend-edit-poll error:', errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    });
+
+    ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
+        console.log(`[IPC Handler] backend-delete-poll called for signalId: ${signalId}`);
+        try {
+            await backendApi.deletePoll(signalId);
+            return { success: true };
+        } catch (error: any) {
+            const errorMessage = backendApi.extractBackendError(error);
+            console.error('[IPC Handler] backend-delete-poll error:', errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    });
+
+    ipcMain.handle('backend-login', async (_event, { email, password }) => {
+        console.log(`[IPC Handler] backend-login called for user: ${email}`);
+        try {
+            const role = await backendApi.login(email, password);
+            console.log('[IPC Handler] backend-login success, role:', role);
+            return { success: true, data: role };
+        } catch (error: any) {
+            const errorMessage = backendApi.extractBackendError(error);
+            console.error('[IPC Handler] backend-login error:', errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    });
+
+    ipcMain.handle('backend-get-active-polls', async (_event, userEmail) => {
+        console.log(`[IPC Handler] backend-get-active-polls called for user: ${userEmail}`);
+        try {
+            const polls = await backendApi.getActivePolls(userEmail);
+            console.log(`[IPC Handler] backend-get-active-polls success, found ${polls.length} polls`);
+            return { success: true, data: polls };
+        } catch (error: any) {
+            const errorMessage = backendApi.extractBackendError(error);
+            console.error('[IPC Handler] backend-get-active-polls error:', errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    });
+
     try {
+        console.log('[Main] Initializing local database...');
         initDB();
-
-        // ========================================================================
-        // Backend API IPC Handlers (bypass CORS by making calls from main process)
-        // ========================================================================
-
-        ipcMain.handle('backend-create-poll', async (_event, poll) => {
-            try {
-                const result = await backendApi.createPoll(poll);
-                return { success: true, data: result };
-            } catch (error: any) {
-                const errorMessage = backendApi.extractBackendError(error);
-                console.error('Backend API - Create Poll Error:', errorMessage);
-                return { success: false, error: errorMessage };
-            }
-        });
-
-        ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption, defaultResponse, reason }) => {
-            try {
-                await backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason);
-                return { success: true };
-            } catch (error: any) {
-                const errorMessage = backendApi.extractBackendError(error);
-                console.error('Backend API - Submit Vote Error:', errorMessage);
-                return { success: false, error: errorMessage };
-            }
-        });
-
-        ipcMain.handle('backend-get-results', async (_event, signalId) => {
-            try {
-                const result = await backendApi.getPollResults(signalId);
-                return { success: true, data: result };
-            } catch (error: any) {
-                const errorMessage = backendApi.extractBackendError(error);
-                console.error('Backend API - Get Results Error:', errorMessage);
-                return { success: false, error: errorMessage };
-            }
-        });
-
-        ipcMain.handle('backend-edit-poll', async (_event, { signalId, poll, republish }) => {
-            try {
-                await backendApi.editPoll(signalId, poll, republish);
-                return { success: true };
-            } catch (error: any) {
-                const errorMessage = backendApi.extractBackendError(error);
-                console.error('Backend API - Edit Poll Error:', errorMessage);
-                return { success: false, error: errorMessage };
-            }
-        });
-
-        ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
-            try {
-                await backendApi.deletePoll(signalId);
-                return { success: true };
-            } catch (error: any) {
-                const errorMessage = backendApi.extractBackendError(error);
-                console.error('Backend API - Delete Poll Error:', errorMessage);
-                return { success: false, error: errorMessage };
-            }
-        });
-
-        ipcMain.handle('backend-login', async (_event, { email, password }) => {
-            console.log('[IPC Handler] backend-login called:', email);
-            try {
-                const role = await backendApi.login(email, password);
-                console.log('[IPC Handler] backend-login success, role:', role);
-                return { success: true, data: role };
-            } catch (error: any) {
-                const errorMessage = backendApi.extractBackendError(error);
-                console.error('[IPC Handler] backend-login error:', errorMessage);
-                return { success: false, error: errorMessage };
-            }
-        });
-
-        ipcMain.handle('backend-get-active-polls', async (_event, userEmail) => {
-            try {
-                const polls = await backendApi.getActivePolls(userEmail);
-                return { success: true, data: polls };
-            } catch (error: any) {
-                const errorMessage = backendApi.extractBackendError(error);
-                console.error('Backend API - Get Active Polls Error:', errorMessage);
-                return { success: false, error: errorMessage };
-            }
-        });
-
+        console.log('[Main] Database initialization complete.');
     } catch (error) {
-        console.error('Failed to initialize Database:', error);
+        console.error('[Main] CRITICAL: Failed to initialize Database:', error);
     }
 
     setupAutoLaunch();

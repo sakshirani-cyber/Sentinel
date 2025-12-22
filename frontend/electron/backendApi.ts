@@ -4,6 +4,7 @@ import axios, { AxiosInstance } from 'axios';
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
 
 const API_BASE_URL = process.env.VITE_BACKEND_URL || 'http://localhost:8080';
+console.log(`[Backend API] Initialized with BASE_URL: ${API_BASE_URL}`);
 
 const apiClient: AxiosInstance = axios.create({
     baseURL: API_BASE_URL,
@@ -11,6 +12,30 @@ const apiClient: AxiosInstance = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+});
+
+// Add request interceptor for logging
+apiClient.interceptors.request.use(config => {
+    console.log(`[Backend API] Request: ${config.method?.toUpperCase()} ${config.url}`, config.params || '');
+    return config;
+}, error => {
+    console.error('[Backend API] Request Error:', error);
+    return Promise.reject(error);
+});
+
+// Add response interceptor for logging
+apiClient.interceptors.response.use(response => {
+    console.log(`[Backend API] Response: ${response.status} from ${response.config.url}`);
+    return response;
+}, error => {
+    if (error.response) {
+        console.error(`[Backend API] Response Error: ${error.response.status} from ${error.config.url}`, error.response.data);
+    } else if (error.request) {
+        console.error(`[Backend API] Connection Error: No response received from ${error.config.url}. Is the backend running?`);
+    } else {
+        console.error('[Backend API] Error:', error.message);
+    }
+    return Promise.reject(error);
 });
 
 // ============================================================================
