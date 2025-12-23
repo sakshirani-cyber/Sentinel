@@ -129,22 +129,6 @@ export default function SignalDetail({
 
         {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Default Response Info */}
-          {poll.showDefaultToConsumers && poll.defaultResponse && (
-            <div className="mb-6 p-4 bg-mono-primary/5 border border-mono-primary/10 rounded-xl">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-mono-primary/60 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-mono-text mb-1">
-                    <strong>Default Response:</strong> {poll.defaultResponse}
-                  </p>
-                  <p className="text-xs text-mono-text/60">
-                    This will be recorded if you don't submit a response before the deadline
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Poll Options */}
           <div className="space-y-3 mb-6">
@@ -198,18 +182,22 @@ export default function SignalDetail({
             </div>
           )}
 
-          {/* Consumer List (What user called "consumer ids") */}
-          <div className="mb-6">
-            <p className="text-sm font-medium text-mono-text/60 mb-2">Target Consumers ({poll.consumers.length})</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-4 bg-mono-primary/5 rounded-xl border border-mono-primary/10">
-              {poll.consumers.map(email => (
-                <div key={email} className="flex items-center gap-2 text-sm text-mono-text/80 bg-mono-bg/50 px-2 py-1.5 rounded border border-mono-primary/5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-mono-accent" />
-                  {email}
+          {/* Default Response Info */}
+          {poll.showDefaultToConsumers && poll.defaultResponse && (
+            <div className="mb-6 p-4 bg-mono-primary/5 border border-mono-primary/10 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-mono-primary/60 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-mono-text mb-1">
+                    <strong>Default Response:</strong> {poll.defaultResponse}
+                  </p>
+                  <p className="text-xs text-mono-text/60">
+                    This will be recorded if you don't submit a response before the deadline
+                  </p>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Warning */}
           {!userResponse && poll.isPersistentFinalAlert && (
