@@ -571,17 +571,6 @@ export default function ConsumerDashboard({
 
   return (
     <div className="min-h-screen bg-mono-bg">
-      {/* Persistent Alert Modal */}
-      {showPersistentAlert && persistentAlertPoll && (
-        <PersistentAlert
-          poll={persistentAlertPoll}
-          onSkip={handleSkip}
-          onFill={() => {
-            setSelectedPoll(persistentAlertPoll);
-            setShowPersistentAlert(false);
-          }}
-        />
-      )}
 
       {/* Header */}
       <header className="bg-mono-primary border-b border-mono-primary sticky top-0 z-40 shadow-lg">
@@ -889,14 +878,16 @@ export default function ConsumerDashboard({
         />
       )}
 
-      {/* Persistent Alert */}
+      {/* Persistent Alert Overlay */}
       {showPersistentAlert && persistentAlertPoll && !selectedPoll && (
         <PersistentAlert
           poll={persistentAlertPoll}
           onSkip={handleSkip}
           onFill={() => {
             setSelectedPoll(persistentAlertPoll);
-            // Keep showPersistentAlert true so we can return to it
+            // DO NOT setShowPersistentAlert(false) here. 
+            // We want to keep the "persistent alert active" state in Electron 
+            // so the kiosk mode and multi-monitor lock-out continue while the user fills the form.
           }}
         />
       )}

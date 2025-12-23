@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
 import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll } from './db';
@@ -14,6 +14,7 @@ if (process.platform === 'win32') {
 
 let tray: Tray | null = null;
 let win: BrowserWindow | null = null;
+let secondaryWindows: BrowserWindow[] = [];
 
 // Simple icon for tray (16x16 blue circle)
 const iconBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFMSURBVDiNpZMxSwNBEIW/vb29JBcQFBELsbATrPwBNv4CK/+Alf9AO0EQrGwsLCwEwUKwsLOxEQQLC0EQbCwUQUQQvLu9nZndsUgOc5dEfM3uzHvfzO4MrLH+V8AYcwI0gQPgEHgCboAr4FJKebcSgDHmGDgFdoEt4BV4AC6Acynl8xKAMWYPOAO2gQ/gHrgFbqSUH0sAxpgGcAzsAJ/APXADXEsp3xcAjDFN4AjYBl6AO+AauJBSvi0CGGN2gUNgC3gG7oBr4FJK+bIIYIzZBw6ATeAJuAWugXMp5esiQB04ADaAR+AWuAHOpZRviwB14BDYBx6AW+AGuJBSvi8C1IFDoBZ4AG6BG+BcSvm+CFAHjoAa8ADcAjfAhZTyfRGgDhwBNeABuAVugHMp5ccigDHmCGgAD8AtcANcSCk/FwGMMUdAA3gAbv8A/FbXX2v9D/gBnqV8VC6kqXwAAAAASUVORK5CYII=';
@@ -300,16 +301,6 @@ app.on('window-all-closed', () => {
 });
 
 // IPC Handlers for window control
-ipcMain.on('set-always-on-top', (_event, shouldBeOnTop: boolean) => {
-    if (win) {
-        win.setAlwaysOnTop(shouldBeOnTop);
-        if (shouldBeOnTop) {
-            win.show();
-            win.focus();
-        }
-    }
-});
-
 ipcMain.on('restore-window', () => {
     if (win) {
         if (win.isMinimized()) {
@@ -320,29 +311,180 @@ ipcMain.on('restore-window', () => {
     }
 });
 
-// Prevent window minimize/close during persistent alert
-ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
-    if (win) {
-        win.setMinimizable(!isActive);
-        win.setClosable(!isActive);
-        win.setMovable(!isActive); // Prevent window from being dragged
+let heartbeatInterval: NodeJS.Timeout | null = null;
+let lastKnownWindowState: {
+    bounds: Electron.Rectangle;
+    isMaximized: boolean;
+    isMinimized: boolean;
+} | null = null;
 
+// Helper to create a secondary alert window
+function createSecondaryWindow(display: Electron.Display) {
+    const secondaryWin = new BrowserWindow({
+        x: display.bounds.x,
+        y: display.bounds.y,
+        width: display.bounds.width,
+        height: display.bounds.height,
+        frame: false,
+        fullscreen: true,
+        kiosk: true,
+        alwaysOnTop: true,
+        backgroundColor: '#000000',
+        skipTaskbar: true,
+        autoHideMenuBar: true,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js'),
+        },
+    });
+
+    secondaryWin.setAlwaysOnTop(true, 'screen-saver', 1);
+    secondaryWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+    const url = isDev
+        ? 'http://localhost:3000?isSecondary=true'
+        : `file://${path.join(__dirname, '../dist/index.html')}?isSecondary=true`;
+
+    if (isDev) {
+        secondaryWin.loadURL(url);
+    } else {
+        secondaryWin.loadFile(path.join(__dirname, '../dist/index.html'), { query: { isSecondary: 'true' } });
+    }
+
+    secondaryWindows.push(secondaryWin);
+    return secondaryWin;
+}
+
+// Handle display changes during active alert
+const handleDisplayAdded = (_event: any, display: Electron.Display) => {
+    console.log('[Sentinel] New monitor detected during alert, locking it.');
+    createSecondaryWindow(display);
+};
+
+const handleDisplayRemoved = (_event: any, display: Electron.Display) => {
+    console.log('[Sentinel] Monitor removed during alert, cleaning up window.');
+    // Find window on this display and destroy it
+    secondaryWindows = secondaryWindows.filter(sw => {
+        const bounds = sw.getBounds();
+        if (bounds.x === display.bounds.x && bounds.y === display.bounds.y) {
+            if (!sw.isDestroyed()) sw.destroy();
+            return false;
+        }
+        return true;
+    });
+};
+
+ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
+    console.log(`[Main] set-persistent-alert-active: ${isActive}`);
+    if (win) {
         if (isActive) {
-            win.setAlwaysOnTop(true, 'screen-saver'); // Highest priority
-            win.setKiosk(true); // Strict fullscreen (Kiosk mode)
+            console.log('[Main] Activating robust persistent alert (kiosk + fullscreen)');
+
+            // Save state before locking
+            lastKnownWindowState = {
+                bounds: win.getBounds(),
+                isMaximized: win.isMaximized(),
+                isMinimized: win.isMinimized()
+            };
+
+            win.setMinimizable(false);
+            win.setClosable(false);
+            win.setMovable(false);
+
+            // Main Window Protection
+            win.setResizable(true); // Allow transition
+            win.setFullScreenable(true);
+
+            // Force maximize before fullscreen to ensure coverage
+            win.maximize();
+            win.setFullScreen(true);
+            win.setKiosk(true);
+
+            win.setResizable(false);
+            win.setMaximizable(false);
+            win.setFullScreenable(false);
+            win.setAlwaysOnTop(true, 'screen-saver', 1);
+            win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+            win.setSkipTaskbar(true);
             win.show();
             win.focus();
+
+            // Multi-monitor support: Create secondary windows for other displays
+            const displays = screen.getAllDisplays();
+            const primaryDisplay = screen.getPrimaryDisplay();
+
+            displays.forEach(display => {
+                if (display.id !== primaryDisplay.id) {
+                    createSecondaryWindow(display);
+                }
+            });
+
+            // Listen for display changes
+            screen.on('display-added', handleDisplayAdded);
+            screen.on('display-removed', handleDisplayRemoved);
+
+            // Focus Heartbeat: Force windows to front every 500ms
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(() => {
+                if (win) {
+                    win.setAlwaysOnTop(true, 'screen-saver', 1);
+                    win.moveTop();
+                    win.focus();
+                }
+                secondaryWindows.forEach(sw => {
+                    if (!sw.isDestroyed()) {
+                        sw.setAlwaysOnTop(true, 'screen-saver', 1);
+                        sw.moveTop();
+                        sw.focus();
+                    }
+                });
+            }, 500);
+
         } else {
-            win.setKiosk(false); // Exit kiosk mode
+            console.log('[Main] Deactivating persistent alert and restoring state');
+            // Cleanup heartbeat
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+            screen.removeListener('display-added', handleDisplayAdded);
+            screen.removeListener('display-removed', handleDisplayRemoved);
+
+            // Cleanup secondary windows
+            secondaryWindows.forEach(sw => {
+                if (!sw.isDestroyed()) sw.destroy();
+            });
+            secondaryWindows = [];
+
+            // Restore Main Window basic state
+            win.setKiosk(false);
+            win.setFullScreen(false);
+            win.setResizable(true);
+            win.setMaximizable(true);
+            win.setFullScreenable(true);
+            win.setSkipTaskbar(false);
+            win.setVisibleOnAllWorkspaces(false);
             win.setAlwaysOnTop(false);
 
-            // Re-enable controls after exiting fullscreen/always-on-top
-            // This ensures the window frame is correctly restored
+            // Precise window state restoration
+            if (lastKnownWindowState) {
+                if (lastKnownWindowState.isMaximized) {
+                    win.maximize();
+                } else if (lastKnownWindowState.isMinimized) {
+                    win.minimize();
+                } else {
+                    win.unmaximize();
+                    win.setBounds(lastKnownWindowState.bounds);
+                }
+                lastKnownWindowState = null;
+            }
+
             setTimeout(() => {
                 if (win) {
                     win.setMinimizable(true);
                     win.setClosable(true);
-                    win.setMovable(true); // Re-enable movement
+                    win.setMovable(true);
                 }
             }, 100);
         }

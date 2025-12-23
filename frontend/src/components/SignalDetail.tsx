@@ -82,7 +82,7 @@ export default function SignalDetail({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+    <div className={`fixed inset-0 ${isPersistentContext ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'} flex items-center justify-center p-4 z-50 animate-in fade-in duration-200`}>
       <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-mono-primary/10 animate-in zoom-in-95 duration-200">
         {/* Header - Pinned */}
         <div className="flex-shrink-0 bg-mono-primary/5 border-b border-mono-primary/10 p-6">

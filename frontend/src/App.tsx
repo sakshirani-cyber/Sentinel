@@ -37,6 +37,8 @@ export interface Poll {
   syncStatus?: 'synced' | 'pending' | 'error';
 }
 
+import PersistentAlertSecondary from './components/PersistentAlertSecondary';
+
 export interface Response {
   pollId: string;
   consumerEmail: string;
@@ -47,10 +49,17 @@ export interface Response {
 }
 
 function App() {
+  const isSecondary = new URLSearchParams(window.location.search).get('isSecondary') === 'true';
+
   const [user, setUser] = useState<User | null>(null);
   const [polls, setPolls] = useState<Poll[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // If this is a secondary monitor window, render the lock-out view immediately
+  if (isSecondary) {
+    return <PersistentAlertSecondary />;
+  }
   // We need a view mode state to allow publishers to switch to consumer view
   const [viewMode, setViewMode] = useState<'publisher' | 'consumer'>('publisher');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
