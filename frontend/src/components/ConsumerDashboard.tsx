@@ -109,25 +109,28 @@ export default function ConsumerDashboard({
 
           // Transform and save each poll to local database for persistence and metadata support
           const mappedPolls = result.data.map((dto: any) => {
+            // Check if this poll already exists in our local polls array to preserve metadata
+            const existingPoll = polls.find((p: any) => p.cloudSignalId === dto.signalId);
+
             const pollData = {
-              id: (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`),
+              id: existingPoll?.id || (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`),
               question: dto.question,
               options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })),
               publisherEmail: dto.publisherEmail,
-              publisherName: dto.publisherEmail, // Backend doesn't send name, use email
+              publisherName: existingPoll?.publisherName || dto.publisherEmail, // Preserve name if we have it
               deadline: dto.endTimestamp,
               status: 'active' as const,
-              consumers: [user.email],
+              consumers: existingPoll?.consumers || [user.email], // Preserve full consumer list if available
               defaultResponse: dto.defaultOption,
               showDefaultToConsumers: dto.defaultFlag,
               anonymityMode: (dto.anonymous ? 'anonymous' : 'record') as 'anonymous' | 'record',
               isPersistentFinalAlert: dto.persistentAlert,
-              publishedAt: new Date().toISOString(),
+              publishedAt: existingPoll?.publishedAt || new Date().toISOString(), // Preserve original publish date
               cloudSignalId: dto.signalId,
-              isEdited: false,
-              updatedAt: undefined,
-              isPersistentAlert: false, // Required for local Poll interface
-              alertBeforeMinutes: 15     // Required for local Poll interface
+              isEdited: existingPoll?.isEdited || false,
+              updatedAt: existingPoll?.updatedAt,
+              isPersistentAlert: existingPoll?.isPersistentAlert || false,
+              alertBeforeMinutes: existingPoll?.alertBeforeMinutes || 15
             };
 
             // Non-blocking save to local DB
@@ -771,7 +774,6 @@ export default function ConsumerDashboard({
                         poll={poll}
                         isCompleted
                         userResponse={userResponse}
-                        onClick={() => setSelectedPoll(poll)}
                       />
                     </div>
                   );

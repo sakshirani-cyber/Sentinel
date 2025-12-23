@@ -97,6 +97,48 @@ export function initDB() {
             throw migrationError;
         }
 
+        // Migration: Clean up duplicate polls with same cloudSignalId
+        console.log('[SQLite DB] Checking for duplicate polls by cloudSignalId...');
+        try {
+            const duplicates = db.prepare(`
+                SELECT cloudSignalId, COUNT(*) as count 
+                FROM polls 
+                WHERE cloudSignalId IS NOT NULL 
+                GROUP BY cloudSignalId 
+                HAVING count > 1
+            `).all() as any[];
+
+            if (duplicates.length > 0) {
+                console.log(`[SQLite DB] Found ${duplicates.length} signals with duplicate local entries. Cleaning up...`);
+                for (const dup of duplicates) {
+                    const instances = db.prepare(`
+                        SELECT localId, consumers 
+                        FROM polls 
+                        WHERE cloudSignalId = ?
+                        ORDER BY length(consumers) DESC -- Prefer the one with more consumers
+                    `).all(dup.cloudSignalId) as any[];
+
+                    const primary = instances[0];
+                    const toDelete = instances.slice(1);
+
+                    for (const entry of toDelete) {
+                        console.log(`[SQLite DB] Merging duplicate ${entry.localId} into ${primary.localId}`);
+                        // Update responses to point to the primary localId
+                        db.prepare('UPDATE OR IGNORE responses SET pollLocalId = ? WHERE pollLocalId = ?').run(primary.localId, entry.localId);
+                        // Delete the orphaned responses (if UNIQUE constraint on responses(pollLocalId, userId) hit)
+                        db.prepare('DELETE FROM responses WHERE pollLocalId = ?').run(entry.localId);
+                        // Delete the duplicate poll
+                        db.prepare('DELETE FROM polls WHERE localId = ?').run(entry.localId);
+                    }
+                }
+                console.log('[SQLite DB] Duplicate cleanup complete.');
+            } else {
+                console.log('[SQLite DB] No duplicate polls found.');
+            }
+        } catch (cleanupError) {
+            console.error('[SQLite DB] Error during duplicate cleanup:', cleanupError);
+        }
+
         console.log('[SQLite DB] Initialization complete.');
     } catch (error) {
         console.error('[SQLite DB] FATAL ERROR during initialization:', error);
@@ -166,8 +208,19 @@ function validateResponse(response: Response) {
 
 export function createPoll(poll: Poll) {
     validatePoll(poll);
+    const database = getDb();
     try {
-        const stmt = getDb().prepare(`
+        // If it has a cloudSignalId, check if it already exists under a different localId
+        if (poll.cloudSignalId) {
+            const existing = database.prepare('SELECT localId FROM polls WHERE cloudSignalId = ?').get(poll.cloudSignalId) as { localId: string } | undefined;
+            if (existing && existing.localId !== poll.id) {
+                console.log(`[SQLite DB] Found existing poll with cloudSignalId ${poll.cloudSignalId} but different localId. Updating existing record ${existing.localId}`);
+                // Use the existing localId to avoid creating a duplicate
+                poll.id = existing.localId;
+            }
+        }
+
+        const stmt = database.prepare(`
             INSERT INTO polls (
                 localId, question, options, publisherEmail, publisherName, 
                 status, deadline, anonymityMode, isPersistentFinalAlert, 

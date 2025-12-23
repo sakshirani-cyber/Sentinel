@@ -78,8 +78,8 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                   </div>
                   <div className="text-right">
                     <span className={`inline-block px-3 py-1 rounded-full text-xs ${getTimeRemaining().includes('remaining')
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-red-100 text-red-700'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-red-100 text-red-700'
                       }`}>
                       {getTimeRemaining()}
                     </span>
@@ -94,10 +94,10 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                   <div className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded">
                     Poll
                   </div>
-                  {poll.isPersistentAlert && (
+                  {poll.isPersistentFinalAlert && (
                     <div className="px-2 py-0.5 bg-red-50 text-red-700 rounded flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      Persistent
+                      Persistent Alert Enabled (1-min)
                     </div>
                   )}
                 </div>
@@ -145,18 +145,13 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
             </div>
 
             {/* Alert Info */}
-            {poll.isPersistentAlert && (
-              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            {poll.isPersistentFinalAlert && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
                   <div>
-                    <p className="text-sm text-amber-800 mb-1">
-                      <strong>Persistent Alert Enabled</strong>
-                    </p>
-                    <p className="text-sm text-amber-700">
-                      An alert will appear {poll.alertBeforeMinutes} minutes before the deadline.
-                      Consumers must either fill the poll or provide a reason to skip.
-                    </p>
+                    <p className="text-sm font-medium text-red-900">Persistent Window Alert</p>
+                    <p className="text-xs text-red-700">This signal will lock the screen for a mandatory response 1 minute before deadline.</p>
                   </div>
                 </div>
               </div>

@@ -353,7 +353,7 @@ export default function PublishedPolls({
                   </div>
                   <div className="p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
                     <span className="text-xs text-mono-text/60 block">Persistent Alert</span>
-                    <span className="text-mono-text font-medium">{selectedPollForDetails.isPersistentAlert ? 'Yes' : 'No'}</span>
+                    <span className="text-mono-text font-medium">{selectedPollForDetails.isPersistentFinalAlert ? 'Yes' : 'No'}</span>
                   </div>
                 </div>
               </div>

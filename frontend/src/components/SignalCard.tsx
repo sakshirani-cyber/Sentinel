@@ -43,7 +43,8 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
   return (
     <div
       onClick={onClick}
-      className={`bg-mono-bg border-2 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden ${timeRemaining.isUrgent && !isCompleted ? 'border-red-300 bg-red-50' : 'border-mono-primary/20'
+      className={`bg-mono-bg border-2 rounded-xl shadow-sm transition-all overflow-hidden ${onClick ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+        } ${timeRemaining.isUrgent && !isCompleted ? 'border-red-300 bg-red-50' : 'border-mono-primary/20'
         }`}
     >
       <div className="p-5">
@@ -87,7 +88,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
             Poll
           </div>
 
-          {poll.isPersistentAlert && !isCompleted && (
+          {poll.isPersistentFinalAlert && !isCompleted && (
             <div className="px-2 py-0.5 bg-red-50 text-red-700 rounded flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               Persistent
