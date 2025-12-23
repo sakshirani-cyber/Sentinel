@@ -42,7 +42,7 @@ public class Signal {
     @Column(name = "default_flag", nullable = false)
     private Boolean defaultFlag = false;
 
-    @Column(name = "default_option")
+    @Column(name = "default_option", nullable = false)
     private String defaultOption;
 
     @Column(name = "shared_with", columnDefinition = "text[]", nullable = false)
