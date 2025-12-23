@@ -212,11 +212,16 @@ export default function PublishedPolls({
                     disabled={loadingAnalytics && selectedPollForAnalytics?.id === poll.id}
                   >
                     {loadingAnalytics && selectedPollForAnalytics?.id === poll.id ? (
-                      <div className="w-4 h-4 border-2 border-mono-bg/30 border-t-mono-bg rounded-full animate-spin" />
+                      <>
+                        <div className="w-5 h-5 border-2 border-mono-bg/30 border-t-mono-bg rounded-full animate-spin" />
+                        <span>Loading...</span>
+                      </>
                     ) : (
-                      <BarChart3 className="w-4 h-4" />
+                      <>
+                        <BarChart3 className="w-4 h-4" />
+                        <span>Analytics</span>
+                      </>
                     )}
-                    Analytics
                   </button>
                   {!isCompleted && (
                     <button
@@ -248,7 +253,7 @@ export default function PublishedPolls({
       </div>
 
       {/* Analytics Modal */}
-      {selectedPollForAnalytics && (
+      {selectedPollForAnalytics && !loadingAnalytics && (
         <AnalyticsView
           poll={selectedPollForAnalytics}
           responses={analyticsResponses}

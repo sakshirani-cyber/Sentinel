@@ -150,6 +150,23 @@ function createPoll(poll) {
                 @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
                 @cloudSignalId, @syncStatus, @isEdited, @updatedAt
             )
+            ON CONFLICT(localId) DO UPDATE SET
+                question = excluded.question,
+                options = excluded.options,
+                publisherEmail = excluded.publisherEmail,
+                publisherName = excluded.publisherName,
+                status = excluded.status,
+                deadline = excluded.deadline,
+                anonymityMode = excluded.anonymityMode,
+                isPersistentFinalAlert = excluded.isPersistentFinalAlert,
+                consumers = excluded.consumers,
+                defaultResponse = excluded.defaultResponse,
+                showDefaultToConsumers = excluded.showDefaultToConsumers,
+                publishedAt = excluded.publishedAt,
+                cloudSignalId = excluded.cloudSignalId,
+                syncStatus = excluded.syncStatus,
+                isEdited = excluded.isEdited,
+                updatedAt = excluded.updatedAt
         `);
         const info = stmt.run({
             localId: poll.id,
@@ -264,7 +281,7 @@ function submitResponse(response) {
     validateResponse(response);
     try {
         const stmt = getDb().prepare(`
-            INSERT OR REPLACE INTO responses (
+            INSERT INTO responses (
                 pollLocalId, userId, selectedOption, timeOfSubmission, isDefault, skipReason
             ) VALUES (
                 @pollLocalId, @userId, @selectedOption, @timeOfSubmission, @isDefault, @skipReason

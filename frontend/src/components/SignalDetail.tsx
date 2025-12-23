@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { Poll } from '../App';
-import { X, Send, AlertCircle, Clock, Shield, ArrowLeft, Loader } from 'lucide-react';
+import { Poll, Response } from '../App';
+import { X, Send, AlertCircle, Clock, Shield, ArrowLeft, Loader, CheckCircle } from 'lucide-react';
 
 interface SignalDetailProps {
   poll: Poll;
@@ -9,10 +9,19 @@ interface SignalDetailProps {
   onSaveDraft: (pollId: string, value: string) => void;
   onSubmit: (pollId: string, value: string) => Promise<void>;
   onClose: () => void;
-  isPersistentContext?: boolean; // New prop to indicate if opened from persistent alert
+  isPersistentContext?: boolean;
+  userResponse?: Response | null;
 }
 
-export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClose, isPersistentContext = false }: SignalDetailProps) {
+export default function SignalDetail({
+  poll,
+  draft,
+  onSaveDraft,
+  onSubmit,
+  onClose,
+  isPersistentContext = false,
+  userResponse = null
+}: SignalDetailProps) {
   const [selectedValue, setSelectedValue] = useState(draft || '');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,40 +148,71 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
 
           {/* Poll Options */}
           <div className="space-y-3 mb-6">
-            {poll.options.map((option) => (
-              <label
-                key={option.id}
-                className={`group flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${selectedValue === option.text
-                  ? 'border-mono-accent bg-mono-accent/10 shadow-sm'
-                  : 'border-mono-primary/10 hover:border-mono-accent/50 hover:bg-mono-bg'
-                  }`}
-              >
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedValue === option.text
-                  ? 'border-mono-accent bg-mono-accent'
-                  : 'border-mono-primary/30 group-hover:border-mono-accent'
-                  }`}>
-                  {selectedValue === option.text && (
-                    <div className="w-2 h-2 bg-mono-primary rounded-full" />
+            <p className="text-sm font-medium text-mono-text/60 mb-2">Options</p>
+            {poll.options.map((option) => {
+              const isSelected = userResponse ? userResponse.response === option.text : selectedValue === option.text;
+              return (
+                <label
+                  key={option.id}
+                  className={`group flex items-center gap-4 p-4 border-2 rounded-xl transition-all duration-200 ${isSelected
+                    ? 'border-mono-accent bg-mono-accent/10 shadow-sm'
+                    : 'border-mono-primary/10'
+                    } ${!userResponse ? 'cursor-pointer hover:border-mono-accent/50 hover:bg-mono-bg' : 'cursor-default'}`}
+                >
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected
+                    ? 'border-mono-accent bg-mono-accent'
+                    : 'border-mono-primary/30'
+                    }`}>
+                    {isSelected && (
+                      <div className="w-2 h-2 bg-mono-primary rounded-full" />
+                    )}
+                  </div>
+                  {!userResponse && (
+                    <input
+                      type="radio"
+                      name="poll-response"
+                      value={option.text}
+                      checked={selectedValue === option.text}
+                      onChange={(e) => setSelectedValue(e.target.value)}
+                      className="hidden"
+                    />
                   )}
+                  <span className={`font-medium transition-colors ${isSelected ? 'text-mono-primary' : 'text-mono-text'}`}>
+                    {option.text}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+
+          {/* User Response Details if completed */}
+          {userResponse && (
+            <div className="mb-6 p-4 bg-mono-accent/5 border border-mono-accent/20 rounded-xl">
+              <h4 className="text-sm font-medium text-mono-primary mb-2">Your Response Details</h4>
+              <div className="space-y-2 text-sm">
+                <p className="text-mono-text"><span className="opacity-60">Selected:</span> {userResponse.response}</p>
+                {userResponse.skipReason && <p className="text-mono-text"><span className="opacity-60">Reason for skipping:</span> {userResponse.skipReason}</p>}
+                <p className="text-mono-text"><span className="opacity-60">Submitted:</span> {formatDateTime(userResponse.submittedAt)}</p>
+                {userResponse.isDefault && <p className="text-amber-600 font-medium italic">This was recorded as a default response.</p>}
+              </div>
+            </div>
+          )}
+
+          {/* Consumer List (What user called "consumer ids") */}
+          <div className="mb-6">
+            <p className="text-sm font-medium text-mono-text/60 mb-2">Target Consumers ({poll.consumers.length})</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-4 bg-mono-primary/5 rounded-xl border border-mono-primary/10">
+              {poll.consumers.map(email => (
+                <div key={email} className="flex items-center gap-2 text-sm text-mono-text/80 bg-mono-bg/50 px-2 py-1.5 rounded border border-mono-primary/5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-mono-accent" />
+                  {email}
                 </div>
-                <input
-                  type="radio"
-                  name="poll-response"
-                  value={option.text}
-                  checked={selectedValue === option.text}
-                  onChange={(e) => setSelectedValue(e.target.value)}
-                  className="hidden"
-                />
-                <span className={`font-medium transition-colors ${selectedValue === option.text ? 'text-mono-primary' : 'text-mono-text'
-                  }`}>
-                  {option.text}
-                </span>
-              </label>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Warning */}
-          {poll.isPersistentFinalAlert && (
+          {!userResponse && poll.isPersistentFinalAlert && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -192,14 +232,21 @@ export default function SignalDetail({ poll, draft, onSaveDraft, onSubmit, onClo
 
         {/* Footer - Actions */}
         <div className="flex-shrink-0 border-t border-mono-primary/10 p-6 bg-mono-bg">
-          <button
-            onClick={handleSubmit}
-            disabled={!selectedValue}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none font-medium"
-          >
-            <Send className="w-4 h-4" />
-            Submit Response
-          </button>
+          {userResponse ? (
+            <div className="flex items-center justify-center gap-2 text-green-600 font-medium">
+              <CheckCircle className="w-5 h-5" />
+              Response Recorded
+            </div>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={!selectedValue}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none font-medium"
+            >
+              <Send className="w-4 h-4" />
+              Submit Response
+            </button>
+          )}
         </div>
       </div>
 

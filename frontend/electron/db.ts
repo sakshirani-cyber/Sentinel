@@ -179,6 +179,23 @@ export function createPoll(poll: Poll) {
                 @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
                 @cloudSignalId, @syncStatus, @isEdited, @updatedAt
             )
+            ON CONFLICT(localId) DO UPDATE SET
+                question = excluded.question,
+                options = excluded.options,
+                publisherEmail = excluded.publisherEmail,
+                publisherName = excluded.publisherName,
+                status = excluded.status,
+                deadline = excluded.deadline,
+                anonymityMode = excluded.anonymityMode,
+                isPersistentFinalAlert = excluded.isPersistentFinalAlert,
+                consumers = excluded.consumers,
+                defaultResponse = excluded.defaultResponse,
+                showDefaultToConsumers = excluded.showDefaultToConsumers,
+                publishedAt = excluded.publishedAt,
+                cloudSignalId = excluded.cloudSignalId,
+                syncStatus = excluded.syncStatus,
+                isEdited = excluded.isEdited,
+                updatedAt = excluded.updatedAt
         `);
 
         const info = stmt.run({

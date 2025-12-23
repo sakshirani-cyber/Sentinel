@@ -106,27 +106,39 @@ export default function ConsumerDashboard({
         const result = await (window as any).electron.backend.getActivePolls(user.email);
         if (result.success && result.data) {
           console.log('[ConsumerDashboard] Active polls fetched:', result.data);
-          // Transform ActivePollDTO to Poll format if necessary or use directly
-          // We need to map ActivePollDTO to our Poll interface to be compatible with SignalCard
-          const mappedPolls = result.data.map((dto: any) => ({
-            id: (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`),
 
-            question: dto.question,
-            options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })),
-            publisherEmail: dto.publisherEmail,
-            publisherName: dto.publisherEmail, // Backend doesn't send name, use email
-            deadline: dto.endTimestamp,
-            status: 'active',
-            consumers: [user.email],
-            defaultResponse: dto.defaultOption,
-            showDefaultToConsumers: dto.defaultFlag,
-            anonymityMode: dto.anonymous ? 'anonymous' : 'record',
-            isPersistentFinalAlert: dto.persistentAlert, // Map persistentAlert to isPersistentFinalAlert
-            publishedAt: new Date().toISOString(),
-            cloudSignalId: dto.signalId,
-            isEdited: false, // Backend doesn't send lastEditedBy anymore
-            updatedAt: undefined
-          }));
+          // Transform and save each poll to local database for persistence and metadata support
+          const mappedPolls = result.data.map((dto: any) => {
+            const pollData = {
+              id: (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`),
+              question: dto.question,
+              options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })),
+              publisherEmail: dto.publisherEmail,
+              publisherName: dto.publisherEmail, // Backend doesn't send name, use email
+              deadline: dto.endTimestamp,
+              status: 'active' as const,
+              consumers: [user.email],
+              defaultResponse: dto.defaultOption,
+              showDefaultToConsumers: dto.defaultFlag,
+              anonymityMode: (dto.anonymous ? 'anonymous' : 'record') as 'anonymous' | 'record',
+              isPersistentFinalAlert: dto.persistentAlert,
+              publishedAt: new Date().toISOString(),
+              cloudSignalId: dto.signalId,
+              isEdited: false,
+              updatedAt: undefined,
+              isPersistentAlert: false, // Required for local Poll interface
+              alertBeforeMinutes: 15     // Required for local Poll interface
+            };
+
+            // Non-blocking save to local DB
+            if ((window as any).electron?.db) {
+              (window as any).electron.db.createPoll(pollData).catch((err: any) => {
+                console.error('[ConsumerDashboard] Error persisting poll locally:', err);
+              });
+            }
+
+            return pollData;
+          });
           setBackendActivePolls(mappedPolls);
         } else {
           console.warn('[ConsumerDashboard] Failed to fetch active polls:', result.error);
@@ -172,7 +184,9 @@ export default function ConsumerDashboard({
     backendCount: backendActivePolls.length,
     combinedTotal: combinedItems.length
   });
-  const userPolls = displayPolls.filter(p => p.consumers.includes(user.email));
+  const userPolls = displayPolls.filter(p =>
+    p.consumers.some((c: string) => c.toLowerCase() === user.email.toLowerCase())
+  );
 
   // Get incomplete polls - ALWAYS use backend data for accurate badge count
   // BUT we must also filter out polls we've processed locally but backend hasn't updated yet (optimistic UI)
@@ -194,12 +208,18 @@ export default function ConsumerDashboard({
   }, [backendActivePolls, responses, user.email]);
 
   // Get completed polls (moved here to access userPolls)
-  // Logic: Poll is completed if we have a response AND it's not currently in incompletePolls (handles move-back on republish)
+  // Logic: Poll is completed if:
+  // 1. We have a response OR
+  // 2. The deadline has passed (status is 'completed' or current time > deadline)
+  // AND it's not currently in incompletePolls (handles move-back on republish)
   const completedPolls = useMemo(() => {
+    const now = new Date();
     return userPolls.filter(p => {
       const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
+      const isExpired = p.status === 'completed' || new Date(p.deadline) < now;
       const isReassigned = incompletePolls.some(ip => ip.id === p.id);
-      return hasResponse && !isReassigned;
+
+      return (hasResponse || isExpired) && !isReassigned;
     }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
   }, [userPolls, responses, incompletePolls, user.email]);
 
@@ -751,6 +771,7 @@ export default function ConsumerDashboard({
                         poll={poll}
                         isCompleted
                         userResponse={userResponse}
+                        onClick={() => setSelectedPoll(poll)}
                       />
                     </div>
                   );
@@ -796,10 +817,6 @@ export default function ConsumerDashboard({
                               <Clock className="w-4 h-4" />
                               Deadline: {new Date(poll.deadline).toLocaleString()}
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <CheckCircle className="w-4 h-4" />
-                              Status: {poll.status}
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -817,11 +834,16 @@ export default function ConsumerDashboard({
                         className="flex items-center gap-2 px-4 py-2 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-primary/90 transition-colors text-sm font-medium disabled:opacity-70"
                       >
                         {loadingAnalytics && selectedPollForAnalytics?.id === poll.id ? (
-                          <div className="w-4 h-4 border-2 border-mono-bg/30 border-t-mono-bg rounded-full animate-spin" />
+                          <>
+                            <div className="w-5 h-5 border-2 border-mono-bg/30 border-t-mono-bg rounded-full animate-spin" />
+                            <span>Loading...</span>
+                          </>
                         ) : (
-                          <BarChart3 className="w-4 h-4" />
+                          <>
+                            <BarChart3 className="w-4 h-4" />
+                            <span>View Analytics</span>
+                          </>
                         )}
-                        View Analytics
                       </button>
                     </div>
                   );
@@ -849,11 +871,12 @@ export default function ConsumerDashboard({
             }
           }}
           isPersistentContext={showPersistentAlert && selectedPoll?.isPersistentFinalAlert}
+          userResponse={responses.find(r => r.pollId === selectedPoll.id && r.consumerEmail === user.email)}
         />
       )}
 
       {/* Analytics Modal */}
-      {selectedPollForAnalytics && (
+      {selectedPollForAnalytics && !loadingAnalytics && (
         <AnalyticsView
           poll={selectedPollForAnalytics}
           responses={analyticsResponses}
