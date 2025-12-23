@@ -31,8 +31,9 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   // Set minimum datetime to current time
   const getMinDateTime = () => {
     const now = new Date();
-    now.setMinutes(now.getMinutes() + 5); // Minimum 5 minutes from now
-    return now.toISOString().slice(0, 16);
+    now.setMinutes(now.getMinutes() + 5);
+    const offset = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - offset).toISOString().slice(0, 16);
   };
 
   // Mock consumers list - in real app, this would come from backend
@@ -173,7 +174,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         defaultResponse: finalDefaultResponse,
         showDefaultToConsumers,
         anonymityMode,
-        deadline,
+        deadline: new Date(deadline).toISOString(),
         isPersistentFinalAlert,
         consumers: selectedConsumers,
         publishedAt: new Date().toISOString(),

@@ -10,10 +10,19 @@ interface EditPollModalProps {
 }
 
 export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModalProps) {
+    const formatDateForInput = (dateStr: string) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return '';
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+    };
+
     const getMinDateTime = () => {
         const now = new Date();
-        now.setMinutes(now.getMinutes() + 1); // Move 1 minute ahead in case of slight delay
-        return now.toISOString().slice(0, 16);
+        now.setMinutes(now.getMinutes() + 1);
+        const offset = now.getTimezoneOffset() * 60000;
+        return new Date(now.getTime() - offset).toISOString().slice(0, 16);
     };
 
     const isDateValid = (dateStr: string) => {
@@ -29,7 +38,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [defaultResponse, setDefaultResponse] = useState(isOptionDefault ? poll.defaultResponse : '');
     const [showDefaultToConsumers, setShowDefaultToConsumers] = useState(poll.showDefaultToConsumers);
     const [anonymityMode, setAnonymityMode] = useState<'anonymous' | 'record'>(poll.anonymityMode);
-    const [deadline, setDeadline] = useState(poll.deadline.slice(0, 16));
+    const [deadline, setDeadline] = useState(formatDateForInput(poll.deadline));
     const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(poll.isPersistentFinalAlert);
     const [selectedConsumers, setSelectedConsumers] = useState<string[]>(poll.consumers);
     const [republish, setRepublish] = useState(false);
@@ -196,7 +205,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         currentDefaultResponse !== poll.defaultResponse ||
         showDefaultToConsumers !== poll.showDefaultToConsumers ||
         anonymityMode !== poll.anonymityMode ||
-        deadline !== poll.deadline.slice(0, 16) ||
+        deadline !== formatDateForInput(poll.deadline) ||
         isPersistentFinalAlert !== poll.isPersistentFinalAlert ||
         JSON.stringify([...selectedConsumers].sort()) !== JSON.stringify([...poll.consumers].sort());
 
