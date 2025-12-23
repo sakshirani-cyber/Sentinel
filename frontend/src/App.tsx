@@ -228,6 +228,8 @@ function App() {
           } else {
             console.warn('Failed to update poll on backend:', backendResult.error);
             updates.syncStatus = 'error';
+            alert('Failed to update poll on backend: ' + backendResult.error);
+            return; // Don't proceed to local DB if backend failed
           }
         } catch (backendError) {
           console.warn('Failed to update poll on backend:', backendError);

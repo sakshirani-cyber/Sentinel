@@ -181,7 +181,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                 defaultResponse: finalDefaultResponse,
                 showDefaultToConsumers,
                 anonymityMode,
-                deadline,
+                deadline: new Date(deadline).toISOString(),
                 isPersistentFinalAlert,
                 consumers: selectedConsumers,
                 isEdited: true
