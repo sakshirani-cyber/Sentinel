@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.sentinel.backend.constant.Constants.ACTIVE;
-import static com.sentinel.backend.constant.Constants.COMPLETED;
 import static com.sentinel.backend.constant.Constants.POLL;
 import static com.sentinel.backend.constant.Constants.REMOVED;
 import static com.sentinel.backend.constant.Queries.GET_ROLE_BY_EMAIL_AND_PASSWORD;
@@ -50,7 +49,6 @@ public class SignalServiceImpl implements SignalService {
     private final PollRepository pollRepository;
     private final PollResultRepository pollResultRepository;
     private final JdbcTemplate jdbcTemplate;
-    private final ActivePollService activePollService;
 
     @Override
     @Transactional
@@ -68,8 +66,6 @@ public class SignalServiceImpl implements SignalService {
         poll.setOptions(dto.getOptions());
         pollRepository.save(poll);
 
-        evictActivePollCache(dto.getSharedWith());
-
         return new CreatePollResponse(savedSignal.getId(), dto.getLocalId());
     }
 
@@ -84,8 +80,6 @@ public class SignalServiceImpl implements SignalService {
 
         PollResult pr = buildOrUpdatePollResult(req, signal, poll);
         pollResultRepository.save(pr);
-
-        activePollService.evictUserCache(req.getUserId());
     }
 
     @Override
@@ -121,8 +115,6 @@ public class SignalServiceImpl implements SignalService {
 
         pollRepository.save(poll);
         signalRepository.save(signal);
-
-        evictActivePollCache(signal.getSharedWith());
     }
 
     @Override
@@ -137,7 +129,6 @@ public class SignalServiceImpl implements SignalService {
         }
 
         signalRepository.delete(signal);
-        evictActivePollCache(signal.getSharedWith());
     }
 
     @Override
@@ -159,12 +150,6 @@ public class SignalServiceImpl implements SignalService {
                 .orElseThrow(() -> new CustomException("Poll not found", HttpStatus.NOT_FOUND));
     }
 
-    private void evictActivePollCache(String[] users) {
-        if (users == null) return;
-        for (String u : users) {
-            activePollService.evictUserCache(u);
-        }
-    }
 
     private void normalizeAndValidateCreate(PollCreateDTO dto) {
         dto.normalizeCommon();
@@ -206,43 +191,6 @@ public class SignalServiceImpl implements SignalService {
         }
     }
 
-    protected void ensureDefaultsForExpired(Signal signal) {
-
-        if (signal.getEndTimestamp() == null) return;
-        if (Instant.now().isBefore(signal.getEndTimestamp())) return;
-
-        if (!hasText(signal.getDefaultOption())) {
-            throw new CustomException("Default Option required", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
-        Set<String> responded =
-                pollResultRepository.findByIdSignalId(signal.getId())
-                        .stream().map(r -> r.getId().getUserId()).collect(Collectors.toSet());
-
-        List<PollResult> inserts = new ArrayList<>();
-
-        for (String userId : signal.getSharedWith()) {
-            if (!responded.contains(userId)) {
-
-                PollResultId id = new PollResultId(signal.getId(), userId);
-
-                PollResult pr = new PollResult();
-                pr.setId(id);
-                pr.setSignal(signal);
-                pr.setSelectedOption(null);
-                pr.setDefaultResponse(signal.getDefaultOption());
-                pr.setReason(null);
-
-                inserts.add(pr);
-            }
-        }
-
-        if (!inserts.isEmpty()) pollResultRepository.saveAll(inserts);
-
-        signal.setStatus(COMPLETED);
-        signalRepository.save(signal);
-    }
-
     private Signal getValidActivePollSignal(Integer signalId, String userId) {
 
         Signal s = signalRepository.findById(signalId)
@@ -251,8 +199,6 @@ public class SignalServiceImpl implements SignalService {
         if (!POLL.equalsIgnoreCase(s.getTypeOfSignal())) {
             throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
         }
-
-        ensureDefaultsForExpired(s);
 
         if (!ACTIVE.equals(s.getStatus())) {
             throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
@@ -305,8 +251,6 @@ public class SignalServiceImpl implements SignalService {
         if (!POLL.equalsIgnoreCase(signal.getTypeOfSignal())) {
             throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
         }
-
-        ensureDefaultsForExpired(signal);
 
         Poll poll = getPoll(signalId);
         List<PollResult> results = pollResultRepository.findByIdSignalId(signalId);
