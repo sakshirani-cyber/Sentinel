@@ -386,6 +386,19 @@ export default function ConsumerDashboard({
     return () => clearInterval(interval);
   }, [showPersistentAlert, persistentAlertPoll]);
 
+  // Safety cleanup: Ensure we unlock if the component unmounts while an alert is active
+  useEffect(() => {
+    return () => {
+      // Only unlock if we are currently showing a persistent alert
+      // This covers unmounting (logout, navigation) and explicit active->inactive state changes
+      if (showPersistentAlert && (window as any).electron) {
+        console.log('[Sentinel] Safety Cleanup: Deactivating persistent alert restrictions');
+        (window as any).electron.ipcRenderer.send('set-persistent-alert-active', false);
+        (window as any).electron.ipcRenderer.send('set-always-on-top', false);
+      }
+    };
+  }, [showPersistentAlert]);
+
 
   // Load drafts
   useEffect(() => {

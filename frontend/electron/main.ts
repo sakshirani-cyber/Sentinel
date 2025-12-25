@@ -16,6 +16,7 @@ if (process.platform === 'win32') {
 let tray: Tray | null = null;
 let win: BrowserWindow | null = null;
 let secondaryWindows: BrowserWindow[] = [];
+let isPersistentAlertLocked = false;
 
 // Simple icon for tray (16x16 blue circle)
 const iconBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFMSURBVDiNpZMxSwNBEIW/vb29JBcQFBELsbATrPwBNv4CK/+Alf9AO0EQrGwsLCwEwUKwsLOxEQQLC0EQbCwUQUQQvLu9nZndsUgOc5dEfM3uzHvfzO4MrLH+V8AYcwI0gQPgEHgCboAr4FJKebcSgDHmGDgFdoEt4BV4AC6Acynl8xKAMWYPOAO2gQ/gHrgFbqSUH0sAxpgGcAzsAJ/APXADXEsp3xcAjDFN4AjYBl6AO+AauJBSvi0CGGN2gUNgC3gG7oBr4FJK+bIIYIzZBw6ATeAJuAWugXMp5esiQB04ADaAR+AWuAHOpZRviwB14BDYBx6AW+AGuJBSvi8C1IFDoBZ4AG6BG+BcSvm+CFAHjoAa8ADcAjfAhZTyfRGgDhwBNeABuAVugHMp5ccigDHmCGgAD8AtcANcSCk/FwGMMUdAA3gAbv8A/FbXX2v9D/gBnqV8VC6kqXwAAAAASUVORK5CYII=';
@@ -57,11 +58,68 @@ function createWindow() {
 
     // Prevent window from closing, hide instead
     win.on('close', (event) => {
+        if (isPersistentAlertLocked) {
+            event.preventDefault(); // STRICTLY block closing
+            return false;
+        }
+
         if (!(app as any).isQuitting) {
             event.preventDefault();
             win?.hide();
         }
         return false;
+    });
+
+    // STRICT Input Blocking for Persistent Alert
+    win.webContents.on('before-input-event', (event, input) => {
+        if (!isPersistentAlertLocked) return;
+
+        // Debug log to see what's being pressed (optional)
+        // console.log('[Input Block] Key:', input.key, 'Alt:', input.alt, 'Control:', input.control, 'Meta:', input.meta);
+
+        // Block Alt+F4 (Windows Close)
+        if (input.alt && input.key.toLowerCase() === 'f4') {
+            event.preventDefault();
+            console.log('[Sentinel] Blocked Alt+F4');
+        }
+
+        // Block Ctrl+Q / Cmd+Q (Quit)
+        if ((input.control || input.meta) && input.key.toLowerCase() === 'q') {
+            event.preventDefault();
+            console.log('[Sentinel] Blocked Quit Shortcut');
+        }
+
+        // Block Ctrl+W / Cmd+W (Close Tab/Window)
+        if ((input.control || input.meta) && input.key.toLowerCase() === 'w') {
+            event.preventDefault();
+            console.log('[Sentinel] Blocked Close Shortcut');
+        }
+
+        // Block Escape (Exit Fullscreen)
+        if (input.key === 'Escape') {
+            event.preventDefault();
+            console.log('[Sentinel] Blocked Escape');
+        }
+
+        // Block F11 (Toggle Fullscreen)
+        if (input.key === 'F11') {
+            event.preventDefault();
+            console.log('[Sentinel] Blocked F11');
+        }
+
+        // Block Refresh (F5, Ctrl+R, Cmd+R) - prevent reload bypass
+        if (input.key === 'F5' || ((input.control || input.meta) && input.key.toLowerCase() === 'r')) {
+            event.preventDefault();
+            console.log('[Sentinel] Blocked Refresh');
+        }
+
+        // Block DevTools (F12, Ctrl+Shift+I)
+        if (input.key === 'F12' || ((input.control || input.meta) && input.shift && input.key.toLowerCase() === 'i')) {
+            event.preventDefault();
+            console.log('[Sentinel] Blocked DevTools');
+        }
+
+        // Block Alt+Tab (mitigation only - OS captures this, but we force focus back via heartbeat)
     });
 }
 
@@ -443,6 +501,7 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
     if (win) {
         if (isActive) {
             console.log('[Main] Activating robust persistent alert (kiosk + fullscreen)');
+            isPersistentAlertLocked = true;
 
             // Save state before locking
             lastKnownWindowState = {
@@ -506,6 +565,7 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
 
         } else {
             console.log('[Main] Deactivating persistent alert and restoring state');
+            isPersistentAlertLocked = false;
             // Cleanup heartbeat
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
