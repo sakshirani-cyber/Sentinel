@@ -35,11 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncManager = exports.SyncManager = void 0;
 const electron_1 = require("electron");
-const EventSourceImport = require('eventsource');
-const EventSource = EventSourceImport.default || EventSourceImport;
+const EventSourceLib = require('eventsource');
+const EventSource = EventSourceLib.EventSource || EventSourceLib.default || EventSourceLib;
 const backendApi = __importStar(require("./backendApi"));
 const db_1 = require("./db");
-const dns = __importStar(require("dns"));
 class SyncManager {
     constructor() {
         this.email = null;
@@ -97,18 +96,18 @@ class SyncManager {
         }, 30000);
     }
     startOnlineCheck() {
-        const check = () => {
-            dns.lookup('google.com', (err) => {
-                const wasOnline = this.isOnline;
-                this.isOnline = !err;
-                if (wasOnline !== this.isOnline) {
-                    console.log(`[SyncManager] Online status changed: ${this.isOnline}`);
-                    this.updateConnection();
-                }
-            });
-        };
-        check();
-        this.checkOnlineInterval = setInterval(check, 10000);
+        // Initial check
+        this.isOnline = electron_1.net.isOnline();
+        console.log(`[SyncManager] Initial online status: ${this.isOnline}`);
+        // Poll for online status changes (every 10s) - net.isOnline is fast/local
+        this.checkOnlineInterval = setInterval(() => {
+            const wasOnline = this.isOnline;
+            this.isOnline = electron_1.net.isOnline();
+            if (wasOnline !== this.isOnline) {
+                console.log(`[SyncManager] Online status changed: ${this.isOnline}`);
+                this.updateConnection();
+            }
+        }, 10000);
     }
     updateConnection() {
         if (!this.email)
@@ -125,28 +124,44 @@ class SyncManager {
     connectSSE() {
         if (!this.email || this.sse)
             return;
+        // Extra safety check
+        if (!electron_1.net.isOnline()) {
+            console.log('[SyncManager] Offline, skipping SSE connection');
+            setTimeout(() => this.updateConnection(), 10000);
+            return;
+        }
         const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?email=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
-        const sse = new EventSource(url);
-        this.sse = sse;
-        sse.addEventListener('CONNECTED', (event) => {
-            console.log('[SyncManager] SSE Handshake successful:', event.data);
-        });
-        sse.addEventListener('POLL_CREATED', async (event) => {
-            console.log('[SyncManager] SSE: New poll received:', event.data);
-            try {
-                const poll = JSON.parse(event.data);
-                await this.handleIncomingPoll(poll);
-            }
-            catch (e) {
-                console.error('[SyncManager] Error handling POLL_CREATED:', e);
-            }
-        });
-        sse.onerror = (err) => {
-            console.error('[SyncManager] SSE Error:', err);
+        try {
+            const sse = new EventSource(url);
+            this.sse = sse;
+            sse.addEventListener('CONNECTED', (event) => {
+                console.log('[SyncManager] SSE Handshake successful:', event.data);
+            });
+            sse.addEventListener('POLL_CREATED', async (event) => {
+                console.log('[SyncManager] SSE: New poll received:', event.data);
+                try {
+                    const poll = JSON.parse(event.data);
+                    await this.handleIncomingPoll(poll);
+                }
+                catch (e) {
+                    console.error('[SyncManager] Error handling POLL_CREATED:', e);
+                }
+            });
+            sse.onerror = (err) => {
+                // Log but don't crash
+                console.error('[SyncManager] SSE Error:', err);
+                this.disconnectSSE();
+                // Retry later
+                setTimeout(() => this.updateConnection(), 5000);
+            };
+        }
+        catch (error) {
+            console.error('[SyncManager] Error creating EventSource:', error);
+            // Ensure status is clean
             this.disconnectSSE();
-            setTimeout(() => this.updateConnection(), 5000);
-        };
+            setTimeout(() => this.updateConnection(), 10000);
+        }
     }
     disconnectSSE() {
         if (this.sse) {

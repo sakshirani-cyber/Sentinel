@@ -48,6 +48,14 @@ electron_1.app.setName('Sentinel');
 if (process.platform === 'win32') {
     electron_1.app.setAppUserModelId('Sentinel');
 }
+// Global Crash Protection
+process.on('uncaughtException', (err) => {
+    console.error('[Main] Uncaught Exception:', err);
+    // Prevent crash by catching it here
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[Main] Unhandled Rejection:', reason);
+});
 let tray = null;
 let win = null;
 let secondaryWindows = [];

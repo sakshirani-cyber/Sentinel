@@ -13,6 +13,16 @@ if (process.platform === 'win32') {
     app.setAppUserModelId('Sentinel');
 }
 
+// Global Crash Protection
+process.on('uncaughtException', (err) => {
+    console.error('[Main] Uncaught Exception:', err);
+    // Prevent crash by catching it here
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[Main] Unhandled Rejection:', reason);
+});
+
 let tray: Tray | null = null;
 let win: BrowserWindow | null = null;
 let secondaryWindows: BrowserWindow[] = [];
