@@ -41,7 +41,11 @@ const path = __importStar(require("path"));
 const electron_is_dev_1 = __importDefault(require("electron-is-dev"));
 const db_1 = require("./db");
 const backendApi = __importStar(require("./backendApi"));
+const electron_updater_1 = require("electron-updater");
 const syncManager_1 = require("./syncManager");
+// Auto-updater logging
+electron_updater_1.autoUpdater.logger = console;
+// autoUpdater.autoDownload = true; // default is true
 // Set app name for notifications (Windows/macOS/Linux)
 electron_1.app.setName('Sentinel');
 // Set AppUserModelId for Windows notifications to show correct app name
@@ -331,6 +335,11 @@ electron_1.app.whenReady().then(async () => {
     }
     setupAutoLaunch();
     createWindow();
+    // Check for updates
+    if (!electron_is_dev_1.default) {
+        console.log('[Main] Checking for updates...');
+        electron_updater_1.autoUpdater.checkForUpdatesAndNotify();
+    }
     // Prevent Cmd+Q on macOS
     electron_1.app.on('before-quit', (event) => {
         if (!electron_1.app.isQuitting) {

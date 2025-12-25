@@ -11,6 +11,7 @@ export class SyncManager {
     private deviceStatus: string = 'active';
     private syncInterval: NodeJS.Timeout | null = null;
     private checkOnlineInterval: NodeJS.Timeout | null = null;
+    private lastSyncTime: string | null = null;
 
     constructor() {
         this.setupDeviceMonitoring();
@@ -225,14 +226,52 @@ export class SyncManager {
             // For now, let's assume we sync ones that are missing signalIds if we have them.
             // Actually, we should probably add syncStatus to responses too.
 
-            // 3. Fetch missed polls from cloud (Pull fallback in case SSE missed something)
-            const remotePolls = await backendApi.getActivePolls(this.email);
-            for (const dto of remotePolls) {
-                await this.handleIncomingPoll(dto);
+            // 3. Fetch updates from cloud (Incremental Sync)
+            // Use last sync time or default to a past date if first run
+            const since = this.lastSyncTime || new Date(0).toISOString();
+
+            const updates = await backendApi.syncPolls(this.email, since);
+
+            if (updates.length > 0) {
+                for (const dto of updates) {
+                    await this.handleIncomingSync(dto);
+                }
+                // Update lastSyncTime to now (or max lastEdited)
+                this.lastSyncTime = new Date().toISOString();
             }
 
         } catch (error) {
             console.error('[SyncManager] Error during sync loop:', error);
+        }
+    }
+
+    private async handleIncomingSync(dto: backendApi.PollSyncDTO) {
+        // Transform Sync DTO to Local Poll Format
+        // Note: PollSyncDTO fields slightly differ from PollCreateDTO/ActivePollDTO
+        const poll = {
+            id: dto.signalId ? `poll-${dto.signalId}` : `temp-${Date.now()}`, // Sync DTO uses signalId as primary
+            question: dto.question,
+            options: dto.options ? dto.options.map((text: string) => ({ text })) : [],
+            publisherEmail: dto.publisher,
+            publisherName: dto.publisher, // sync DTO doesn't have separate name
+            deadline: dto.endTimestamp,
+            status: 'active' as const, // Default to active, or map from dto.status
+            defaultResponse: dto.defaultOption,
+            showDefaultToConsumers: dto.defaultFlag,
+            anonymityMode: dto.anonymous ? 'anonymous' : 'record',
+            isPersistentFinalAlert: dto.persistentAlert,
+            publishedAt: dto.lastEdited?.toString() || new Date().toISOString(),
+            cloudSignalId: dto.signalId,
+            consumers: dto.sharedWith || [],
+            syncStatus: 'synced',
+            updatedAt: dto.lastEdited
+        };
+
+        try {
+            await createPoll(poll as any);
+            console.log(`[SyncManager] Synced poll ${poll.id} from cloud`);
+        } catch (error) {
+            console.error('[SyncManager] Error saving synced poll:', error);
         }
     }
 

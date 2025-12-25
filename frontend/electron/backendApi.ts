@@ -112,6 +112,25 @@ export interface ActivePollDTO {
     sharedWith?: string[]; // Added missing field
 }
 
+export interface PollSyncDTO {
+    signalId: number;
+    question: string;
+    options: string[];
+    status: string;
+    publisher: string;
+    sharedWith: string[];
+    anonymous: boolean;
+    defaultFlag: boolean;
+    defaultOption: string;
+    persistentAlert: boolean;
+    endTimestamp: string;
+    lastEdited: string;
+    selectedOption: string;
+    defaultResponse: string;
+    reason: string;
+    timeOfSubmission: string;
+}
+
 // ============================================================================
 // Data Transformation
 // ============================================================================
@@ -256,6 +275,21 @@ export async function getActivePolls(userEmail: string): Promise<ActivePollDTO[]
                 config: error.config.url
             });
         }
+        throw error;
+    }
+}
+
+export async function syncPolls(email: string, since: string | null): Promise<PollSyncDTO[]> {
+    console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);
+    try {
+        const params: any = { email };
+        if (since) params.since = since;
+
+        const response = await apiClient.get<PollSyncDTO[]>('/polls/sync', { params });
+        console.log(`[Backend API] Sync success! Received ${response.data.length} updates.`);
+        return response.data;
+    } catch (error: any) {
+        console.error('[Backend API] Sync error:', extractBackendError(error));
         throw error;
     }
 }

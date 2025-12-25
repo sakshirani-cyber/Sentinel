@@ -10,6 +10,7 @@ exports.editPoll = editPoll;
 exports.deletePoll = deletePoll;
 exports.login = login;
 exports.getActivePolls = getActivePolls;
+exports.syncPolls = syncPolls;
 exports.extractBackendError = extractBackendError;
 const axios_1 = __importDefault(require("axios"));
 // Backend API service for Electron main process
@@ -150,6 +151,21 @@ async function getActivePolls(userEmail) {
                 config: error.config.url
             });
         }
+        throw error;
+    }
+}
+async function syncPolls(email, since) {
+    console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);
+    try {
+        const params = { email };
+        if (since)
+            params.since = since;
+        const response = await apiClient.get('/polls/sync', { params });
+        console.log(`[Backend API] Sync success! Received ${response.data.length} updates.`);
+        return response.data;
+    }
+    catch (error) {
+        console.error('[Backend API] Sync error:', extractBackendError(error));
         throw error;
     }
 }
