@@ -1,0 +1,244 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.syncManager = exports.SyncManager = void 0;
+const electron_1 = require("electron");
+const EventSource = require('eventsource');
+const backendApi = __importStar(require("./backendApi"));
+const db_1 = require("./db");
+const dns = __importStar(require("dns"));
+class SyncManager {
+    constructor() {
+        this.email = null;
+        this.sse = null;
+        this.isOnline = false;
+        this.deviceStatus = 'active';
+        this.syncInterval = null;
+        this.checkOnlineInterval = null;
+        this.setupDeviceMonitoring();
+        this.startOnlineCheck();
+    }
+    async login(email) {
+        this.email = email;
+        console.log(`[SyncManager] Logged in as ${email}`);
+        this.startSyncLoop();
+        this.updateConnection();
+    }
+    logout() {
+        this.email = null;
+        this.stopSyncLoop();
+        this.disconnectSSE();
+    }
+    setupDeviceMonitoring() {
+        electron_1.powerMonitor.on('lock-screen', () => {
+            this.deviceStatus = 'locked';
+            console.log('[SyncManager] Device locked');
+            this.updateConnection();
+        });
+        electron_1.powerMonitor.on('unlock-screen', () => {
+            this.deviceStatus = 'active';
+            console.log('[SyncManager] Device unlocked');
+            this.updateConnection();
+        });
+        electron_1.powerMonitor.on('suspend', () => {
+            this.deviceStatus = 'sleep';
+            console.log('[SyncManager] Device sleeping');
+            this.updateConnection();
+        });
+        electron_1.powerMonitor.on('resume', () => {
+            this.deviceStatus = 'active';
+            console.log('[SyncManager] Device resumed');
+            this.updateConnection();
+        });
+        // Idle monitoring (check every 30s)
+        setInterval(() => {
+            const idleState = electron_1.powerMonitor.getSystemIdleState(60);
+            if (this.deviceStatus !== 'locked' && this.deviceStatus !== 'sleep') {
+                const newStatus = idleState === 'idle' ? 'idle' : 'active';
+                if (newStatus !== this.deviceStatus) {
+                    this.deviceStatus = newStatus;
+                    console.log(`[SyncManager] Device status changed to: ${this.deviceStatus}`);
+                    this.updateConnection();
+                }
+            }
+        }, 30000);
+    }
+    startOnlineCheck() {
+        const check = () => {
+            dns.lookup('google.com', (err) => {
+                const wasOnline = this.isOnline;
+                this.isOnline = !err;
+                if (wasOnline !== this.isOnline) {
+                    console.log(`[SyncManager] Online status changed: ${this.isOnline}`);
+                    this.updateConnection();
+                }
+            });
+        };
+        check();
+        this.checkOnlineInterval = setInterval(check, 10000);
+    }
+    updateConnection() {
+        if (!this.email)
+            return;
+        const shouldBeConnected = (this.deviceStatus === 'active' || this.deviceStatus === 'idle') &&
+            this.isOnline;
+        if (shouldBeConnected && !this.sse) {
+            this.connectSSE();
+        }
+        else if (!shouldBeConnected && this.sse) {
+            this.disconnectSSE();
+        }
+    }
+    connectSSE() {
+        if (!this.email || this.sse)
+            return;
+        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?email=${encodeURIComponent(this.email)}`;
+        console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
+        const sse = new EventSource(url);
+        this.sse = sse;
+        sse.addEventListener('CONNECTED', (event) => {
+            console.log('[SyncManager] SSE Handshake successful:', event.data);
+        });
+        sse.addEventListener('POLL_CREATED', async (event) => {
+            console.log('[SyncManager] SSE: New poll received:', event.data);
+            try {
+                const poll = JSON.parse(event.data);
+                await this.handleIncomingPoll(poll);
+            }
+            catch (e) {
+                console.error('[SyncManager] Error handling POLL_CREATED:', e);
+            }
+        });
+        sse.onerror = (err) => {
+            console.error('[SyncManager] SSE Error:', err);
+            this.disconnectSSE();
+            setTimeout(() => this.updateConnection(), 5000);
+        };
+    }
+    disconnectSSE() {
+        if (this.sse) {
+            console.log('[SyncManager] Disconnecting SSE');
+            this.sse.close();
+            this.sse = null;
+        }
+    }
+    async handleIncomingPoll(dto) {
+        // Transform DTO to Local Poll Format
+        const poll = {
+            id: dto.localId ? `poll-${dto.localId}` : `temp-${Date.now()}`,
+            question: dto.question,
+            options: dto.options.map((text) => ({ text })),
+            publisherEmail: dto.publisherEmail || dto.createdBy,
+            publisherName: dto.publisherName || dto.createdBy,
+            deadline: dto.endTimestamp,
+            status: 'active',
+            consumers: dto.sharedWith || [],
+            defaultResponse: dto.defaultOption,
+            showDefaultToConsumers: dto.defaultFlag,
+            anonymityMode: dto.anonymous ? 'anonymous' : 'record',
+            isPersistentFinalAlert: dto.persistentAlert,
+            publishedAt: new Date().toISOString(),
+            cloudSignalId: dto.signalId,
+            syncStatus: 'synced'
+        };
+        try {
+            await (0, db_1.createPoll)(poll);
+            console.log(`[SyncManager] Poll ${poll.id} saved to local DB`);
+        }
+        catch (error) {
+            console.error('[SyncManager] Error saving incoming poll:', error);
+        }
+    }
+    startSyncLoop() {
+        if (this.syncInterval)
+            return;
+        this.syncInterval = setInterval(() => this.performSync(), 30000);
+        this.performSync(); // Run immediately
+    }
+    stopSyncLoop() {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
+    }
+    async performSync() {
+        if (!this.isOnline || !this.email)
+            return;
+        console.log('[SyncManager] Performing background sync...');
+        try {
+            // 1. Fetch unsynced polls created locally (though mostly publishers write to cloud first currently)
+            // But per new requirement, they write to Local DB first.
+            const allPolls = await (0, db_1.getPolls)();
+            const unsyncedPolls = allPolls.filter(p => p.syncStatus === 'pending' || p.syncStatus === 'error');
+            for (const poll of unsyncedPolls) {
+                try {
+                    console.log(`[SyncManager] Syncing local poll: ${poll.question}`);
+                    const result = await backendApi.createPoll(poll);
+                    if (result && result.signalId) {
+                        await (0, db_1.updatePoll)(poll.id, { cloudSignalId: result.signalId, syncStatus: 'synced' });
+                    }
+                }
+                catch (e) {
+                    console.error(`[SyncManager] Failed to sync poll ${poll.id}:`, e);
+                }
+            }
+            // 2. Sync Responses
+            const allResponses = await (0, db_1.getResponses)();
+            // Note: Responses table currently doesn't have a syncStatus column.
+            // We should ideally add it or check if they exist in cloud.
+            // For now, let's assume we sync ones that are missing signalIds if we have them.
+            // Actually, we should probably add syncStatus to responses too.
+            // 3. Fetch missed polls from cloud (Pull fallback in case SSE missed something)
+            const remotePolls = await backendApi.getActivePolls(this.email);
+            for (const dto of remotePolls) {
+                await this.handleIncomingPoll(dto);
+            }
+        }
+        catch (error) {
+            console.error('[SyncManager] Error during sync loop:', error);
+        }
+    }
+    getStatus() {
+        return {
+            deviceStatus: this.deviceStatus,
+            isOnline: this.isOnline,
+            sseConnected: !!this.sse,
+            email: this.email
+        };
+    }
+}
+exports.SyncManager = SyncManager;
+exports.syncManager = new SyncManager();
+//# sourceMappingURL=syncManager.js.map

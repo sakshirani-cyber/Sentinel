@@ -41,6 +41,7 @@ const path = __importStar(require("path"));
 const electron_is_dev_1 = __importDefault(require("electron-is-dev"));
 const db_1 = require("./db");
 const backendApi = __importStar(require("./backendApi"));
+const syncManager_1 = require("./syncManager");
 // Set app name for notifications (Windows/macOS/Linux)
 electron_1.app.setName('Sentinel');
 // Set AppUserModelId for Windows notifications to show correct app name
@@ -131,27 +132,52 @@ electron_1.app.whenReady().then(async () => {
     // Register Backend API IPC Handlers (bypass CORS by making calls from main process)
     console.log('[Main] Registering Backend API IPC handlers...');
     electron_1.ipcMain.handle('backend-create-poll', async (_event, poll) => {
-        console.log(`[IPC Handler] backend-create-poll called for poll: ${poll.question}`);
+        console.log(`[IPC Handler] backend-create-poll (local-first) called for poll: ${poll.question}`);
         try {
-            const result = await backendApi.createPoll(poll);
-            return { success: true, data: result };
-        }
-        catch (error) {
-            const errorMessage = backendApi.extractBackendError(error);
-            console.error('[IPC Handler] backend-create-poll error:', errorMessage);
-            return { success: false, error: errorMessage };
-        }
-    });
-    electron_1.ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption, defaultResponse, reason }) => {
-        console.log(`[IPC Handler] backend-submit-vote called for signalId: ${signalId}, user: ${userId}`);
-        try {
-            await backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason);
+            // Write to local DB first
+            poll.syncStatus = 'pending';
+            await (0, db_1.createPoll)(poll);
+            // Try to sync to backend immediately but don't block
+            backendApi.createPoll(poll).then(async (result) => {
+                if (result && result.signalId) {
+                    await (0, db_1.updatePoll)(poll.id, { cloudSignalId: result.signalId, syncStatus: 'synced' });
+                }
+            }).catch(err => {
+                console.error('[IPC Handler] Deferred cloud sync failed:', err);
+            });
             return { success: true };
         }
         catch (error) {
-            const errorMessage = backendApi.extractBackendError(error);
-            console.error('[IPC Handler] backend-submit-vote error:', errorMessage);
-            return { success: false, error: errorMessage };
+            console.error('[IPC Handler] local-create-poll error:', error.message);
+            return { success: false, error: error.message };
+        }
+    });
+    electron_1.ipcMain.handle('backend-submit-vote', async (_event, { pollId, signalId, userId, selectedOption, defaultResponse, reason }) => {
+        console.log(`[IPC Handler] backend-submit-vote (local-first) called for pollId: ${pollId}, user: ${userId}`);
+        try {
+            // Write response to local DB first
+            const responseData = {
+                pollId: pollId || (signalId ? signalId.toString() : undefined),
+                consumerEmail: userId,
+                response: selectedOption || defaultResponse || '',
+                submittedAt: new Date().toISOString(),
+                isDefault: !!(defaultResponse || reason),
+                skipReason: reason
+            };
+            if (!responseData.pollId)
+                throw new Error('pollId or signalId is required');
+            await (0, db_1.submitResponse)(responseData);
+            // Try to sync to backend
+            if (signalId) {
+                backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason).catch(err => {
+                    console.error('[IPC Handler] Deferred vote sync failed:', err);
+                });
+            }
+            return { success: true };
+        }
+        catch (error) {
+            console.error('[IPC Handler] local-submit-vote error:', error.message);
+            return { success: false, error: error.message };
         }
     });
     electron_1.ipcMain.handle('backend-get-results', async (_event, signalId) => {
@@ -195,6 +221,8 @@ electron_1.app.whenReady().then(async () => {
         try {
             const role = await backendApi.login(email, password);
             console.log('[IPC Handler] backend-login success, role:', role);
+            // Start SyncManager on successful login
+            syncManager_1.syncManager.login(email);
             return { success: true, data: role };
         }
         catch (error) {
@@ -301,7 +329,10 @@ electron_1.app.whenReady().then(async () => {
         }
     }, 30000);
     electron_1.ipcMain.handle('get-device-status', () => {
-        return currentDeviceStatus;
+        return syncManager_1.syncManager.getStatus().deviceStatus;
+    });
+    electron_1.ipcMain.handle('get-sync-status', () => {
+        return syncManager_1.syncManager.getStatus();
     });
 });
 electron_1.app.on('window-all-closed', () => {

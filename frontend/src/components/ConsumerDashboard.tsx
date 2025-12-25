@@ -93,138 +93,31 @@ export default function ConsumerDashboard({
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
 
-  // State for active polls fetched from backend
-  const [backendActivePolls, setBackendActivePolls] = useState<any[]>([]);
-  const [loadingActivePolls, setLoadingActivePolls] = useState(false);
+  // Data and polling logic removed as it's now handled by the Electron main process (SyncManager)
+  // and data is passed down via props from App.tsx.
 
-  // Fetch active polls from backend
-  const fetchActivePolls = async () => {
-    if ((window as any).electron?.backend) {
-      setLoadingActivePolls(true);
-      try {
-        console.log('[ConsumerDashboard] Fetching active polls from backend...');
-        const result = await (window as any).electron.backend.getActivePolls(user.email);
-        if (result.success && result.data) {
-          console.log('[ConsumerDashboard] Active polls fetched:', result.data);
+  const userPolls = useMemo(() => {
+    return polls.filter(p =>
+      p.consumers.some((c: string) => c.toLowerCase() === user.email.toLowerCase())
+    );
+  }, [polls, user.email]);
 
-          // Transform and save each poll to local database for persistence and metadata support
-          const mappedPolls = result.data.map((dto: any) => {
-            // Check if this poll already exists in our local polls array to preserve metadata
-            const existingPoll = polls.find((p: any) => p.cloudSignalId === dto.signalId);
-
-            const pollData = {
-              id: existingPoll?.id || (dto.signalId ? dto.signalId.toString() : `temp-${Date.now()}-${Math.random()}`),
-              question: dto.question,
-              options: dto.options.map((text: string) => ({ text, color: '#CBD5E1' })),
-              publisherEmail: dto.publisherEmail,
-              publisherName: existingPoll?.publisherName || dto.publisherEmail, // Preserve name if we have it
-              deadline: dto.endTimestamp,
-              status: 'active' as const,
-              consumers: existingPoll?.consumers || [user.email], // Preserve full consumer list if available
-              defaultResponse: dto.defaultOption,
-              showDefaultToConsumers: dto.defaultFlag,
-              anonymityMode: (dto.anonymous ? 'anonymous' : 'record') as 'anonymous' | 'record',
-              isPersistentFinalAlert: dto.persistentAlert,
-              publishedAt: existingPoll?.publishedAt || new Date().toISOString(), // Preserve original publish date
-              cloudSignalId: dto.signalId,
-              isEdited: existingPoll?.isEdited || false,
-              updatedAt: existingPoll?.updatedAt,
-              isPersistentAlert: existingPoll?.isPersistentAlert || false,
-              alertBeforeMinutes: existingPoll?.alertBeforeMinutes || 15
-            };
-
-            // Non-blocking save to local DB
-            if ((window as any).electron?.db) {
-              (window as any).electron.db.createPoll(pollData).catch((err: any) => {
-                console.error('[ConsumerDashboard] Error persisting poll locally:', err);
-              });
-            }
-
-            return pollData;
-          });
-          setBackendActivePolls(mappedPolls);
-        } else {
-          console.warn('[ConsumerDashboard] Failed to fetch active polls:', result.error);
-        }
-      } catch (error) {
-        console.error('[ConsumerDashboard] Error in fetchActivePolls:', error);
-      } finally {
-        setLoadingActivePolls(false);
-      }
-    }
-  };
-
-  // Poll for updates (publish/edit/expiry)
-  // User asked for: "whenever user goes to upcoming", "everytime publisher publishes", "whenever poll is edited"
-  // Implementing interval polling covers publish and edit scenarios effectively without complex websockets
-  useEffect(() => {
-    fetchActivePolls(); // Immediate fetch on mount or tab change
-
-    // Poll faster when on incomplete tab, slower on other tabs to keep badge count updated
-    const pollInterval = activeTab === 'incomplete' ? 5000 : 15000;
-    const interval = setInterval(fetchActivePolls, pollInterval);
-
-    return () => clearInterval(interval);
-  }, [activeTab, user.email]);
-
-  // Merge backend polls with prop polls (or strictly use backend polls for 'incomplete' tab)
-  // Logic: If we occupy 'incomplete' tab, we prefer backend polls.
-  // But we must filter out ones we've already responded to (if backend returns ALL active polls regardless of response status).
-  // The service method is `getActivePollsForUser`. Assuming it returns ONLY polls the user HAS NOT responded to?
-  // User prompt: "we are getting all the upcoming polls from the local db(polls which have not been filled). but now i want to get tha from the backend api."
-  // So assuming backend returns only unfilled ones.
-
-  const displayPolls = activeTab === 'incomplete' ? backendActivePolls : polls;
-
-  // Derived lists for compatibility with existing render logic
-  const combinedItems = [
-    ...polls.filter(p => p.consumers.map(c => c.toLowerCase()).includes(user.email.toLowerCase())),
-    ...(backendActivePolls.filter(bp => !polls.some(p => p.cloudSignalId === bp.cloudSignalId)))
-  ];
-
-  console.log('[ConsumerDashboard] Rendering combined polls:', {
-    localCount: polls.filter(p => p.consumers.map(c => c.toLowerCase()).includes(user.email.toLowerCase())).length,
-    backendCount: backendActivePolls.length,
-    combinedTotal: combinedItems.length
-  });
-  const userPolls = displayPolls.filter(p =>
-    p.consumers.some((c: string) => c.toLowerCase() === user.email.toLowerCase())
-  );
-
-  // Get incomplete polls - ALWAYS use backend data for accurate badge count
-  // BUT we must also filter out polls we've processed locally but backend hasn't updated yet (optimistic UI)
-  // Threshold: If we have a local response from the last 60 seconds, treat it as "just submitted".
-  // If the response is older, and the poll is STILL in backendActivePolls, it means the poll was likely 
-  // redirected/republished or the backend cleared the response (Republish = ON).
   const incompletePolls = useMemo(() => {
-    const now = Date.now();
-    return backendActivePolls.filter(p => {
-      const latestResp = responses
-        .filter(r => r.pollId === p.id && r.consumerEmail === user.email)
-        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
-
-      if (!latestResp) return true;
-
-      const isSubmittingNow = (now - new Date(latestResp.submittedAt).getTime()) < 60000;
-      return !isSubmittingNow;
+    return userPolls.filter(p => {
+      const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
+      const isExpired = p.status === 'completed' || new Date(p.deadline) < new Date();
+      return !hasResponse && !isExpired;
     });
-  }, [backendActivePolls, responses, user.email]);
+  }, [userPolls, responses, user.email]);
 
-  // Get completed polls (moved here to access userPolls)
-  // Logic: Poll is completed if:
-  // 1. We have a response OR
-  // 2. The deadline has passed (status is 'completed' or current time > deadline)
-  // AND it's not currently in incompletePolls (handles move-back on republish)
   const completedPolls = useMemo(() => {
     const now = new Date();
     return userPolls.filter(p => {
       const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
       const isExpired = p.status === 'completed' || new Date(p.deadline) < now;
-      const isReassigned = incompletePolls.some(ip => ip.id === p.id);
-
-      return (hasResponse || isExpired) && !isReassigned;
+      return hasResponse || isExpired;
     }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
-  }, [userPolls, responses, incompletePolls, user.email]);
+  }, [userPolls, responses, user.email]);
 
   // Notify when new polls are assigned to the user
   useEffect(() => {

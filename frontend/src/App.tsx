@@ -155,29 +155,6 @@ function App() {
 
   const handleCreatePoll = async (newPoll: Poll) => {
     try {
-      // Try to create on backend first via Electron IPC (bypasses CORS)
-      if ((window as any).electron?.backend) {
-        console.log('[Frontend] Calling backend to create poll:', newPoll.question);
-        try {
-          const backendResult = await (window as any).electron.backend.createPoll(newPoll);
-          console.log('[Frontend] Backend create poll result:', backendResult);
-
-          if (backendResult.success) {
-            newPoll.cloudSignalId = backendResult.data.signalId;
-            newPoll.syncStatus = 'synced';
-            console.log('[Frontend] Poll synced to backend, cloudSignalId:', newPoll.cloudSignalId);
-          } else {
-            console.warn('[Frontend] Failed to create poll on backend:', backendResult.error);
-            newPoll.syncStatus = 'error';
-          }
-        } catch (backendError) {
-          console.warn('[Frontend] Backend error:', backendError);
-          newPoll.syncStatus = 'error';
-        }
-      } else {
-        console.warn('[Frontend] Backend API not available (electron.backend missing)');
-      }
-
       // Always save to local DB
       if ((window as any).electron) {
         const result = await (window as any).electron.db.createPoll(newPoll);
@@ -206,36 +183,7 @@ function App() {
       const poll = polls.find(p => p.id === pollId);
       if (!poll) throw new Error('Poll not found');
 
-      // CRITICAL: Require cloudSignalId for editing
-      if (!poll.cloudSignalId) {
-        alert('Cannot edit this poll: It was not successfully synced to the server. Please create a new poll instead.');
-        return;
-      }
-
-      const updatedPoll = { ...poll, ...updates };
-      console.log('[App] handleUpdatePoll called:', { pollId, updates, republish, cloudSignalId: poll.cloudSignalId });
-
-      // Try to update on backend if synced via Electron IPC
-      if (poll.cloudSignalId && (window as any).electron?.backend) {
-        try {
-          const backendResult = await (window as any).electron.backend.editPoll(
-            poll.cloudSignalId,
-            updatedPoll,
-            republish
-          );
-          if (backendResult.success) {
-            updates.syncStatus = 'synced';
-          } else {
-            console.warn('Failed to update poll on backend:', backendResult.error);
-            updates.syncStatus = 'error';
-            alert('Failed to update poll on backend: ' + backendResult.error);
-            return; // Don't proceed to local DB if backend failed
-          }
-        } catch (backendError) {
-          console.warn('Failed to update poll on backend:', backendError);
-          updates.syncStatus = 'error';
-        }
-      }
+      console.log('[App] handleUpdatePoll (local-first) called:', { pollId, updates, republish });
 
       // Always update local DB
       if ((window as any).electron) {
@@ -263,27 +211,6 @@ function App() {
       if (!poll) {
         console.error('Poll not found:', pollId);
         return;
-      }
-
-      // Try to delete from backend if synced
-      if (poll.cloudSignalId && (window as any).electron?.backend) {
-        console.log('[Frontend] Calling backend to delete poll:', { pollId, cloudSignalId: poll.cloudSignalId });
-        try {
-          const backendResult = await (window as any).electron.backend.deletePoll(poll.cloudSignalId);
-          console.log('[Frontend] Backend delete poll result:', backendResult);
-
-          if (!backendResult.success) {
-            console.warn('[Frontend] Failed to delete poll from backend:', backendResult.error);
-            // Continue with local delete even if backend fails
-          } else {
-            console.log('[Frontend] Poll deleted from backend successfully');
-          }
-        } catch (backendError) {
-          console.warn('[Frontend] Backend error during delete:', backendError);
-          // Continue with local delete even if backend fails
-        }
-      } else {
-        console.log('[Frontend] Skipping backend delete - poll not synced or backend unavailable');
       }
 
       // Always delete from local state
@@ -321,121 +248,23 @@ function App() {
         poll = polls.find(p => p.cloudSignalId?.toString() === response.pollId);
       }
 
-      if (!poll) {
-        // Poll might be a backend-only poll (from Consumer Dashboard's backendActivePolls)
-        // In this case, pollId is actually the signalId
-        console.log('[Frontend] Poll not in local array, assuming backend-only poll');
-        const cloudSignalId = parseInt(response.pollId);
-        if (!isNaN(cloudSignalId) && (window as any).electron?.backend) {
-          console.log('[Frontend] Calling backend to submit vote for backend-only poll:', response.pollId, {
-            reason: response.skipReason
-          });
+      if ((window as any).electron?.backend) {
+        console.log('[Frontend] Calling local-first submitVote:', response.pollId);
 
-          // For backend-only polls, we don't have the local poll object to get defaultResponse
-          // We rely on response.response being set correctly by ConsumerDashboard
-          let finalSelectedOption: any = undefined;
-          let finalReason: any = undefined;
-
-          if (response.skipReason) {
-            finalReason = response.skipReason;
-          } else {
-            finalSelectedOption = response.response || "No Option Selected";
-          }
-
-          try {
-            const backendResult = await (window as any).electron.backend.submitVote(
-              cloudSignalId,
-              response.consumerEmail,
-              finalSelectedOption,
-              undefined,
-              finalReason
-            );
-            console.log('[Frontend] Backend submit vote result:', backendResult);
-
-            if (backendResult.success) {
-              // Just add to responses without local DB since poll isn't in local DB
-              setResponses(prev => [...prev, response]);
-              return; // Success, exit early
-            } else {
-              throw new Error(backendResult.error || 'Failed to submit vote to backend');
-            }
-          } catch (backendError) {
-            console.error('[Frontend] Backend error:', backendError);
-            throw backendError;
-          }
-        } else {
-          throw new Error('Poll not found');
-        }
-      }
-
-      // Try to submit to backend if poll is synced via Electron IPC
-      if (poll.cloudSignalId && (window as any).electron?.backend) {
-        console.log('[Frontend] Calling backend to submit vote:', {
-          cloudSignalId: poll.cloudSignalId,
+        // Use the simplified IPC handler which writes to local DB
+        const result = await (window as any).electron.backend.submitVote({
+          pollId: poll?.id || response.pollId,
+          signalId: poll?.cloudSignalId,
           userId: response.consumerEmail,
-          option: response.response,
+          selectedOption: response.response,
+          defaultResponse: response.isDefault ? response.response : undefined,
           reason: response.skipReason
         });
 
-        // Ensure we only send ONE response type to the backend
-        let finalSelectedOption: any = undefined;
-        let finalDefaultResponse: any = undefined;
-        let finalReason: any = undefined;
-
-        if (response.skipReason) {
-          finalReason = response.skipReason;
-        } else if (response.isDefault) {
-          finalDefaultResponse = response.response || poll.defaultResponse;
+        if (result.success) {
+          setResponses(prev => [...prev, response]);
         } else {
-          finalSelectedOption = response.response;
-        }
-
-        try {
-          const backendResult = await (window as any).electron.backend.submitVote(
-            poll.cloudSignalId,
-            response.consumerEmail,
-            finalSelectedOption,
-            finalDefaultResponse,
-            finalReason
-          );
-          console.log('[Frontend] Backend submit vote result:', backendResult);
-
-          if (!backendResult.success) {
-            console.warn('[Frontend] Failed to submit vote to backend:', backendResult.error);
-          } else {
-            console.log('[Frontend] Vote synced to backend');
-          }
-        } catch (backendError) {
-          console.warn('[Frontend] Backend error:', backendError);
-        }
-      } else {
-        console.log('[Frontend] Skipping backend vote - poll not synced or backend unavailable');
-      }
-
-      // Try to save to local DB, but handle gracefully if poll doesn't exist in local DB
-      if ((window as any).electron) {
-        try {
-          const result = await (window as any).electron.db.submitResponse(response);
-          if (result.success) {
-            setResponses(prev => [...prev, response]);
-          } else {
-            // Check if it's a FOREIGN KEY error
-            if (result.error && result.error.includes('FOREIGN KEY')) {
-              console.log('[Frontend] Poll not in local DB, skipping local save (response submitted to backend)');
-              setResponses(prev => [...prev, response]);
-            } else {
-              console.error('Failed to submit response:', result.error);
-              alert('Failed to submit response: ' + result.error);
-            }
-          }
-        } catch (dbError: any) {
-          // If it's a FOREIGN KEY error, the poll isn't in local DB
-          if (dbError.message && dbError.message.includes('FOREIGN KEY')) {
-            console.log('[Frontend] Poll not in local DB (caught exception), skipping local save');
-            setResponses(prev => [...prev, response]);
-          } else {
-            throw dbError;
-          }
+          throw new Error(result.error || 'Failed to submit response');
         }
       } else {
         // No electron, just add to state

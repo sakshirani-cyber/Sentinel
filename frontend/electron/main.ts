@@ -3,6 +3,7 @@ import * as path from 'path';
 import isDev from 'electron-is-dev';
 import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll } from './db';
 import * as backendApi from './backendApi';
+import { syncManager } from './syncManager';
 
 // Set app name for notifications (Windows/macOS/Linux)
 app.setName('Sentinel');
@@ -106,26 +107,56 @@ app.whenReady().then(async () => {
     console.log('[Main] Registering Backend API IPC handlers...');
 
     ipcMain.handle('backend-create-poll', async (_event, poll) => {
-        console.log(`[IPC Handler] backend-create-poll called for poll: ${poll.question}`);
+        console.log(`[IPC Handler] backend-create-poll (local-first) called for poll: ${poll.question}`);
         try {
-            const result = await backendApi.createPoll(poll);
-            return { success: true, data: result };
+            // Write to local DB first
+            poll.syncStatus = 'pending';
+            await createPoll(poll);
+
+            // Try to sync to backend immediately but don't block
+            backendApi.createPoll(poll).then(async (result) => {
+                if (result && result.signalId) {
+                    await updatePoll(poll.id, { cloudSignalId: result.signalId, syncStatus: 'synced' });
+                }
+            }).catch(err => {
+                console.error('[IPC Handler] Deferred cloud sync failed:', err);
+            });
+
+            return { success: true };
         } catch (error: any) {
-            const errorMessage = backendApi.extractBackendError(error);
-            console.error('[IPC Handler] backend-create-poll error:', errorMessage);
-            return { success: false, error: errorMessage };
+            console.error('[IPC Handler] local-create-poll error:', error.message);
+            return { success: false, error: error.message };
         }
     });
 
-    ipcMain.handle('backend-submit-vote', async (_event, { signalId, userId, selectedOption, defaultResponse, reason }) => {
-        console.log(`[IPC Handler] backend-submit-vote called for signalId: ${signalId}, user: ${userId}`);
+    ipcMain.handle('backend-submit-vote', async (_event, { pollId, signalId, userId, selectedOption, defaultResponse, reason }) => {
+        console.log(`[IPC Handler] backend-submit-vote (local-first) called for pollId: ${pollId}, user: ${userId}`);
         try {
-            await backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason);
+            // Write response to local DB first
+            const responseData = {
+                pollId: pollId || (signalId ? signalId.toString() : undefined),
+                consumerEmail: userId,
+                response: selectedOption || defaultResponse || '',
+                submittedAt: new Date().toISOString(),
+                isDefault: !!(defaultResponse || reason),
+                skipReason: reason
+            };
+
+            if (!responseData.pollId) throw new Error('pollId or signalId is required');
+
+            await submitResponse(responseData as any);
+
+            // Try to sync to backend
+            if (signalId) {
+                backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason).catch(err => {
+                    console.error('[IPC Handler] Deferred vote sync failed:', err);
+                });
+            }
+
             return { success: true };
         } catch (error: any) {
-            const errorMessage = backendApi.extractBackendError(error);
-            console.error('[IPC Handler] backend-submit-vote error:', errorMessage);
-            return { success: false, error: errorMessage };
+            console.error('[IPC Handler] local-submit-vote error:', error.message);
+            return { success: false, error: error.message };
         }
     });
 
@@ -170,6 +201,10 @@ app.whenReady().then(async () => {
         try {
             const role = await backendApi.login(email, password);
             console.log('[IPC Handler] backend-login success, role:', role);
+
+            // Start SyncManager on successful login
+            syncManager.login(email);
+
             return { success: true, data: role };
         } catch (error: any) {
             const errorMessage = backendApi.extractBackendError(error);
@@ -289,7 +324,11 @@ app.whenReady().then(async () => {
     }, 30000);
 
     ipcMain.handle('get-device-status', () => {
-        return currentDeviceStatus;
+        return syncManager.getStatus().deviceStatus;
+    });
+
+    ipcMain.handle('get-sync-status', () => {
+        return syncManager.getStatus();
     });
 });
 

@@ -61,6 +61,7 @@ function initDB() {
                     timeOfSubmission TEXT NOT NULL,
                     isDefault INTEGER DEFAULT 0, -- boolean 0/1
                     skipReason TEXT,
+                    syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending'
                     FOREIGN KEY (pollLocalId) REFERENCES polls(localId),
                     UNIQUE(pollLocalId, userId)
                 );
@@ -92,6 +93,12 @@ function initDB() {
             if (!columns.includes('updatedAt')) {
                 console.log('[SQLite DB] Migrating: Adding updatedAt to polls table');
                 db.exec("ALTER TABLE polls ADD COLUMN updatedAt TEXT");
+            }
+            const respTableInfo = db.prepare("PRAGMA table_info(responses)").all();
+            const respColumns = respTableInfo.map(col => col.name);
+            if (!respColumns.includes('syncStatus')) {
+                console.log('[SQLite DB] Migrating: Adding syncStatus to responses table');
+                db.exec("ALTER TABLE responses ADD COLUMN syncStatus TEXT DEFAULT 'pending'");
             }
             console.log('[SQLite DB] Migrations check complete.');
         }
