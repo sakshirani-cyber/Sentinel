@@ -3,7 +3,12 @@ import * as path from 'path';
 import isDev from 'electron-is-dev';
 import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll } from './db';
 import * as backendApi from './backendApi';
+import { autoUpdater } from 'electron-updater';
 import { syncManager } from './syncManager';
+
+// Auto-updater logging
+autoUpdater.logger = console;
+// autoUpdater.autoDownload = true; // default is true
 
 // Set app name for notifications (Windows/macOS/Linux)
 app.setName('Sentinel');
@@ -329,6 +334,12 @@ app.whenReady().then(async () => {
     setupAutoLaunch();
 
     createWindow();
+
+    // Check for updates
+    if (!isDev) {
+        console.log('[Main] Checking for updates...');
+        autoUpdater.checkForUpdatesAndNotify();
+    }
 
     // Prevent Cmd+Q on macOS
     app.on('before-quit', (event) => {

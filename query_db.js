@@ -1,7 +1,17 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbPath = 'C:\\Users\\amandeep.singh\\AppData\\Roaming\\Sentinel\\sentinel.db';
+const os = require('os');
+
+// Resolve path dynamically based on OS
+let dbPath;
+if (process.platform === 'win32') {
+    dbPath = path.join(process.env.APPDATA, 'Sentinel', 'sentinel.db');
+} else if (process.platform === 'darwin') {
+    dbPath = path.join(os.homedir(), 'Library', 'Application Support', 'Sentinel', 'sentinel.db');
+} else {
+    dbPath = path.join(os.homedir(), '.config', 'Sentinel', 'sentinel.db');
+}
 console.log('Opening database at:', dbPath);
 
 try {

@@ -39,6 +39,7 @@
             "class-variance-authority": "^0.7.1",
             "clsx": "*",
             "cmdk": "^1.1.1",
+            "electron-updater": "^6.6.2",
             "embla-carousel-react": "^8.6.0",
             "eventsource": "^4.1.0",
             "input-otp": "^1.4.2",
@@ -74,6 +75,7 @@
       "main": "dist-electron/main.js",
       "scripts": {
             "dev": "vite",
+            "postinstall": "electron-rebuild -f -w better-sqlite3",
             "build": "vite build",
             "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && tsc -p electron/tsconfig.json && electron .\"",
             "build:electron": "tsc -p electron/tsconfig.json && vite build && electron-builder",
@@ -92,6 +94,11 @@
             ],
             "win": {
                   "target": "nsis"
+            },
+            "publish": {
+                  "provider": "github",
+                  "owner": "YOUR_GITHUB_USERNAME",
+                  "repo": "YOUR_REPO_NAME"
             }
       }
 }
