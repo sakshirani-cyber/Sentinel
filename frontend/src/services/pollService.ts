@@ -155,11 +155,24 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
     }
 
     // 4. Map reasonResponses to the corresponding user's response
+    // If the user isn't already in the list (e.g. backend didn't count them as vote/default), add them now.
     if (dto.reasonResponses) {
-        for (const response of responses) {
-            const reason = dto.reasonResponses[response.consumerEmail];
-            if (reason) {
-                response.skipReason = reason;
+        for (const [userId, reason] of Object.entries(dto.reasonResponses)) {
+            let existingResponse = responses.find(r => r.consumerEmail === userId);
+
+            if (existingResponse) {
+                existingResponse.skipReason = reason;
+            } else {
+                // User gave a reason but wasn't in optionVotes or defaultResponses
+                // Treat as Default Response as per requirement
+                responses.push({
+                    pollId: poll.id,
+                    consumerEmail: userId,
+                    response: poll.defaultResponse || 'Skipped',
+                    submittedAt: new Date().toISOString(), // We don't have exact time from reason map, use now or approx
+                    isDefault: true,
+                    skipReason: reason,
+                });
             }
         }
     }

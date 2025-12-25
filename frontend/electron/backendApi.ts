@@ -177,7 +177,7 @@ export async function createPoll(poll: any): Promise<CreatePollResponse> {
 export async function submitVote(
     signalId: number,
     userId: string,
-    selectedOption: string,
+    selectedOption?: string,
     defaultResponse?: string,
     reason?: string
 ): Promise<void> {

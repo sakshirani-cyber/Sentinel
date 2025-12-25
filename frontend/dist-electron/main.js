@@ -233,7 +233,7 @@ electron_1.app.whenReady().then(async () => {
             return { success: false, error: error.message };
         }
     });
-    electron_1.ipcMain.handle('backend-submit-vote', async (_event, { pollId, signalId, userId, selectedOption, defaultResponse, reason }) => {
+    electron_1.ipcMain.handle('backend-submit-vote', async (_event, pollId, signalId, userId, selectedOption, defaultResponse, reason) => {
         console.log(`[IPC Handler] backend-submit-vote (local-first) called for pollId: ${pollId}, user: ${userId}`);
         try {
             // Write response to local DB first
@@ -250,7 +250,21 @@ electron_1.app.whenReady().then(async () => {
             await (0, db_1.submitResponse)(responseData);
             // Try to sync to backend
             if (signalId) {
-                backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason).catch(err => {
+                // BACKEND VALIDATION RULE: Exactly one of [selectedOption, defaultResponse, reason] must be present.
+                // We prioritize: reason > selectedOption > defaultResponse
+                let syncSelectedOption = undefined;
+                let syncDefaultResponse = undefined;
+                let syncReason = undefined;
+                if (reason) {
+                    syncReason = reason;
+                }
+                else if (selectedOption) {
+                    syncSelectedOption = selectedOption;
+                }
+                else if (defaultResponse) {
+                    syncDefaultResponse = defaultResponse;
+                }
+                backendApi.submitVote(signalId, userId, syncSelectedOption, syncDefaultResponse, syncReason).catch(err => {
                     console.error('[IPC Handler] Deferred vote sync failed:', err);
                 });
             }

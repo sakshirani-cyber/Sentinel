@@ -226,7 +226,7 @@ app.whenReady().then(async () => {
         }
     });
 
-    ipcMain.handle('backend-submit-vote', async (_event, { pollId, signalId, userId, selectedOption, defaultResponse, reason }) => {
+    ipcMain.handle('backend-submit-vote', async (_event, pollId, signalId, userId, selectedOption, defaultResponse, reason) => {
         console.log(`[IPC Handler] backend-submit-vote (local-first) called for pollId: ${pollId}, user: ${userId}`);
         try {
             // Write response to local DB first
@@ -245,7 +245,21 @@ app.whenReady().then(async () => {
 
             // Try to sync to backend
             if (signalId) {
-                backendApi.submitVote(signalId, userId, selectedOption, defaultResponse, reason).catch(err => {
+                // BACKEND VALIDATION RULE: Exactly one of [selectedOption, defaultResponse, reason] must be present.
+                // We prioritize: reason > selectedOption > defaultResponse
+                let syncSelectedOption: string | undefined = undefined;
+                let syncDefaultResponse: string | undefined = undefined;
+                let syncReason: string | undefined = undefined;
+
+                if (reason) {
+                    syncReason = reason;
+                } else if (selectedOption) {
+                    syncSelectedOption = selectedOption;
+                } else if (defaultResponse) {
+                    syncDefaultResponse = defaultResponse;
+                }
+
+                backendApi.submitVote(signalId, userId, syncSelectedOption, syncDefaultResponse, syncReason).catch(err => {
                     console.error('[IPC Handler] Deferred vote sync failed:', err);
                 });
             }
