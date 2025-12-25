@@ -209,12 +209,15 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         isPersistentFinalAlert !== poll.isPersistentFinalAlert ||
         JSON.stringify([...selectedConsumers].sort()) !== JSON.stringify([...poll.consumers].sort());
 
+    const isDeadlineChanged = deadline !== formatDateForInput(poll.deadline);
+
     const isValid =
         question.trim() &&
         options.filter(o => o.trim()).length >= 2 &&
         !hasDuplicateOptions() &&
         currentDefaultResponse &&
         isDateValid(deadline) &&
+        isDeadlineChanged &&
         selectedConsumers.length > 0 &&
         hasChanges;
 
@@ -418,7 +421,10 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     min={getMinDateTime()}
                                 />
                                 {showErrors && !isDateValid(deadline) && (
-                                    <p className="text-red-500 text-xs mt-1">Deadline must be in the future</p>
+                                    <p className="text-red-500 text-xs mt-1">Please select a valid future date</p>
+                                )}
+                                {showErrors && isDateValid(deadline) && !isDeadlineChanged && (
+                                    <p className="text-red-500 text-xs mt-1">Please update the deadline to a new time</p>
                                 )}
                                 <p className="text-sm text-mono-text/60 mt-2">
                                     Notifications will be sent at 60, 30, 15, and 1 minute before deadline

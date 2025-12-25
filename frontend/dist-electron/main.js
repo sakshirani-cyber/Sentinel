@@ -152,6 +152,27 @@ electron_1.app.whenReady().then(async () => {
             return { success: false, error: error.message };
         }
     });
+    electron_1.ipcMain.handle('db-delete-poll', async (_event, pollId) => {
+        console.log(`[IPC Handler] db-delete-poll called for pollId: ${pollId}`);
+        try {
+            // Get the poll first to check if it has a cloudSignalId
+            const polls = (0, db_1.getPolls)();
+            const poll = polls.find(p => p.id === pollId);
+            // Delete from local DB
+            (0, db_1.deletePoll)(pollId);
+            // If poll has cloudSignalId, sync deletion to cloud
+            if (poll?.cloudSignalId) {
+                backendApi.deletePoll(poll.cloudSignalId).catch(err => {
+                    console.error('[IPC Handler] Failed to sync poll deletion to cloud:', err);
+                });
+            }
+            return { success: true };
+        }
+        catch (error) {
+            console.error('[IPC Handler] db-delete-poll error:', error.message);
+            return { success: false, error: error.message };
+        }
+    });
     electron_1.ipcMain.handle('backend-submit-vote', async (_event, { pollId, signalId, userId, selectedOption, defaultResponse, reason }) => {
         console.log(`[IPC Handler] backend-submit-vote (local-first) called for pollId: ${pollId}, user: ${userId}`);
         try {
@@ -559,20 +580,19 @@ electron_1.ipcMain.handle('db-get-responses', async () => {
 electron_1.ipcMain.handle('db-update-poll', async (_event, { pollId, updates, republish }) => {
     try {
         (0, db_1.updatePoll)(pollId, updates, republish);
+        // Sync to cloud if it's a cloud-synced poll
+        const polls = (0, db_1.getPolls)();
+        const updatedPoll = polls.find(p => p.id === pollId);
+        if (updatedPoll && updatedPoll.cloudSignalId) {
+            console.log(`[IPC Handler] Syncing poll update to cloud for signalId: ${updatedPoll.cloudSignalId}`);
+            backendApi.editPoll(updatedPoll.cloudSignalId, updatedPoll, republish).catch(err => {
+                console.error('[IPC Handler] Failed to sync poll update to cloud:', err);
+            });
+        }
         return { success: true };
     }
     catch (error) {
         console.error('Error updating poll:', error);
-        return { success: false, error: error.message };
-    }
-});
-electron_1.ipcMain.handle('db-delete-poll', async (_event, pollId) => {
-    try {
-        (0, db_1.deletePoll)(pollId);
-        return { success: true };
-    }
-    catch (error) {
-        console.error('Error deleting poll:', error);
         return { success: false, error: error.message };
     }
 });

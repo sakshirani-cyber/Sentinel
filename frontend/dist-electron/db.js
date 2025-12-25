@@ -175,10 +175,12 @@ function validatePoll(poll) {
     }
 }
 function validateResponse(response) {
-    if (!response.consumerEmail || response.consumerEmail.trim() === '') {
+    const email = response.consumerEmail ? String(response.consumerEmail).trim() : '';
+    if (!email) {
         throw new Error('userId (consumerEmail) is required');
     }
-    if (!response.response || response.response.trim() === '') {
+    const selectedOption = response.response ? String(response.response).trim() : '';
+    if (!selectedOption) {
         throw new Error('selectedOption is required');
     }
 }
@@ -286,10 +288,10 @@ function updatePoll(pollId, updates, republish = false) {
     try {
         const sets = [];
         const values = { localId: pollId };
-        // Always set isEdited to true on update
-        updates.isEdited = true;
-        // Set updatedAt to now
-        updates.updatedAt = new Date().toISOString();
+        // Set updatedAt to now if not explicitly provided
+        if (!updates.updatedAt) {
+            updates.updatedAt = new Date().toISOString();
+        }
         const fields = [
             'question', 'options', 'publisherEmail', 'publisherName', 'status',
             'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
@@ -326,8 +328,13 @@ function updatePoll(pollId, updates, republish = false) {
 }
 function deletePoll(pollId) {
     try {
-        const stmt = getDb().prepare('DELETE FROM polls WHERE localId = ?');
-        return stmt.run(pollId);
+        const db = getDb();
+        // Delete responses first to avoid foreign key constraint
+        const deleteResponses = db.prepare('DELETE FROM responses WHERE pollLocalId = ?');
+        deleteResponses.run(pollId);
+        // Then delete the poll
+        const deletePollStmt = db.prepare('DELETE FROM polls WHERE localId = ?');
+        return deletePollStmt.run(pollId);
     }
     catch (error) {
         console.error('[SQLite DB] Error deleting poll:', error);
@@ -338,7 +345,7 @@ function submitResponse(response) {
     validateResponse(response);
     try {
         const stmt = getDb().prepare(`
-            INSERT INTO responses (
+            INSERT OR REPLACE INTO responses (
                 pollLocalId, userId, selectedOption, timeOfSubmission, isDefault, skipReason
             ) VALUES (
                 @pollLocalId, @userId, @selectedOption, @timeOfSubmission, @isDefault, @skipReason
@@ -346,8 +353,8 @@ function submitResponse(response) {
         `);
         const info = stmt.run({
             pollLocalId: response.pollId,
-            userId: response.consumerEmail.trim(),
-            selectedOption: response.response.trim(),
+            userId: String(response.consumerEmail || '').trim(),
+            selectedOption: String(response.response || '').trim(),
             timeOfSubmission: response.submittedAt,
             isDefault: response.isDefault ? 1 : 0,
             skipReason: response.skipReason || null

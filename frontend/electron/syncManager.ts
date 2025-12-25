@@ -1,5 +1,6 @@
 import { powerMonitor } from 'electron';
-const EventSource = require('eventsource');
+const EventSourceImport = require('eventsource');
+const EventSource = EventSourceImport.default || EventSourceImport;
 import * as backendApi from './backendApi';
 import { getPolls, getResponses, createPoll, submitResponse, updatePoll } from './db';
 import * as dns from 'dns';
@@ -101,7 +102,7 @@ export class SyncManager {
     private connectSSE() {
         if (!this.email || this.sse) return;
 
-        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?email=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?email=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
 
         const sse = new EventSource(url) as any;
@@ -146,13 +147,13 @@ export class SyncManager {
             publisherName: dto.publisherName || dto.createdBy,
             deadline: dto.endTimestamp,
             status: 'active' as const,
-            consumers: dto.sharedWith || [],
             defaultResponse: dto.defaultOption,
             showDefaultToConsumers: dto.defaultFlag,
             anonymityMode: dto.anonymous ? 'anonymous' : 'record',
             isPersistentFinalAlert: dto.persistentAlert,
             publishedAt: new Date().toISOString(),
             cloudSignalId: dto.signalId,
+            consumers: dto.sharedWith && dto.sharedWith.length > 0 ? dto.sharedWith : (dto.consumers || []),
             syncStatus: 'synced'
         };
 

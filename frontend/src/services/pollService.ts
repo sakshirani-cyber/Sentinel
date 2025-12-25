@@ -45,7 +45,7 @@ export interface PollResultDTO {
     optionCounts: Record<string, number>;
     optionVotes: Record<string, UserVoteDTO[]>;
 
-    archivedOptions: Record<string, UserVoteDTO[]>;
+    removedOptions: Record<string, UserVoteDTO[]>;
     removedUsers: Record<string, UserVoteDTO[]>;
 
     defaultResponses: UserVoteDTO[];
@@ -96,7 +96,23 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
                 responses.push({
                     pollId: poll.id,
                     consumerEmail: vote.userId,
-                    response: option, // The selected option
+                    response: option,
+                    submittedAt: vote.submittedAt || new Date().toISOString(),
+                    isDefault: false,
+                    skipReason: undefined,
+                });
+            }
+        }
+    }
+
+    // 1b. Process archived votes (options that were removed during edit)
+    if (dto.removedOptions) {
+        for (const [option, votes] of Object.entries(dto.removedOptions)) {
+            for (const vote of votes) {
+                responses.push({
+                    pollId: poll.id,
+                    consumerEmail: vote.userId,
+                    response: option,
                     submittedAt: vote.submittedAt || new Date().toISOString(),
                     isDefault: false,
                     skipReason: undefined,
@@ -119,22 +135,36 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
         }
     }
 
-    // 3. Map reasonResponses to the corresponding user's response
+    // 3. Process removed users (users who were unshared during edit)
+    if (dto.removedUsers) {
+        for (const [_, votes] of Object.entries(dto.removedUsers)) {
+            for (const vote of votes) {
+                // Only add if not already present (safety check)
+                if (!responses.some(r => r.consumerEmail === vote.userId)) {
+                    responses.push({
+                        pollId: poll.id,
+                        consumerEmail: vote.userId,
+                        response: vote.selectedOption,
+                        submittedAt: vote.submittedAt || new Date().toISOString(),
+                        isDefault: false,
+                        skipReason: undefined,
+                    });
+                }
+            }
+        }
+    }
+
+    // 4. Map reasonResponses to the corresponding user's response
     if (dto.reasonResponses) {
         for (const response of responses) {
             const reason = dto.reasonResponses[response.consumerEmail];
             if (reason) {
                 response.skipReason = reason;
-                // If the response was marked as default (e.g. "Skipped" or default option), keep it as default
-                // but ensure the reason is attached so AnalyticsView can display it.
             }
         }
     }
 
-    // 4. Fill in missing users (if any remain) as strictly default (client-side fallback)
-    // This logic mimics the original behavior, ensuring every consumer has a response.
-    // BUT only do this if the poll is COMPLETED (deadline passed).
-    // If it's still active, these users should remain "Pending".
+    // 5. Fill in missing users (if any remain) as strictly default (client-side fallback)
     const isCompleted = new Date(poll.deadline) <= new Date();
 
     if (isCompleted) {

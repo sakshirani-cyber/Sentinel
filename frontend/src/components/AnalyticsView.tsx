@@ -1,5 +1,5 @@
 import { Poll, Response } from '../App';
-import { X, TrendingUp, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive } from 'lucide-react';
 
 interface AnalyticsViewProps {
   poll: Poll;
@@ -18,18 +18,27 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
   const defaultResponses = responses.filter(r => r.isDefault);
   const skippedResponses = responses.filter(r => r.skipReason);
 
+  // Get current option texts for checking orphaned responses
+  const currentOptionTexts = new Set(poll.options.map(o => o.text));
+
   // Count responses by option
   const responseCounts = poll.options.reduce((acc, option) => {
     acc[option.text] = responses.filter(r => r.response === option.text).length;
     return acc;
   }, {} as Record<string, number>);
 
+  // Add counts for responses that are no longer in current options
+  // (excluding defaults and skips which are handled separately)
+  responses.forEach(r => {
+    if (!r.isDefault && !r.skipReason && r.response && !currentOptionTexts.has(r.response)) {
+      responseCounts[r.response] = (responseCounts[r.response] || 0) + 1;
+    }
+  });
+
   // Add default response count if it's not in options
-  const defaultResponseIsOption = poll.options.some(opt => opt.text === poll.defaultResponse);
+  const defaultResponseIsOption = poll.defaultResponse ? currentOptionTexts.has(poll.defaultResponse) : false;
   if (poll.defaultResponse && !defaultResponseIsOption && defaultResponses.length > 0) {
-    responseCounts[poll.defaultResponse] = defaultResponses.filter(
-      r => r.response === poll.defaultResponse
-    ).length;
+    responseCounts[poll.defaultResponse] = (responseCounts[poll.defaultResponse] || 0) + 1;
   }
 
   const formatDateTime = (dateString: string) => {
@@ -114,6 +123,12 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
                             Default
                           </span>
                         )}
+                        {!currentOptionTexts.has(option) && !isDefaultOption && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-xs border border-slate-200">
+                            <Archive className="w-3 h-3" />
+                            Removed
+                          </span>
+                        )}
                       </span>
                       <span className="text-slate-600">{count} ({percentage.toFixed(1)}%)</span>
                     </div>
@@ -166,10 +181,18 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
                                   Skipped
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                                  <CheckCircle className="w-3 h-3" />
-                                  Submitted
-                                </span>
+                                <div className="flex flex-col gap-1 items-start">
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                                    <CheckCircle className="w-3 h-3" />
+                                    Submitted
+                                  </span>
+                                  {!currentOptionTexts.has(response.response) && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-xs">
+                                      <Archive className="w-3 h-3" />
+                                      Removed Option
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </td>
                             <td className="px-4 py-3 text-sm text-slate-600">

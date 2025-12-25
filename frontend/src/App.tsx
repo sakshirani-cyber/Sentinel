@@ -252,14 +252,14 @@ function App() {
         console.log('[Frontend] Calling local-first submitVote:', response.pollId);
 
         // Use the simplified IPC handler which writes to local DB
-        const result = await (window as any).electron.backend.submitVote({
-          pollId: poll?.id || response.pollId,
-          signalId: poll?.cloudSignalId,
-          userId: response.consumerEmail,
-          selectedOption: response.response,
-          defaultResponse: response.isDefault ? response.response : undefined,
-          reason: response.skipReason
-        });
+        const result = await (window as any).electron.backend.submitVote(
+          poll?.id || response.pollId,
+          poll?.cloudSignalId,
+          response.consumerEmail,
+          response.response,
+          response.isDefault ? response.response : undefined,
+          response.isDefault ? response.skipReason : undefined
+        );
 
         if (result.success) {
           setResponses(prev => [...prev, response]);

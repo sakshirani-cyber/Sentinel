@@ -16,7 +16,7 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
     },
     backend: {
         createPoll: (poll) => electron_1.ipcRenderer.invoke('backend-create-poll', poll),
-        submitVote: (signalId, userId, selectedOption, defaultResponse, reason) => electron_1.ipcRenderer.invoke('backend-submit-vote', { signalId, userId, selectedOption, defaultResponse, reason }),
+        submitVote: (pollId, signalId, userId, selectedOption, defaultResponse, reason) => electron_1.ipcRenderer.invoke('backend-submit-vote', { pollId, signalId, userId, selectedOption, defaultResponse, reason }),
         getPollResults: (signalId) => electron_1.ipcRenderer.invoke('backend-get-results', signalId),
         editPoll: (signalId, poll, republish) => electron_1.ipcRenderer.invoke('backend-edit-poll', { signalId, poll, republish }),
         deletePoll: (signalId) => electron_1.ipcRenderer.invoke('backend-delete-poll', signalId),

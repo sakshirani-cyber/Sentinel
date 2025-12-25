@@ -178,7 +178,11 @@ export default function ConsumerDashboard({
       // Use updatedAt to track unique edits if available, otherwise fallback to ID
       const notificationKey = poll.updatedAt ? `${poll.id}_${poll.updatedAt}` : poll.id;
 
-      if (poll.isEdited && !notifiedUpdates.has(notificationKey)) {
+      // Check if user has already responded to this poll
+      const userResponse = responses.find(r => r.pollId === poll.id && r.consumerEmail === user.email);
+
+      // Only show edit notification if user has NOT responded yet (poll still in incoming)
+      if (poll.isEdited && !userResponse && !notifiedUpdates.has(notificationKey)) {
 
         // Mark as notified
         setNotifiedUpdates(prev => {
