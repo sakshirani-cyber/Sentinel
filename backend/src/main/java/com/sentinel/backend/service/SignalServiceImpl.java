@@ -14,6 +14,8 @@ import com.sentinel.backend.exception.CustomException;
 import com.sentinel.backend.repository.PollRepository;
 import com.sentinel.backend.repository.PollResultRepository;
 import com.sentinel.backend.repository.SignalRepository;
+import com.sentinel.backend.sse.PollSsePublisher;
+import com.sentinel.backend.sse.dto.PollSsePayload;
 import com.sentinel.backend.util.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,9 @@ import java.util.stream.Collectors;
 
 import static com.sentinel.backend.constant.Constants.ACTIVE;
 import static com.sentinel.backend.constant.Constants.POLL;
+import static com.sentinel.backend.constant.Constants.POLL_CREATED;
+import static com.sentinel.backend.constant.Constants.POLL_DELETED;
+import static com.sentinel.backend.constant.Constants.POLL_EDITED;
 import static com.sentinel.backend.constant.Constants.REMOVED;
 import static com.sentinel.backend.constant.Queries.GET_ROLE_BY_EMAIL_AND_PASSWORD;
 import static org.springframework.util.StringUtils.hasText;
@@ -49,6 +54,7 @@ public class SignalServiceImpl implements SignalService {
     private final PollRepository pollRepository;
     private final PollResultRepository pollResultRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final PollSsePublisher pollSsePublisher;
 
     @Override
     @Transactional
@@ -65,6 +71,14 @@ public class SignalServiceImpl implements SignalService {
         poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());
         pollRepository.save(poll);
+
+        PollSsePayload payload = buildPollSsePayload(savedSignal, poll);
+
+        pollSsePublisher.publish(
+                savedSignal.getSharedWith(),
+                POLL_CREATED,
+                payload
+        );
 
         return new CreatePollResponse(savedSignal.getId(), dto.getLocalId());
     }
@@ -115,6 +129,14 @@ public class SignalServiceImpl implements SignalService {
 
         pollRepository.save(poll);
         signalRepository.save(signal);
+
+        PollSsePayload payload = buildPollSsePayload(signal, poll);
+
+        pollSsePublisher.publish(
+                signal.getSharedWith(),
+                POLL_EDITED,
+                payload
+        );
     }
 
     @Override
@@ -129,6 +151,12 @@ public class SignalServiceImpl implements SignalService {
         }
 
         signalRepository.delete(signal);
+
+        pollSsePublisher.publish(
+                signal.getSharedWith(),
+                POLL_DELETED,
+                signal.getId()
+        );
     }
 
     @Override
@@ -360,5 +388,20 @@ public class SignalServiceImpl implements SignalService {
             throw new CustomException("Poll completed", HttpStatus.BAD_REQUEST);
         }
         return s;
+    }
+
+    private PollSsePayload buildPollSsePayload(Signal signal, Poll poll) {
+        return PollSsePayload.builder()
+                .signalId(signal.getId())
+                .question(poll.getQuestion())
+                .options(poll.getOptions())
+                .endTimestamp(signal.getEndTimestamp())
+                .anonymous(signal.getAnonymous())
+                .defaultFlag(signal.getDefaultFlag())
+                .defaultOption(signal.getDefaultOption())
+                .persistentAlert(signal.getPersistentAlert())
+                .createdBy(signal.getCreatedBy())
+                .sharedWith(signal.getSharedWith())
+                .build();
     }
 }
