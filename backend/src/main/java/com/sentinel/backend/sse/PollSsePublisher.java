@@ -37,16 +37,16 @@ public class PollSsePublisher {
                 payload
         );
 
-        for (String email : recipients) {
+        for (String userEmail : recipients) {
 
-            SseEmitter emitter = registry.get(email);
+            SseEmitter emitter = registry.get(userEmail);
 
             if (emitter == null) {
                 offline++;
                 log.debug(
-                        "[SSE][PUBLISH] Recipient offline | eventType={} | email={}",
+                        "[SSE][PUBLISH] Recipient offline | eventType={} | userEmail={}",
                         eventType,
-                        email
+                        userEmail
                 );
                 continue;
             }
@@ -63,12 +63,12 @@ public class PollSsePublisher {
             } catch (IOException ex) {
 
                 failed++;
-                registry.remove(email);
+                registry.remove(userEmail);
 
                 log.warn(
-                        "[SSE][PUBLISH][ERROR] Delivery failed | eventType={} | email={} | exception={} | message={}",
+                        "[SSE][PUBLISH][ERROR] Delivery failed | eventType={} | userEmail={} | exception={} | message={}",
                         eventType,
-                        email,
+                        userEmail,
                         ex.getClass().getSimpleName(),
                         ex.getMessage()
                 );

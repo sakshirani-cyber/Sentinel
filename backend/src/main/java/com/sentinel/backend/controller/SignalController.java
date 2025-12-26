@@ -153,33 +153,33 @@ public class SignalController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<String>> login(
-            @RequestParam String email,
+            @RequestParam String userEmail,
             @RequestParam String password) {
 
         long start = System.currentTimeMillis();
 
         log.info(
-                "[CONTROLLER] Login attempt | email={}",
-                email
+                "[CONTROLLER] Login attempt | userEmail={}",
+                userEmail
         );
 
-        String role = signalService.login(email, password);
+        String role = signalService.login(userEmail, password);
 
         if (role == null) {
             log.warn(
-                    "[CONTROLLER] Login failed | email={} | durationMs={}",
-                    email,
+                    "[CONTROLLER] Login failed | userEmail={} | durationMs={}",
+                    userEmail,
                     System.currentTimeMillis() - start
             );
 
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.failure("Invalid email or password"));
+                    .body(ApiResponse.failure("Invalid userEmail or password"));
         }
 
         log.info(
-                "[CONTROLLER] Login successful | email={} | role={} | durationMs={}",
-                email,
+                "[CONTROLLER] Login successful | userEmail={} | role={} | durationMs={}",
+                userEmail,
                 role,
                 System.currentTimeMillis() - start
         );

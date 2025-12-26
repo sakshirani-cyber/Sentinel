@@ -19,30 +19,30 @@ public class SseController {
     private final SseEmitterRegistry registry;
 
     @GetMapping(value = "/sse/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter connect(@RequestParam String email) {
+    public SseEmitter connect(@RequestParam String userEmail) {
 
-        log.info("[SSE] Connection request received | email={}", email);
+        log.info("[SSE] Connection request received | usermail={}", userEmail);
 
         SseEmitter emitter = new SseEmitter(0L);
 
-        registry.add(email, emitter);
-        log.info("[SSE] Connection registered | email={}", email);
+        registry.add(userEmail, emitter);
+        log.info("[SSE] Connection registered | usermail={}", userEmail);
 
         emitter.onCompletion(() -> {
-            registry.remove(email);
-            log.info("[SSE] Connection completed | email={}", email);
+            registry.remove(userEmail);
+            log.info("[SSE] Connection completed | usermail={}", userEmail);
         });
 
         emitter.onTimeout(() -> {
-            registry.remove(email);
-            log.warn("[SSE] Connection timed out | email={}", email);
+            registry.remove(userEmail);
+            log.warn("[SSE] Connection timed out | usermail={}", userEmail);
         });
 
         emitter.onError(ex -> {
-            registry.remove(email);
+            registry.remove(userEmail);
             log.warn(
-                    "[SSE][ERROR] Connection error | email={} | exception={} | message={}",
-                    email,
+                    "[SSE][ERROR] Connection error | usermail={} | exception={} | message={}",
+                    userEmail,
                     ex.getClass().getSimpleName(),
                     ex.getMessage()
             );
@@ -55,15 +55,15 @@ public class SseController {
                             .data("SSE connected")
             );
 
-            log.info("[SSE] Initial handshake event sent | email={}", email);
+            log.info("[SSE] Initial handshake event sent | usermail={}", userEmail);
 
         } catch (IOException e) {
 
-            registry.remove(email);
+            registry.remove(userEmail);
 
             log.error(
-                    "[SSE][ERROR] Failed to send initial SSE event | email={} | exception={} | message={}",
-                    email,
+                    "[SSE][ERROR] Failed to send initial SSE event | usermail={} | exception={} | message={}",
+                    userEmail,
                     e.getClass().getSimpleName(),
                     e.getMessage(),
                     e
