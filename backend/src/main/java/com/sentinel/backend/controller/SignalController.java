@@ -9,6 +9,7 @@ import com.sentinel.backend.dto.response.PollResultDTO;
 import com.sentinel.backend.service.SignalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,6 +31,7 @@ import static com.sentinel.backend.constant.Constants.SAVED;
 @RestController
 @RequestMapping("/api/signals")
 @RequiredArgsConstructor
+@Slf4j
 public class SignalController {
 
     private final SignalService signalService;
@@ -38,7 +40,23 @@ public class SignalController {
     public ResponseEntity<ApiResponse<CreatePollResponse>> createSignal(
             @RequestBody @Valid PollCreateDTO req) {
 
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Create poll request received | createdBy={} | sharedWithCount={}",
+                req.getCreatedBy(),
+                req.getSharedWith() != null ? req.getSharedWith().length : 0
+        );
+
         CreatePollResponse resp = signalService.createPoll(req);
+
+        log.info(
+                "[CONTROLLER] Create poll completed | signalId={} | localId={} | durationMs={}",
+                resp.getSignalId(),
+                resp.getLocalId(),
+                System.currentTimeMillis() - start
+        );
+
         return ResponseEntity.ok(ApiResponse.success(CREATED, resp));
     }
 
@@ -46,7 +64,23 @@ public class SignalController {
     public ResponseEntity<ApiResponse<Void>> submitResponse(
             @RequestBody @Valid PollSubmitDTO req) {
 
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Poll response submission received | signalId={} | user={}",
+                req.getSignalId(),
+                req.getUserEmail()
+        );
+
         signalService.submitOrUpdateVote(req);
+
+        log.info(
+                "[CONTROLLER] Poll response processed | signalId={} | user={} | durationMs={}",
+                req.getSignalId(),
+                req.getUserEmail(),
+                System.currentTimeMillis() - start
+        );
+
         return ResponseEntity.ok(ApiResponse.success(SAVED, null));
     }
 
@@ -54,7 +88,21 @@ public class SignalController {
     public ResponseEntity<ApiResponse<PollResultDTO>> results(
             @PathVariable Integer signalId) {
 
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Fetch poll results request | signalId={}",
+                signalId
+        );
+
         PollResultDTO dto = signalService.getPollResults(signalId);
+
+        log.info(
+                "[CONTROLLER] Fetch poll results completed | signalId={} | durationMs={}",
+                signalId,
+                System.currentTimeMillis() - start
+        );
+
         return ResponseEntity.ok(ApiResponse.success(OK, dto));
     }
 
@@ -62,7 +110,22 @@ public class SignalController {
     public ResponseEntity<ApiResponse<Void>> edit(
             @RequestBody @Valid PollEditDTO dto) {
 
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Edit poll request received | signalId={} | editor={}",
+                dto.getSignalId(),
+                dto.getLastEditedBy()
+        );
+
         signalService.editSignal(dto);
+
+        log.info(
+                "[CONTROLLER] Edit poll completed | signalId={} | durationMs={}",
+                dto.getSignalId(),
+                System.currentTimeMillis() - start
+        );
+
         return ResponseEntity.ok(ApiResponse.success(EDITED, null));
     }
 
@@ -70,7 +133,21 @@ public class SignalController {
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Integer signalId) {
 
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Delete signal request received | signalId={}",
+                signalId
+        );
+
         signalService.deleteSignal(signalId);
+
+        log.info(
+                "[CONTROLLER] Delete signal completed | signalId={} | durationMs={}",
+                signalId,
+                System.currentTimeMillis() - start
+        );
+
         return ResponseEntity.ok(ApiResponse.success(DELETED, null));
     }
 
@@ -79,13 +156,33 @@ public class SignalController {
             @RequestParam String email,
             @RequestParam String password) {
 
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Login attempt | email={}",
+                email
+        );
+
         String role = signalService.login(email, password);
 
         if (role == null) {
+            log.warn(
+                    "[CONTROLLER] Login failed | email={} | durationMs={}",
+                    email,
+                    System.currentTimeMillis() - start
+            );
+
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.failure("Invalid email or password"));
         }
+
+        log.info(
+                "[CONTROLLER] Login successful | email={} | role={} | durationMs={}",
+                email,
+                role,
+                System.currentTimeMillis() - start
+        );
 
         return ResponseEntity.ok(ApiResponse.success(OK, role));
     }

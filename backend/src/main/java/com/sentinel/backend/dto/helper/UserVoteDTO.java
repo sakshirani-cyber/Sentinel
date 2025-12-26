@@ -10,7 +10,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserVoteDTO {
-    private String userId;
+    private String userEmail;
     private String selectedOption;
     private Instant submittedAt;
 }

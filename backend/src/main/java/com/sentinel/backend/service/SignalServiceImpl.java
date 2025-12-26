@@ -60,17 +60,28 @@ public class SignalServiceImpl implements SignalService {
     @Transactional
     public CreatePollResponse createPoll(PollCreateDTO dto) {
 
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Create poll started | createdBy={}", dto.getCreatedBy());
+
         normalizeAndValidateCreate(dto);
         validateDuplicateActivePoll(dto);
 
         Signal signal = buildSignal(dto);
+
+        long dbStart = System.currentTimeMillis();
         Signal savedSignal = signalRepository.save(signal);
+        log.info("[DB] Signal saved | signalId={} | durationMs={}",
+                savedSignal.getId(), System.currentTimeMillis() - dbStart);
 
         Poll poll = new Poll();
         poll.setSignal(savedSignal);
         poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());
+
+        dbStart = System.currentTimeMillis();
         pollRepository.save(poll);
+        log.info("[DB] Poll saved | signalId={} | durationMs={}",
+                savedSignal.getId(), System.currentTimeMillis() - dbStart);
 
         PollSsePayload payload = buildPollSsePayload(savedSignal, poll);
 
@@ -80,6 +91,12 @@ public class SignalServiceImpl implements SignalService {
                 payload
         );
 
+        log.info("[SSE] Poll created event published | signalId={} | recipients={}",
+                savedSignal.getId(), savedSignal.getSharedWith().length);
+
+        log.info("[SERVICE] Create poll completed | signalId={} | totalDurationMs={}",
+                savedSignal.getId(), System.currentTimeMillis() - start);
+
         return new CreatePollResponse(savedSignal.getId(), dto.getLocalId());
     }
 
@@ -87,24 +104,48 @@ public class SignalServiceImpl implements SignalService {
     @Transactional
     public void submitOrUpdateVote(PollSubmitDTO req) {
 
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Submit poll response started | signalId={} | user={}",
+                req.getSignalId(), req.getUserEmail());
+
         req.normalize();
 
-        Signal signal = getValidActivePollSignal(req.getSignalId(), req.getUserId());
+        Signal signal = getValidActivePollSignal(req.getSignalId(), req.getUserEmail());
         Poll poll = getPoll(req.getSignalId());
 
         PollResult pr = buildOrUpdatePollResult(req, signal, poll);
+
+        long dbStart = System.currentTimeMillis();
         pollResultRepository.save(pr);
+        log.info("[DB] Poll response saved | signalId={} | user={} | durationMs={}",
+                req.getSignalId(), req.getUserEmail(), System.currentTimeMillis() - dbStart);
+
+        log.info("[SERVICE] Submit poll response completed | signalId={} | user={} | totalDurationMs={}",
+                req.getSignalId(), req.getUserEmail(), System.currentTimeMillis() - start);
     }
 
     @Override
     @Transactional
     public PollResultDTO getPollResults(Integer signalId) {
-        return buildPollResults(signalId);
+
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Fetch poll results started | signalId={}", signalId);
+
+        PollResultDTO dto = buildPollResults(signalId);
+
+        log.info("[SERVICE] Fetch poll results completed | signalId={} | totalDurationMs={}",
+                signalId, System.currentTimeMillis() - start);
+
+        return dto;
     }
 
     @Override
     @Transactional
     public void editSignal(PollEditDTO dto) {
+
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Edit poll started | signalId={} | editedBy={}",
+                dto.getSignalId(), dto.getLastEditedBy());
 
         normalizeAndValidateEdit(dto);
 
@@ -112,7 +153,10 @@ public class SignalServiceImpl implements SignalService {
         Poll poll = getPoll(dto.getSignalId());
 
         if (dto.getRepublish()) {
+            long dbStart = System.currentTimeMillis();
             pollResultRepository.deleteByIdSignalId(dto.getSignalId());
+            log.info("[DB] Poll responses cleared for republish | signalId={} | durationMs={}",
+                    dto.getSignalId(), System.currentTimeMillis() - dbStart);
         }
 
         poll.setQuestion(dto.getQuestion());
@@ -127,48 +171,81 @@ public class SignalServiceImpl implements SignalService {
         signal.setEndTimestamp(dto.getEndTimestampUtc());
         signal.setPersistentAlert(dto.getPersistentAlert());
 
+        long dbStart = System.currentTimeMillis();
         pollRepository.save(poll);
         signalRepository.save(signal);
-
-        PollSsePayload payload = buildPollSsePayload(signal, poll);
+        log.info("[DB] Poll & Signal updated | signalId={} | durationMs={}",
+                dto.getSignalId(), System.currentTimeMillis() - dbStart);
 
         pollSsePublisher.publish(
                 signal.getSharedWith(),
                 POLL_EDITED,
-                payload
+                buildPollSsePayload(signal, poll)
         );
+
+        log.info("[SSE] Poll edited event published | signalId={} | recipients={}",
+                signal.getId(), signal.getSharedWith().length);
+
+        log.info("[SERVICE] Edit poll completed | signalId={} | totalDurationMs={}",
+                dto.getSignalId(), System.currentTimeMillis() - start);
     }
 
     @Override
     @Transactional
     public void deleteSignal(Integer signalId) {
 
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Delete signal started | signalId={}", signalId);
+
         Signal signal = signalRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
 
         if (!POLL.equalsIgnoreCase(signal.getTypeOfSignal())) {
+            log.warn("[SERVICE] Delete rejected – not a poll | signalId={}", signalId);
             throw new CustomException("Only poll signals can be deleted", HttpStatus.BAD_REQUEST);
         }
 
+        long dbStart = System.currentTimeMillis();
         signalRepository.delete(signal);
+        log.info("[DB] Signal deleted | signalId={} | durationMs={}",
+                signalId, System.currentTimeMillis() - dbStart);
 
         pollSsePublisher.publish(
                 signal.getSharedWith(),
                 POLL_DELETED,
                 signal.getId()
         );
+
+        log.info("[SSE] Poll deleted event published | signalId={}", signalId);
+
+        log.info("[SERVICE] Delete signal completed | signalId={} | totalDurationMs={}",
+                signalId, System.currentTimeMillis() - start);
     }
 
     @Override
     public String login(String email, String password) {
+
+        long start = System.currentTimeMillis();
+        log.info("[AUTH] Login attempt | email={}", email);
+
         try {
-            return jdbcTemplate.queryForObject(
+            String role = jdbcTemplate.queryForObject(
                     GET_ROLE_BY_EMAIL_AND_PASSWORD,
                     String.class,
                     email,
                     password
             );
+
+            log.info("[AUTH] Login successful | email={} | role={} | durationMs={}",
+                    email, role, System.currentTimeMillis() - start);
+
+            return role;
+
         } catch (EmptyResultDataAccessException e) {
+
+            log.warn("[AUTH] Login failed | email={} | durationMs={}",
+                    email, System.currentTimeMillis() - start);
+
             return null;
         }
     }
@@ -219,7 +296,7 @@ public class SignalServiceImpl implements SignalService {
         }
     }
 
-    private Signal getValidActivePollSignal(Integer signalId, String userId) {
+    private Signal getValidActivePollSignal(Integer signalId, String userEmail) {
 
         Signal s = signalRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
@@ -232,7 +309,7 @@ public class SignalServiceImpl implements SignalService {
             throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
         }
 
-        if (!Arrays.asList(s.getSharedWith()).contains(userId)) {
+        if (!Arrays.asList(s.getSharedWith()).contains(userEmail)) {
             throw new CustomException("User not assigned", HttpStatus.BAD_REQUEST);
         }
 
@@ -254,7 +331,7 @@ public class SignalServiceImpl implements SignalService {
             throw new CustomException("Invalid option", HttpStatus.BAD_REQUEST);
         }
 
-        PollResultId id = new PollResultId(signal.getId(), req.getUserId());
+        PollResultId id = new PollResultId(signal.getId(), req.getUserEmail());
 
         PollResult pr = pollResultRepository.findById(id)
                 .orElseGet(() -> {
@@ -301,12 +378,12 @@ public class SignalServiceImpl implements SignalService {
         for (PollResult r : results) {
 
             UserVoteDTO vote = new UserVoteDTO(
-                    r.getId().getUserId(),
+                    r.getId().getUserEmail(),
                     resolveResponseText(r),
                     r.getTimeOfSubmission()
             );
 
-            if (!activeUsers.contains(r.getId().getUserId())) {
+            if (!activeUsers.contains(r.getId().getUserEmail())) {
                 removedUsers.add(vote);
                 continue;
             }
@@ -319,7 +396,7 @@ public class SignalServiceImpl implements SignalService {
                     optionVotes.get(r.getSelectedOption()).add(vote);
                 }
             } else if (hasText(r.getReason())) {
-                reasonResponses.put(r.getId().getUserId(), r.getReason());
+                reasonResponses.put(r.getId().getUserEmail(), r.getReason());
             } else {
                 defaultResponses.add(vote);
             }

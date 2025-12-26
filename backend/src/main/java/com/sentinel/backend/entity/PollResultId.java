@@ -17,6 +17,6 @@ public class PollResultId implements Serializable {
     @Column(name = "signal_id", nullable = false)
     private Integer signalId;
 
-    @Column(name = "user_id", nullable = false)
-    private String userId;
+    @Column(name = "user_email", nullable = false)
+    private String userEmail;
 }
