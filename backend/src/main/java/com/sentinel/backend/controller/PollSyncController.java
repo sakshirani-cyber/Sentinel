@@ -21,7 +21,7 @@ public class PollSyncController {
 
     @GetMapping("/polls/sync")
     public List<PollSyncDTO> syncPolls(
-            @RequestParam String email,
+            @RequestParam String userEmail,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             Instant since
@@ -30,17 +30,17 @@ public class PollSyncController {
         long startTime = System.currentTimeMillis();
 
         log.info(
-                "[CONTROLLER] Poll sync request received | endpoint=/polls/sync | email={} | since={}",
-                email, since
+                "[CONTROLLER] Poll sync request received | endpoint=/polls/sync | userEmail={} | since={}",
+                userEmail, since
         );
 
-        List<PollSyncDTO> response = pollSyncService.sync(email, since);
+        List<PollSyncDTO> response = pollSyncService.sync(userEmail, since);
 
         long durationMs = System.currentTimeMillis() - startTime;
 
         log.info(
-                "[CONTROLLER] Poll sync request completed | email={} | resultCount={} | durationMs={}",
-                email,
+                "[CONTROLLER] Poll sync request completed | userEmail={} | resultCount={} | durationMs={}",
+                userEmail,
                 response != null ? response.size() : 0,
                 durationMs
         );

@@ -223,28 +223,28 @@ public class SignalServiceImpl implements SignalService {
     }
 
     @Override
-    public String login(String email, String password) {
+    public String login(String userEmail, String password) {
 
         long start = System.currentTimeMillis();
-        log.info("[AUTH] Login attempt | email={}", email);
+        log.info("[AUTH] Login attempt | userEmail={}", userEmail);
 
         try {
             String role = jdbcTemplate.queryForObject(
                     GET_ROLE_BY_EMAIL_AND_PASSWORD,
                     String.class,
-                    email,
+                    userEmail,
                     password
             );
 
-            log.info("[AUTH] Login successful | email={} | role={} | durationMs={}",
-                    email, role, System.currentTimeMillis() - start);
+            log.info("[AUTH] Login successful | userEmail={} | role={} | durationMs={}",
+                    userEmail, role, System.currentTimeMillis() - start);
 
             return role;
 
         } catch (EmptyResultDataAccessException e) {
 
-            log.warn("[AUTH] Login failed | email={} | durationMs={}",
-                    email, System.currentTimeMillis() - start);
+            log.warn("[AUTH] Login failed | userEmail={} | durationMs={}",
+                    userEmail, System.currentTimeMillis() - start);
 
             return null;
         }
