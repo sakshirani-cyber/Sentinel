@@ -111,7 +111,7 @@ export class SyncManager {
             return;
         }
 
-        const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?email=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?email=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
 
         try {
@@ -160,7 +160,7 @@ export class SyncManager {
         const poll = {
             id: dto.localId ? `poll-${dto.localId}` : `temp-${Date.now()}`,
             question: dto.question,
-            options: dto.options.map((text: string) => ({ text })),
+            options: (dto.options || []).map((text: string) => ({ text })),
             publisherEmail: dto.publisherEmail || dto.createdBy,
             publisherName: dto.publisherName || dto.createdBy,
             deadline: dto.endTimestamp,
