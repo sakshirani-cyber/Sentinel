@@ -130,7 +130,7 @@ async function deletePoll(signalId) {
 }
 async function login(email, password) {
     console.log('[Backend API] Logging in:', email);
-    const response = await apiClient.post('/api/signals/login', null, { params: { email, password } });
+    const response = await apiClient.post('/api/signals/login', null, { params: { userEmail: email, password } });
     console.log('[Backend API] Login success, role:', response.data.data);
     return response.data.data;
 }
@@ -157,7 +157,7 @@ async function getActivePolls(userEmail) {
 async function syncPolls(email, since) {
     console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);
     try {
-        const params = { email };
+        const params = { userEmail: email };
         if (since)
             params.since = since;
         const response = await apiClient.get('/polls/sync', { params });

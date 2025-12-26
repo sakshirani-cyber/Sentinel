@@ -252,7 +252,7 @@ export async function login(email: string, password: string): Promise<string> {
     const response = await apiClient.post<ApiResponse<string>>(
         '/api/signals/login',
         null,
-        { params: { email, password } }
+        { params: { userEmail: email, password } }
     );
 
     console.log('[Backend API] Login success, role:', response.data.data);
@@ -282,7 +282,7 @@ export async function getActivePolls(userEmail: string): Promise<ActivePollDTO[]
 export async function syncPolls(email: string, since: string | null): Promise<PollSyncDTO[]> {
     console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);
     try {
-        const params: any = { email };
+        const params: any = { userEmail: email };
         if (since) params.since = since;
 
         const response = await apiClient.get<PollSyncDTO[]>('/polls/sync', { params });

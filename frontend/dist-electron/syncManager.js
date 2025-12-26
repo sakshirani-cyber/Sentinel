@@ -131,7 +131,7 @@ class SyncManager {
             setTimeout(() => this.updateConnection(), 10000);
             return;
         }
-        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?email=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
         try {
             const sse = new EventSource(url);
