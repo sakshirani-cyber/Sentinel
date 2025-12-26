@@ -21,32 +21,53 @@ public class SseController {
     @GetMapping(value = "/sse/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@RequestParam String email) {
 
+        log.info("[SSE] Connection request received | email={}", email);
+
         SseEmitter emitter = new SseEmitter(0L);
 
         registry.add(email, emitter);
-        log.info("SSE connected: {}", email);
+        log.info("[SSE] Connection registered | email={}", email);
 
         emitter.onCompletion(() -> {
             registry.remove(email);
-            log.info("SSE completed: {}", email);
+            log.info("[SSE] Connection completed | email={}", email);
         });
 
         emitter.onTimeout(() -> {
             registry.remove(email);
-            log.info("SSE timeout: {}", email);
+            log.warn("[SSE] Connection timed out | email={}", email);
         });
 
         emitter.onError(ex -> {
             registry.remove(email);
-            log.warn("SSE error for {}: {}", email, ex.getMessage());
+            log.warn(
+                    "[SSE][ERROR] Connection error | email={} | exception={} | message={}",
+                    email,
+                    ex.getClass().getSimpleName(),
+                    ex.getMessage()
+            );
         });
 
         try {
-            emitter.send(SseEmitter.event()
-                    .name("CONNECTED")
-                    .data("SSE connected"));
+            emitter.send(
+                    SseEmitter.event()
+                            .name("CONNECTED")
+                            .data("SSE connected")
+            );
+
+            log.info("[SSE] Initial handshake event sent | email={}", email);
+
         } catch (IOException e) {
+
             registry.remove(email);
+
+            log.error(
+                    "[SSE][ERROR] Failed to send initial SSE event | email={} | exception={} | message={}",
+                    email,
+                    e.getClass().getSimpleName(),
+                    e.getMessage(),
+                    e
+            );
         }
 
         return emitter;
