@@ -210,6 +210,15 @@ export class SyncManager {
             for (const poll of unsyncedPolls) {
                 try {
                     console.log(`[SyncManager] Syncing local poll: ${poll.question}`);
+
+                    // BACKEND VALIDATION: End Time Stamp must be in the future
+                    const isExpired = new Date(poll.deadline) < new Date();
+                    if (isExpired) {
+                        console.warn(`[SyncManager] Skipping sync for expired poll: ${poll.id}`);
+                        await updatePoll(poll.id, { syncStatus: 'error' });
+                        continue;
+                    }
+
                     const result = await backendApi.createPoll(poll);
                     if (result && result.signalId) {
                         await updatePoll(poll.id, { cloudSignalId: result.signalId, syncStatus: 'synced' });
