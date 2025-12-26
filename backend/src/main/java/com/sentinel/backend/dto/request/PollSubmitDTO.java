@@ -11,7 +11,7 @@ public class PollSubmitDTO {
     private Integer signalId;
 
     @NotBlank(message = "User ID is required")
-    private String userId;
+    private String userEmail;
 
     private String selectedOption;
 
@@ -20,7 +20,7 @@ public class PollSubmitDTO {
     private String reason;
 
     public void normalize() {
-        if (userId != null) userId = userId.trim();
+        if (userEmail != null) userEmail = userEmail.trim();
         if (selectedOption != null) selectedOption = selectedOption.trim();
     }
 }

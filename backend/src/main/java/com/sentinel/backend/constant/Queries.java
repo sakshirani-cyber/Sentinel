@@ -33,7 +33,7 @@ public class Queries {
         JOIN poll p ON p.signal_id = s.id
         LEFT JOIN poll_result r
                ON r.signal_id = s.id
-              AND r.user_id = ?
+              AND r.user_email = ?
         WHERE
             ? = ANY (s.shared_with)
         AND (

@@ -14,27 +14,54 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidationErrors(MethodArgumentNotValidException ex) {
+
         String message = ex.getBindingResult().getFieldError().getDefaultMessage();
+
+        log.warn(
+                "[EXCEPTION] Validation failed | field={} | message={}",
+                ex.getBindingResult().getFieldError().getField(),
+                message
+        );
+
         return ResponseEntity.badRequest()
                 .body(ApiResponse.failure(message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<?>> handleIllegalArguementException(IllegalArgumentException ex) {
-        String message = ex.getMessage();
+
+        log.warn(
+                "[EXCEPTION] Illegal argument | message={}",
+                ex.getMessage()
+        );
+
         return ResponseEntity.badRequest()
-                .body(ApiResponse.failure(message));
+                .body(ApiResponse.failure(ex.getMessage()));
     }
 
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<?>> handleCustomException(CustomException ex) {
+
+        log.warn(
+                "[EXCEPTION] Business exception | status={} | message={}",
+                ex.getStatus(),
+                ex.getMessage()
+        );
+
         return ResponseEntity.status(ex.getStatus())
                 .body(ApiResponse.failure(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleUnexpected(Exception ex) {
-        log.error("Unexpected error occurred", ex);
+
+        log.error(
+                "[EXCEPTION][UNEXPECTED] Unhandled exception occurred | exception={} | message={}",
+                ex.getClass().getSimpleName(),
+                ex.getMessage(),
+                ex
+        );
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("Something went wrong. Please try again."));
     }
