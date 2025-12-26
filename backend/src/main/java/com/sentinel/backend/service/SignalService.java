@@ -12,5 +12,5 @@ public interface SignalService {
     PollResultDTO getPollResults(Integer signalId);
     void editSignal(PollEditDTO dto);
     void deleteSignal(Integer signalId);
-    String login(String email, String password);
+    String login(String userEmail, String password);
 }
