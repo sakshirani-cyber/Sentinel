@@ -30,7 +30,7 @@ process.on('unhandledRejection', (reason) => {
 
 let tray: Tray | null = null;
 let win: BrowserWindow | null = null;
-let secondaryWindows: BrowserWindow[] = [];
+let secondaryWindows: { win: BrowserWindow; displayId: number }[] = [];
 let isPersistentAlertLocked = false;
 
 // Simple icon for tray (16x16 blue circle)
@@ -508,7 +508,7 @@ function createSecondaryWindow(display: Electron.Display) {
         secondaryWin.loadFile(path.join(__dirname, '../dist/index.html'), { query: { isSecondary: 'true' } });
     }
 
-    secondaryWindows.push(secondaryWin);
+    secondaryWindows.push({ win: secondaryWin, displayId: display.id });
     return secondaryWin;
 }
 
@@ -520,11 +520,9 @@ const handleDisplayAdded = (_event: any, display: Electron.Display) => {
 
 const handleDisplayRemoved = (_event: any, display: Electron.Display) => {
     console.log('[Sentinel] Monitor removed during alert, cleaning up window.');
-    // Find window on this display and destroy it
     secondaryWindows = secondaryWindows.filter(sw => {
-        const bounds = sw.getBounds();
-        if (bounds.x === display.bounds.x && bounds.y === display.bounds.y) {
-            if (!sw.isDestroyed()) sw.destroy();
+        if (sw.displayId === display.id) {
+            if (!sw.win.isDestroyed()) sw.win.destroy();
             return false;
         }
         return true;
@@ -584,17 +582,30 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             // Focus Heartbeat: Force windows to front every 500ms
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
+                const primaryDisplay = screen.getPrimaryDisplay();
+
                 if (win) {
                     win.setAlwaysOnTop(true, 'screen-saver', 1);
                     win.moveTop();
                     win.focus();
                 }
-                secondaryWindows.forEach(sw => {
-                    if (!sw.isDestroyed()) {
-                        sw.setAlwaysOnTop(true, 'screen-saver', 1);
-                        sw.moveTop();
-                        sw.focus();
+
+                secondaryWindows = secondaryWindows.filter(sw => {
+                    if (sw.win.isDestroyed()) return false;
+
+                    // Safety guard: If a secondary window has jumped to the primary monitor 
+                    // (due to disconnect), destroy it to stop the "focus battle"
+                    const bounds = sw.win.getBounds();
+                    if (bounds.x === primaryDisplay.bounds.x && bounds.y === primaryDisplay.bounds.y) {
+                        console.log('[Sentinel] Secondary window detected on primary display, destroying it.');
+                        sw.win.destroy();
+                        return false;
                     }
+
+                    sw.win.setAlwaysOnTop(true, 'screen-saver', 1);
+                    sw.win.moveTop();
+                    sw.win.focus();
+                    return true;
                 });
             }, 500);
 
@@ -611,7 +622,7 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
 
             // Cleanup secondary windows
             secondaryWindows.forEach(sw => {
-                if (!sw.isDestroyed()) sw.destroy();
+                if (!sw.win.isDestroyed()) sw.win.destroy();
             });
             secondaryWindows = [];
 

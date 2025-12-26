@@ -123,12 +123,36 @@ export class SyncManager {
             });
 
             sse.addEventListener('POLL_CREATED', async (event: any) => {
-                console.log('[SyncManager] SSE: New poll received:', event.data);
+                console.log('[SyncManager] SSE: POLL_CREATED:', event.data);
                 try {
-                    const poll = JSON.parse(event.data);
-                    await this.handleIncomingPoll(poll);
+                    const data = JSON.parse(event.data);
+                    const payload = data.payload || data;
+                    await this.handleIncomingPoll(payload);
                 } catch (e) {
                     console.error('[SyncManager] Error handling POLL_CREATED:', e);
+                }
+            });
+
+            sse.addEventListener('POLL_EDITED', async (event: any) => {
+                console.log('[SyncManager] SSE: POLL_EDITED:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    const payload = data.payload || data;
+                    await this.handleIncomingPoll(payload); // handleIncomingPoll uses INSERT OR REPLACE
+                } catch (e) {
+                    console.error('[SyncManager] Error handling POLL_EDITED:', e);
+                }
+            });
+
+            sse.addEventListener('POLL_DELETED', async (event: any) => {
+                console.log('[SyncManager] SSE: POLL_DELETED:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    const signalId = data.payload || data;
+                    // Logic to delete local poll by cloudSignalId would go here
+                    // For now, let's just log it. We might need a db function for this.
+                } catch (e) {
+                    console.error('[SyncManager] Error handling POLL_DELETED:', e);
                 }
             });
 

@@ -1,22 +1,22 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function (o, m, k, k2) {
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
     if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-        desc = { enumerable: true, get: function () { return m[k]; } };
+      desc = { enumerable: true, get: function() { return m[k]; } };
     }
     Object.defineProperty(o, k2, desc);
-}) : (function (o, m, k, k2) {
+}) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
 }));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function (o, v) {
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
     Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function (o, v) {
+}) : function(o, v) {
     o["default"] = v;
 });
 var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function (o) {
+    var ownKeys = function(o) {
         ownKeys = Object.getOwnPropertyNames || function (o) {
             var ar = [];
             for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
@@ -140,13 +140,37 @@ class SyncManager {
                 console.log('[SyncManager] SSE Handshake successful:', event.data);
             });
             sse.addEventListener('POLL_CREATED', async (event) => {
-                console.log('[SyncManager] SSE: New poll received:', event.data);
+                console.log('[SyncManager] SSE: POLL_CREATED:', event.data);
                 try {
-                    const poll = JSON.parse(event.data);
-                    await this.handleIncomingPoll(poll);
+                    const data = JSON.parse(event.data);
+                    const payload = data.payload || data;
+                    await this.handleIncomingPoll(payload);
                 }
                 catch (e) {
                     console.error('[SyncManager] Error handling POLL_CREATED:', e);
+                }
+            });
+            sse.addEventListener('POLL_EDITED', async (event) => {
+                console.log('[SyncManager] SSE: POLL_EDITED:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    const payload = data.payload || data;
+                    await this.handleIncomingPoll(payload); // handleIncomingPoll uses INSERT OR REPLACE
+                }
+                catch (e) {
+                    console.error('[SyncManager] Error handling POLL_EDITED:', e);
+                }
+            });
+            sse.addEventListener('POLL_DELETED', async (event) => {
+                console.log('[SyncManager] SSE: POLL_DELETED:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    const signalId = data.payload || data;
+                    // Logic to delete local poll by cloudSignalId would go here
+                    // For now, let's just log it. We might need a db function for this.
+                }
+                catch (e) {
+                    console.error('[SyncManager] Error handling POLL_DELETED:', e);
                 }
             });
             sse.onerror = (err) => {
