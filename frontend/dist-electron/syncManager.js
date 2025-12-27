@@ -48,6 +48,8 @@ class SyncManager {
         this.syncInterval = null;
         this.checkOnlineInterval = null;
         this.lastSyncTime = null;
+        this.isSyncing = false;
+        this.syncPending = false;
         this.setupDeviceMonitoring();
         this.startOnlineCheck();
     }
@@ -115,10 +117,14 @@ class SyncManager {
             return;
         const shouldBeConnected = (this.deviceStatus === 'active' || this.deviceStatus === 'idle') &&
             this.isOnline;
-        if (shouldBeConnected && !this.sse) {
-            this.connectSSE();
+        if (shouldBeConnected) {
+            if (!this.sse) {
+                console.log('[SyncManager] Re-establishing connections (Activation/Online)');
+                this.connectSSE();
+                this.performSync(); // One-shot sync when we become active/online
+            }
         }
-        else if (!shouldBeConnected && this.sse) {
+        else if (this.sse) {
             this.disconnectSSE();
         }
     }
@@ -197,8 +203,10 @@ class SyncManager {
     }
     async handleIncomingPoll(dto) {
         // Transform DTO to Local Poll Format
+        const isSelf = dto.publisherEmail === this.email || dto.createdBy === this.email;
         const poll = {
-            id: dto.localId ? `poll-${dto.localId}` : `temp-${Date.now()}`,
+            // Priority: signalId-based ID for consistent mapping, fallback to localId (if provided), then temp ID
+            id: dto.signalId ? `poll-${dto.signalId}` : (dto.localId ? `poll-${dto.localId}` : `temp-${Date.now()}`),
             question: dto.question,
             options: (dto.options || []).map((text) => ({ text })),
             publisherEmail: dto.publisherEmail || dto.createdBy,
@@ -223,20 +231,23 @@ class SyncManager {
         }
     }
     startSyncLoop() {
-        if (this.syncInterval)
-            return;
-        this.syncInterval = setInterval(() => this.performSync(), 30000);
-        this.performSync(); // Run immediately
+        // We no longer use a 30-second interval to avoid unnecessary API load.
+        // Sync is now triggered by updateConnection() on specific events (login, resume, online).
+        this.performSync();
     }
     stopSyncLoop() {
-        if (this.syncInterval) {
-            clearInterval(this.syncInterval);
-            this.syncInterval = null;
-        }
+        // No interval to clear anymore
     }
     async performSync() {
         if (!this.isOnline || !this.email)
             return;
+        if (this.isSyncing) {
+            console.log('[SyncManager] Sync already in progress, queuing next run');
+            this.syncPending = true;
+            return;
+        }
+        this.isSyncing = true;
+        this.syncPending = false;
         console.log('[SyncManager] Performing background sync...');
         try {
             // 1. Fetch unsynced polls created locally (though mostly publishers write to cloud first currently)
@@ -264,10 +275,36 @@ class SyncManager {
             }
             // 2. Sync Responses
             const allResponses = await (0, db_1.getResponses)();
-            // Note: Responses table currently doesn't have a syncStatus column.
-            // We should ideally add it or check if they exist in cloud.
-            // For now, let's assume we sync ones that are missing signalIds if we have them.
-            // Actually, we should probably add syncStatus to responses too.
+            const pendingResponses = allResponses.filter(r => r.syncStatus === 'pending');
+            for (const response of pendingResponses) {
+                try {
+                    const poll = allPolls.find(p => p.id === response.pollId);
+                    if (poll && typeof poll.cloudSignalId === 'number') {
+                        console.log(`[SyncManager] Syncing response for poll ${poll.cloudSignalId} from ${response.consumerEmail}`);
+                        // BACKEND VALIDATION: Exactly one of [selectedOption, defaultResponse, reason]
+                        let selectedOption = undefined;
+                        let defaultResponse = undefined;
+                        let reason = undefined;
+                        if (response.skipReason) {
+                            reason = response.skipReason;
+                        }
+                        else if (!response.isDefault) {
+                            selectedOption = response.response;
+                        }
+                        else {
+                            defaultResponse = response.response;
+                        }
+                        await backendApi.submitVote(poll.cloudSignalId, response.consumerEmail, selectedOption, defaultResponse, reason);
+                        await (0, db_1.updateResponseSyncStatus)(response.pollId, response.consumerEmail, 'synced');
+                    }
+                    else {
+                        console.warn(`[SyncManager] Skipping response sync for ${response.pollId} - poll not synced yet or not found`);
+                    }
+                }
+                catch (e) {
+                    console.error(`[SyncManager] Failed to sync response for ${response.pollId}:`, e);
+                }
+            }
             // 3. Fetch updates from cloud (Incremental Sync)
             // Use last sync time or default to a past date if first run
             const since = this.lastSyncTime || new Date(0).toISOString();
@@ -283,12 +320,19 @@ class SyncManager {
         catch (error) {
             console.error('[SyncManager] Error during sync loop:', error);
         }
+        finally {
+            this.isSyncing = false;
+            if (this.syncPending) {
+                console.log('[SyncManager] Running queued sync');
+                this.performSync();
+            }
+        }
     }
     async handleIncomingSync(dto) {
         // Transform Sync DTO to Local Poll Format
         // Note: PollSyncDTO fields slightly differ from PollCreateDTO/ActivePollDTO
         const poll = {
-            id: dto.signalId ? `poll-${dto.signalId}` : `temp-${Date.now()}`, // Sync DTO uses signalId as primary
+            id: dto.signalId ? `poll-${dto.signalId}` : `temp-${Date.now()}`, // Consistent with handleIncomingPoll
             question: dto.question,
             options: dto.options ? dto.options.map((text) => ({ text })) : [],
             publisherEmail: dto.publisher,

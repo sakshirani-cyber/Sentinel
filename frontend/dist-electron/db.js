@@ -10,6 +10,7 @@ exports.updatePoll = updatePoll;
 exports.deletePoll = deletePoll;
 exports.submitResponse = submitResponse;
 exports.getResponses = getResponses;
+exports.updateResponseSyncStatus = updateResponseSyncStatus;
 const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const path_1 = __importDefault(require("path"));
 const electron_1 = require("electron");
@@ -193,8 +194,18 @@ function createPoll(poll) {
             const existing = database.prepare('SELECT localId FROM polls WHERE cloudSignalId = ?').get(poll.cloudSignalId);
             if (existing && existing.localId !== poll.id) {
                 console.log(`[SQLite DB] Found existing poll with cloudSignalId ${poll.cloudSignalId} but different localId. Updating existing record ${existing.localId}`);
-                // Use the existing localId to avoid creating a duplicate
                 poll.id = existing.localId;
+            }
+            else if (!existing) {
+                // FALLBACK: If signalId is not in DB yet, try matching by question and publisher (helpful for publisher race condition)
+                const pendingMatch = database.prepare(`
+                    SELECT localId FROM polls 
+                    WHERE publisherEmail = ? AND question = ? AND syncStatus = 'pending'
+                `).get(poll.publisherEmail, poll.question);
+                if (pendingMatch) {
+                    console.log(`[SQLite DB] Matching incoming signal ${poll.cloudSignalId} to pending local poll ${pendingMatch.localId} via content`);
+                    poll.id = pendingMatch.localId;
+                }
             }
         }
         const stmt = database.prepare(`
@@ -357,7 +368,8 @@ function submitResponse(response) {
             selectedOption: String(response.response || '').trim(),
             timeOfSubmission: response.submittedAt,
             isDefault: response.isDefault ? 1 : 0,
-            skipReason: response.skipReason || null
+            skipReason: response.skipReason || null,
+            syncStatus: response.syncStatus || 'pending'
         });
         return info;
     }
@@ -378,12 +390,24 @@ function getResponses() {
             response: row.selectedOption,
             submittedAt: row.timeOfSubmission,
             isDefault: !!row.isDefault,
-            skipReason: row.skipReason
+            skipReason: row.skipReason,
+            syncStatus: row.syncStatus || 'pending'
         }));
     }
     catch (error) {
         console.error('[SQLite DB] Error getting responses:', error);
         return [];
+    }
+}
+function updateResponseSyncStatus(pollLocalId, userId, status) {
+    try {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE responses SET syncStatus = ? WHERE pollLocalId = ? AND userId = ?');
+        return stmt.run(status, pollLocalId, userId);
+    }
+    catch (error) {
+        console.error('[SQLite DB] Error updating response sync status:', error);
+        throw error;
     }
 }
 //# sourceMappingURL=db.js.map

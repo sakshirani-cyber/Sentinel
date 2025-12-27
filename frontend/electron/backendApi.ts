@@ -185,7 +185,7 @@ export async function submitVote(
 
     const request: any = {
         signalId,
-        userId
+        userEmail: userId
     };
     if (selectedOption !== undefined) request.selectedOption = selectedOption;
     if (defaultResponse !== undefined) request.defaultResponse = defaultResponse;
@@ -263,7 +263,7 @@ export async function getActivePolls(userEmail: string): Promise<ActivePollDTO[]
     console.log('[Backend API] Fetching active polls for:', userEmail);
     try {
         const response = await apiClient.get<ActivePollDTO[]>('/api/polls/active', {
-            params: { userId: userEmail } // Backend expects 'userId' as the parameter name
+            params: { userEmail: userEmail }
         });
         console.log(`[Backend API] Success! Received ${response.data.length} polls.`);
         return response.data;

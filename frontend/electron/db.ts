@@ -183,6 +183,7 @@ interface Response {
     submittedAt: string;
     isDefault: boolean;
     skipReason?: string;
+    syncStatus?: 'synced' | 'pending';
 }
 
 // Validations
@@ -226,8 +227,18 @@ export function createPoll(poll: Poll) {
             const existing = database.prepare('SELECT localId FROM polls WHERE cloudSignalId = ?').get(poll.cloudSignalId) as { localId: string } | undefined;
             if (existing && existing.localId !== poll.id) {
                 console.log(`[SQLite DB] Found existing poll with cloudSignalId ${poll.cloudSignalId} but different localId. Updating existing record ${existing.localId}`);
-                // Use the existing localId to avoid creating a duplicate
                 poll.id = existing.localId;
+            } else if (!existing) {
+                // FALLBACK: If signalId is not in DB yet, try matching by question and publisher (helpful for publisher race condition)
+                const pendingMatch = database.prepare(`
+                    SELECT localId FROM polls 
+                    WHERE publisherEmail = ? AND question = ? AND syncStatus = 'pending'
+                `).get(poll.publisherEmail, poll.question) as { localId: string } | undefined;
+
+                if (pendingMatch) {
+                    console.log(`[SQLite DB] Matching incoming signal ${poll.cloudSignalId} to pending local poll ${pendingMatch.localId} via content`);
+                    poll.id = pendingMatch.localId;
+                }
             }
         }
 
@@ -401,7 +412,8 @@ export function submitResponse(response: Response) {
             selectedOption: String(response.response || '').trim(),
             timeOfSubmission: response.submittedAt,
             isDefault: response.isDefault ? 1 : 0,
-            skipReason: response.skipReason || null
+            skipReason: response.skipReason || null,
+            syncStatus: response.syncStatus || 'pending'
         });
 
         return info;
@@ -424,10 +436,22 @@ export function getResponses(): Response[] {
             response: row.selectedOption,
             submittedAt: row.timeOfSubmission,
             isDefault: !!row.isDefault,
-            skipReason: row.skipReason
+            skipReason: row.skipReason,
+            syncStatus: row.syncStatus || 'pending'
         }));
     } catch (error) {
         console.error('[SQLite DB] Error getting responses:', error);
         return [];
+    }
+}
+
+export function updateResponseSyncStatus(pollLocalId: string, userId: string, status: 'synced' | 'pending') {
+    try {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE responses SET syncStatus = ? WHERE pollLocalId = ? AND userId = ?');
+        return stmt.run(status, pollLocalId, userId);
+    } catch (error) {
+        console.error('[SQLite DB] Error updating response sync status:', error);
+        throw error;
     }
 }

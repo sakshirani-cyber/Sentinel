@@ -264,7 +264,10 @@ electron_1.app.whenReady().then(async () => {
                 else if (defaultResponse) {
                     syncDefaultResponse = defaultResponse;
                 }
-                backendApi.submitVote(signalId, userId, syncSelectedOption, syncDefaultResponse, syncReason).catch(err => {
+                backendApi.submitVote(signalId, userId, syncSelectedOption, syncDefaultResponse, syncReason).then(async () => {
+                    console.log(`[IPC Handler] Deferred vote sync successful for poll ${signalId}`);
+                    await (0, db_1.updateResponseSyncStatus)(responseData.pollId, userId, 'synced');
+                }).catch(err => {
                     console.error('[IPC Handler] Deferred vote sync failed:', err);
                 });
             }

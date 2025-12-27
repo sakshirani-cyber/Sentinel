@@ -84,7 +84,7 @@ async function submitVote(signalId, userId, selectedOption, defaultResponse, rea
     console.log('[Backend API] Submitting vote:', { signalId, userId, selectedOption, defaultResponse, reason });
     const request = {
         signalId,
-        userId
+        userEmail: userId
     };
     if (selectedOption !== undefined)
         request.selectedOption = selectedOption;
@@ -138,7 +138,7 @@ async function getActivePolls(userEmail) {
     console.log('[Backend API] Fetching active polls for:', userEmail);
     try {
         const response = await apiClient.get('/api/polls/active', {
-            params: { userId: userEmail } // Backend expects 'userId' as the parameter name
+            params: { userEmail: userEmail }
         });
         console.log(`[Backend API] Success! Received ${response.data.length} polls.`);
         return response.data;

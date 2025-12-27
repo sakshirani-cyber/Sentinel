@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
-import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll } from './db';
+import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll, updateResponseSyncStatus } from './db';
 import * as backendApi from './backendApi';
 import { autoUpdater } from 'electron-updater';
 import { syncManager } from './syncManager';
@@ -259,7 +259,10 @@ app.whenReady().then(async () => {
                     syncDefaultResponse = defaultResponse;
                 }
 
-                backendApi.submitVote(signalId, userId, syncSelectedOption, syncDefaultResponse, syncReason).catch(err => {
+                backendApi.submitVote(signalId, userId, syncSelectedOption, syncDefaultResponse, syncReason).then(async () => {
+                    console.log(`[IPC Handler] Deferred vote sync successful for poll ${signalId}`);
+                    await updateResponseSyncStatus(responseData.pollId!, userId, 'synced');
+                }).catch(err => {
                     console.error('[IPC Handler] Deferred vote sync failed:', err);
                 });
             }
