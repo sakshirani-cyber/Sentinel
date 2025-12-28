@@ -10,7 +10,7 @@ public class PollSubmitDTO {
     @NotNull(message = "Signal ID is required")
     private Integer signalId;
 
-    @NotBlank(message = "User ID is required")
+    @NotBlank(message = "User Email is required")
     private String userEmail;
 
     private String selectedOption;

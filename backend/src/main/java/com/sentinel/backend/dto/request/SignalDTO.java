@@ -81,12 +81,12 @@ public abstract class SignalDTO {
 
         for (String s : sharedWith) {
             if (s == null || s.trim().isEmpty()) {
-                throw new IllegalArgumentException("Shared With List contains empty/blank user id(s)");
+                throw new IllegalArgumentException("Shared With List contains empty/blank user email(s)");
             }
         }
 
         if (NormalizationUtils.hasDuplicatesIgnoreCase(sharedWith)) {
-            throw new IllegalArgumentException("Shared With List contains duplicate user ids (case-insensitive)");
+            throw new IllegalArgumentException("Shared With List contains duplicate user email(s) (case-insensitive)");
         }
 
         this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
