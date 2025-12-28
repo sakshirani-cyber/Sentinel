@@ -24,14 +24,14 @@ export interface CreatePollResponse {
 }
 
 export interface UserVoteDTO {
-    userId: string;
+    userEmail: string;
     selectedOption: string;
     submittedAt: string; // Instant from backend
 }
 
 export interface SubmitPollRequest {
     signalId: number;
-    userId: string;
+    userEmail: string;
     selectedOption: string;
     defaultResponse?: string;
     reason?: string;
@@ -95,7 +95,7 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
             for (const vote of votes) {
                 responses.push({
                     pollId: poll.id,
-                    consumerEmail: vote.userId,
+                    consumerEmail: vote.userEmail,
                     response: option,
                     submittedAt: vote.submittedAt || new Date().toISOString(),
                     isDefault: false,
@@ -111,7 +111,7 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
             for (const vote of votes) {
                 responses.push({
                     pollId: poll.id,
-                    consumerEmail: vote.userId,
+                    consumerEmail: vote.userEmail,
                     response: option,
                     submittedAt: vote.submittedAt || new Date().toISOString(),
                     isDefault: false,
@@ -126,7 +126,7 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
         for (const vote of dto.defaultResponses) {
             responses.push({
                 pollId: poll.id,
-                consumerEmail: vote.userId,
+                consumerEmail: vote.userEmail,
                 response: vote.selectedOption, // Usually the default option text
                 submittedAt: vote.submittedAt || poll.deadline,
                 isDefault: true,
@@ -140,10 +140,10 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
         for (const [_, votes] of Object.entries(dto.removedUsers)) {
             for (const vote of votes) {
                 // Only add if not already present (safety check)
-                if (!responses.some(r => r.consumerEmail === vote.userId)) {
+                if (!responses.some(r => r.consumerEmail === vote.userEmail)) {
                     responses.push({
                         pollId: poll.id,
-                        consumerEmail: vote.userId,
+                        consumerEmail: vote.userEmail,
                         response: vote.selectedOption,
                         submittedAt: vote.submittedAt || new Date().toISOString(),
                         isDefault: false,
@@ -157,8 +157,8 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
     // 4. Map reasonResponses to the corresponding user's response
     // If the user isn't already in the list (e.g. backend didn't count them as vote/default), add them now.
     if (dto.reasonResponses) {
-        for (const [userId, reason] of Object.entries(dto.reasonResponses)) {
-            let existingResponse = responses.find(r => r.consumerEmail === userId);
+        for (const [userEmail, reason] of Object.entries(dto.reasonResponses)) {
+            let existingResponse = responses.find(r => r.consumerEmail === userEmail);
 
             if (existingResponse) {
                 existingResponse.skipReason = reason;
@@ -167,7 +167,7 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
                 // Treat as Default Response as per requirement
                 responses.push({
                     pollId: poll.id,
-                    consumerEmail: userId,
+                    consumerEmail: userEmail,
                     response: poll.defaultResponse || 'Skipped',
                     submittedAt: new Date().toISOString(), // We don't have exact time from reason map, use now or approx
                     isDefault: true,
@@ -228,14 +228,14 @@ class PollService {
      */
     async submitVote(
         signalId: number,
-        userId: string,
+        userEmail: string,
         selectedOption: string,
         defaultResponse?: string,
         reason?: string
     ): Promise<void> {
         const request: SubmitPollRequest = {
             signalId,
-            userId,
+            userEmail,
             selectedOption,
             defaultResponse,
             reason
