@@ -266,6 +266,15 @@ export class SyncManager {
                 try {
                     const poll = allPolls.find(p => p.id === response.pollId);
                     if (poll && typeof poll.cloudSignalId === 'number') {
+                        // Check if poll has expired before attempting to sync
+                        const isExpired = new Date(poll.deadline) < new Date();
+                        if (isExpired) {
+                            console.warn(`[SyncManager] Skipping response sync for poll ${poll.cloudSignalId} - poll has expired (deadline: ${poll.deadline})`);
+                            // Mark as synced to avoid retrying this expired response
+                            await updateResponseSyncStatus(response.pollId, response.consumerEmail, 'synced');
+                            continue;
+                        }
+
                         console.log(`[SyncManager] Syncing response for poll ${poll.cloudSignalId} from ${response.consumerEmail}`);
 
                         // BACKEND VALIDATION: Exactly one of [selectedOption, defaultResponse, reason]

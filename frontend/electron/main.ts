@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen, globalShortcut } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
 import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll, updateResponseSyncStatus } from './db';
@@ -535,6 +535,9 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
                 isMinimized: win.isMinimized()
             };
 
+            const isLinux = process.platform === 'linux';
+            console.log(`[Main] Platform: ${process.platform}, Linux-specific handling: ${isLinux}`);
+
             win.setMinimizable(false);
             win.setClosable(false);
             win.setMovable(false);
@@ -545,8 +548,15 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
 
             // Force maximize before fullscreen to ensure coverage
             win.maximize();
-            win.setFullScreen(true);
-            win.setKiosk(true);
+
+            // Linux-specific: Use simpleFullscreen instead of native fullscreen
+            if (isLinux) {
+                win.setSimpleFullScreen(true);
+                win.setSkipTaskbar(true);
+            } else {
+                win.setFullScreen(true);
+                win.setKiosk(true);
+            }
 
             win.setResizable(false);
             win.setMaximizable(false);
@@ -556,6 +566,31 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             win.setSkipTaskbar(true);
             win.show();
             win.focus();
+
+            // Block keyboard shortcuts (Alt+Tab, Super, etc.)
+            const shortcutsToBlock = [
+                'Alt+Tab',
+                'Alt+F4',
+                'Super',
+                'Meta',
+                'CommandOrControl+Q',
+                'CommandOrControl+W',
+                'CommandOrControl+H',
+                'CommandOrControl+M',
+                'F11',
+                'Escape'
+            ];
+
+            shortcutsToBlock.forEach(shortcut => {
+                try {
+                    globalShortcut.register(shortcut, () => {
+                        console.log(`[Main] Blocked shortcut: ${shortcut}`);
+                        // Do nothing - effectively blocking the shortcut
+                    });
+                } catch (e) {
+                    console.warn(`[Main] Could not register shortcut: ${shortcut}`);
+                }
+            });
 
             // Multi-monitor support: Create secondary windows for other displays
             const displays = screen.getAllDisplays();
@@ -571,13 +606,19 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             screen.on('display-added', handleDisplayAdded);
             screen.on('display-removed', handleDisplayRemoved);
 
-            // Focus Heartbeat: Force windows to front every 500ms
+            // Focus Heartbeat: Force windows to front
+            // Linux needs faster heartbeat (250ms) due to window manager differences
+            const heartbeatDelay = isLinux ? 250 : 500;
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 const primaryDisplay = screen.getPrimaryDisplay();
 
                 if (win) {
                     win.setAlwaysOnTop(true, 'screen-saver', 1);
+                    if (isLinux) {
+                        win.setSkipTaskbar(true);
+                        win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+                    }
                     win.moveTop();
                     win.focus();
                 }
@@ -595,15 +636,22 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
                     }
 
                     sw.win.setAlwaysOnTop(true, 'screen-saver', 1);
+                    if (isLinux) {
+                        sw.win.setSkipTaskbar(true);
+                    }
                     sw.win.moveTop();
                     sw.win.focus();
                     return true;
                 });
-            }, 500);
+            }, heartbeatDelay);
 
         } else {
             console.log('[Main] Deactivating persistent alert and restoring state');
             isPersistentAlertLocked = false;
+
+            // Unregister all global shortcuts
+            globalShortcut.unregisterAll();
+
             // Cleanup heartbeat
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
@@ -618,17 +666,25 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             });
             secondaryWindows = [];
 
-            // Restore Main Window basic state
-            win.setKiosk(false);
-            win.setFullScreen(false);
+            // Restore window state
+            const isLinux = process.platform === 'linux';
+            if (isLinux) {
+                win.setSimpleFullScreen(false);
+            } else {
+                win.setKiosk(false);
+                win.setFullScreen(false);
+            }
+            win.setAlwaysOnTop(false);
+            win.setSkipTaskbar(false);
+
+            win.setMinimizable(true);
+            win.setClosable(true);
+            win.setMovable(true);
             win.setResizable(true);
             win.setMaximizable(true);
             win.setFullScreenable(true);
-            win.setSkipTaskbar(false);
-            win.setVisibleOnAllWorkspaces(false);
-            win.setAlwaysOnTop(false);
 
-            // Precise window state restoration
+            // Restore previous window state
             if (lastKnownWindowState) {
                 if (lastKnownWindowState.isMaximized) {
                     win.maximize();
