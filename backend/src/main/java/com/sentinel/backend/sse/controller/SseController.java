@@ -21,27 +21,27 @@ public class SseController {
     @GetMapping(value = "/sse/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@RequestParam String userEmail) {
 
-        log.info("[SSE] Connection request received | usermail={}", userEmail);
+        log.info("[SSE] Connection request received | userEmail={}", userEmail);
 
         SseEmitter emitter = new SseEmitter(0L);
 
         registry.add(userEmail, emitter);
-        log.info("[SSE] Connection registered | usermail={}", userEmail);
+        log.info("[SSE] Connection registered | userEmail={}", userEmail);
 
         emitter.onCompletion(() -> {
             registry.remove(userEmail);
-            log.info("[SSE] Connection completed | usermail={}", userEmail);
+            log.info("[SSE] Connection completed | userEmail={}", userEmail);
         });
 
         emitter.onTimeout(() -> {
             registry.remove(userEmail);
-            log.warn("[SSE] Connection timed out | usermail={}", userEmail);
+            log.warn("[SSE] Connection timed out | userEmail={}", userEmail);
         });
 
         emitter.onError(ex -> {
             registry.remove(userEmail);
             log.warn(
-                    "[SSE][ERROR] Connection error | usermail={} | exception={} | message={}",
+                    "[SSE][ERROR] Connection error | userEmail={} | exception={} | message={}",
                     userEmail,
                     ex.getClass().getSimpleName(),
                     ex.getMessage()
@@ -56,14 +56,14 @@ public class SseController {
                             .data("SSE connected")
             );
 
-            log.info("[SSE] Initial handshake event sent | usermail={}", userEmail);
+            log.info("[SSE] Initial handshake event sent | userEmail={}", userEmail);
 
         } catch (IOException e) {
 
             registry.remove(userEmail);
 
             log.error(
-                    "[SSE][ERROR] Failed to send initial SSE event | usermail={} | exception={} | message={}",
+                    "[SSE][ERROR] Failed to send initial SSE event | userEmail={} | exception={} | message={}",
                     userEmail,
                     e.getClass().getSimpleName(),
                     e.getMessage(),
