@@ -180,24 +180,72 @@ app.whenReady().then(async () => {
     console.log('[Main] Registering Backend API IPC handlers...');
 
     ipcMain.handle('backend-create-poll', async (_event, poll) => {
-        console.log(`[IPC Handler] backend-create-poll (local-first) called for poll: ${poll.question}`);
+        console.log('\n' + '='.repeat(80));
+        console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 📨 backend-create-poll received`);
+        console.log('[IPC Handler] Poll Details:', {
+            id: poll.id,
+            question: poll.question,
+            publisherEmail: poll.publisherEmail,
+            consumersCount: poll.consumers?.length || 0,
+            deadline: poll.deadline,
+            isPersistentFinalAlert: poll.isPersistentFinalAlert
+        });
+        console.log('='.repeat(80) + '\n');
+
         try {
             // Write to local DB first
+            console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 💾 Step 1: Saving to local DB...`);
             poll.syncStatus = 'pending';
             await createPoll(poll);
+            console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending`);
 
             // Try to sync to backend immediately but don't block
+            console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ☁️ Step 2: Initiating cloud sync (non-blocking)...`);
             backendApi.createPoll(poll).then(async (result) => {
+                console.log('\n' + '='.repeat(80));
+                console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ CLOUD SYNC SUCCESS!`);
+                console.log('[IPC Handler] Backend Response:', result);
                 if (result && result.signalId) {
+                    console.log(`[IPC Handler] 🔄 Updating local DB with cloudSignalId: ${result.signalId}`);
                     await updatePoll(poll.id, { cloudSignalId: result.signalId, syncStatus: 'synced' });
+                    console.log(`[IPC Handler] ✅ Poll ${poll.id} marked as synced with cloudSignalId: ${result.signalId}`);
+                } else {
+                    console.warn('[IPC Handler] ⚠️ Cloud sync succeeded but no signalId returned');
                 }
+                console.log('='.repeat(80) + '\n');
             }).catch(err => {
-                console.error('[IPC Handler] Deferred cloud sync failed:', err);
+                console.log('\n' + '='.repeat(80));
+                console.error(`[IPC Handler] [${new Date().toLocaleTimeString()}] ❌ CLOUD SYNC FAILED!`);
+                console.error('[IPC Handler] Error Type:', err.constructor.name);
+                console.error('[IPC Handler] Error Message:', err.message);
+                console.error('[IPC Handler] Error Code:', err.code);
+                if (err.response) {
+                    console.error('[IPC Handler] HTTP Status:', err.response.status);
+                    console.error('[IPC Handler] Response Headers:', err.response.headers);
+                    console.error('[IPC Handler] Response Data:', JSON.stringify(err.response.data, null, 2));
+                } else if (err.request) {
+                    console.error('[IPC Handler] No response received from backend');
+                    console.error('[IPC Handler] Request Config:', {
+                        url: err.config?.url,
+                        method: err.config?.method,
+                        baseURL: err.config?.baseURL
+                    });
+                } else {
+                    console.error('[IPC Handler] Error setting up request:', err.message);
+                }
+                console.error('[IPC Handler] Full Error Stack:', err.stack);
+                console.error('[IPC Handler] ⚠️ Poll saved locally but will retry sync later via SyncManager');
+                console.log('='.repeat(80) + '\n');
             });
 
+            console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🎉 Returning success to frontend (local save complete)`);
             return { success: true };
         } catch (error: any) {
-            console.error('[IPC Handler] local-create-poll error:', error.message);
+            console.error('\n' + '='.repeat(80));
+            console.error(`[IPC Handler] [${new Date().toLocaleTimeString()}] ❌ LOCAL DB SAVE FAILED!`);
+            console.error('[IPC Handler] Error:', error.message);
+            console.error('[IPC Handler] Stack:', error.stack);
+            console.log('='.repeat(80) + '\n');
             return { success: false, error: error.message };
         }
     });

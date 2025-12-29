@@ -192,23 +192,73 @@ electron_1.app.whenReady().then(async () => {
     // Register Backend API IPC Handlers (bypass CORS by making calls from main process)
     console.log('[Main] Registering Backend API IPC handlers...');
     electron_1.ipcMain.handle('backend-create-poll', async (_event, poll) => {
-        console.log(`[IPC Handler] backend-create-poll (local-first) called for poll: ${poll.question}`);
+        console.log('\n' + '='.repeat(80));
+        console.log('[IPC Handler] 📨 backend-create-poll received');
+        console.log('[IPC Handler] Poll Details:', {
+            id: poll.id,
+            question: poll.question,
+            publisherEmail: poll.publisherEmail,
+            consumersCount: poll.consumers?.length || 0,
+            deadline: poll.deadline,
+            isPersistentFinalAlert: poll.isPersistentFinalAlert
+        });
+        console.log('='.repeat(80) + '\n');
         try {
             // Write to local DB first
+            console.log('[IPC Handler] 💾 Step 1: Saving to local DB...');
             poll.syncStatus = 'pending';
             await (0, db_1.createPoll)(poll);
+            console.log('[IPC Handler] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending');
             // Try to sync to backend immediately but don't block
+            console.log('[IPC Handler] ☁️ Step 2: Initiating cloud sync (non-blocking)...');
             backendApi.createPoll(poll).then(async (result) => {
+                console.log('\n' + '='.repeat(80));
+                console.log('[IPC Handler] ✅ CLOUD SYNC SUCCESS!');
+                console.log('[IPC Handler] Backend Response:', result);
                 if (result && result.signalId) {
+                    console.log(`[IPC Handler] 🔄 Updating local DB with cloudSignalId: ${result.signalId}`);
                     await (0, db_1.updatePoll)(poll.id, { cloudSignalId: result.signalId, syncStatus: 'synced' });
+                    console.log(`[IPC Handler] ✅ Poll ${poll.id} marked as synced with cloudSignalId: ${result.signalId}`);
                 }
+                else {
+                    console.warn('[IPC Handler] ⚠️ Cloud sync succeeded but no signalId returned');
+                }
+                console.log('='.repeat(80) + '\n');
             }).catch(err => {
-                console.error('[IPC Handler] Deferred cloud sync failed:', err);
+                console.log('\n' + '='.repeat(80));
+                console.error('[IPC Handler] ❌ CLOUD SYNC FAILED!');
+                console.error('[IPC Handler] Error Type:', err.constructor.name);
+                console.error('[IPC Handler] Error Message:', err.message);
+                console.error('[IPC Handler] Error Code:', err.code);
+                if (err.response) {
+                    console.error('[IPC Handler] HTTP Status:', err.response.status);
+                    console.error('[IPC Handler] Response Headers:', err.response.headers);
+                    console.error('[IPC Handler] Response Data:', JSON.stringify(err.response.data, null, 2));
+                }
+                else if (err.request) {
+                    console.error('[IPC Handler] No response received from backend');
+                    console.error('[IPC Handler] Request Config:', {
+                        url: err.config?.url,
+                        method: err.config?.method,
+                        baseURL: err.config?.baseURL
+                    });
+                }
+                else {
+                    console.error('[IPC Handler] Error setting up request:', err.message);
+                }
+                console.error('[IPC Handler] Full Error Stack:', err.stack);
+                console.error('[IPC Handler] ⚠️ Poll saved locally but will retry sync later via SyncManager');
+                console.log('='.repeat(80) + '\n');
             });
+            console.log('[IPC Handler] 🎉 Returning success to frontend (local save complete)');
             return { success: true };
         }
         catch (error) {
-            console.error('[IPC Handler] local-create-poll error:', error.message);
+            console.error('\n' + '='.repeat(80));
+            console.error('[IPC Handler] ❌ LOCAL DB SAVE FAILED!');
+            console.error('[IPC Handler] Error:', error.message);
+            console.error('[IPC Handler] Stack:', error.stack);
+            console.log('='.repeat(80) + '\n');
             return { success: false, error: error.message };
         }
     });
@@ -326,19 +376,6 @@ electron_1.app.whenReady().then(async () => {
         catch (error) {
             const errorMessage = backendApi.extractBackendError(error);
             console.error('[IPC Handler] backend-login error:', errorMessage);
-            return { success: false, error: errorMessage };
-        }
-    });
-    electron_1.ipcMain.handle('backend-get-active-polls', async (_event, userEmail) => {
-        console.log(`[IPC Handler] backend-get-active-polls called for user: ${userEmail}`);
-        try {
-            const polls = await backendApi.getActivePolls(userEmail);
-            console.log(`[IPC Handler] backend-get-active-polls success, found ${polls.length} polls`);
-            return { success: true, data: polls };
-        }
-        catch (error) {
-            const errorMessage = backendApi.extractBackendError(error);
-            console.error('[IPC Handler] backend-get-active-polls error:', errorMessage);
             return { success: false, error: errorMessage };
         }
     });
@@ -518,6 +555,8 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                 isMaximized: win.isMaximized(),
                 isMinimized: win.isMinimized()
             };
+            const isLinux = process.platform === 'linux';
+            console.log(`[Main] Platform: ${process.platform}, Linux-specific handling: ${isLinux}`);
             win.setMinimizable(false);
             win.setClosable(false);
             win.setMovable(false);
@@ -526,8 +565,15 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             win.setFullScreenable(true);
             // Force maximize before fullscreen to ensure coverage
             win.maximize();
-            win.setFullScreen(true);
-            win.setKiosk(true);
+            // Linux-specific: Use simpleFullscreen instead of native fullscreen
+            if (isLinux) {
+                win.setSimpleFullScreen(true);
+                win.setSkipTaskbar(true);
+            }
+            else {
+                win.setFullScreen(true);
+                win.setKiosk(true);
+            }
             win.setResizable(false);
             win.setMaximizable(false);
             win.setFullScreenable(false);
@@ -536,6 +582,30 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             win.setSkipTaskbar(true);
             win.show();
             win.focus();
+            // Block keyboard shortcuts (Alt+Tab, Super, etc.)
+            const shortcutsToBlock = [
+                'Alt+Tab',
+                'Alt+F4',
+                'Super',
+                'Meta',
+                'CommandOrControl+Q',
+                'CommandOrControl+W',
+                'CommandOrControl+H',
+                'CommandOrControl+M',
+                'F11',
+                'Escape'
+            ];
+            shortcutsToBlock.forEach(shortcut => {
+                try {
+                    electron_1.globalShortcut.register(shortcut, () => {
+                        console.log(`[Main] Blocked shortcut: ${shortcut}`);
+                        // Do nothing - effectively blocking the shortcut
+                    });
+                }
+                catch (e) {
+                    console.warn(`[Main] Could not register shortcut: ${shortcut}`);
+                }
+            });
             // Multi-monitor support: Create secondary windows for other displays
             const displays = electron_1.screen.getAllDisplays();
             const primaryDisplay = electron_1.screen.getPrimaryDisplay();
@@ -547,13 +617,19 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             // Listen for display changes
             electron_1.screen.on('display-added', handleDisplayAdded);
             electron_1.screen.on('display-removed', handleDisplayRemoved);
-            // Focus Heartbeat: Force windows to front every 500ms
+            // Focus Heartbeat: Force windows to front
+            // Linux needs faster heartbeat (250ms) due to window manager differences
+            const heartbeatDelay = isLinux ? 250 : 500;
             if (heartbeatInterval)
                 clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 const primaryDisplay = electron_1.screen.getPrimaryDisplay();
                 if (win) {
                     win.setAlwaysOnTop(true, 'screen-saver', 1);
+                    if (isLinux) {
+                        win.setSkipTaskbar(true);
+                        win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+                    }
                     win.moveTop();
                     win.focus();
                 }
@@ -569,15 +645,20 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                         return false;
                     }
                     sw.win.setAlwaysOnTop(true, 'screen-saver', 1);
+                    if (isLinux) {
+                        sw.win.setSkipTaskbar(true);
+                    }
                     sw.win.moveTop();
                     sw.win.focus();
                     return true;
                 });
-            }, 500);
+            }, heartbeatDelay);
         }
         else {
             console.log('[Main] Deactivating persistent alert and restoring state');
             isPersistentAlertLocked = false;
+            // Unregister all global shortcuts
+            electron_1.globalShortcut.unregisterAll();
             // Cleanup heartbeat
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
@@ -591,16 +672,24 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                     sw.win.destroy();
             });
             secondaryWindows = [];
-            // Restore Main Window basic state
-            win.setKiosk(false);
-            win.setFullScreen(false);
+            // Restore window state
+            const isLinux = process.platform === 'linux';
+            if (isLinux) {
+                win.setSimpleFullScreen(false);
+            }
+            else {
+                win.setKiosk(false);
+                win.setFullScreen(false);
+            }
+            win.setAlwaysOnTop(false);
+            win.setSkipTaskbar(false);
+            win.setMinimizable(true);
+            win.setClosable(true);
+            win.setMovable(true);
             win.setResizable(true);
             win.setMaximizable(true);
             win.setFullScreenable(true);
-            win.setSkipTaskbar(false);
-            win.setVisibleOnAllWorkspaces(false);
-            win.setAlwaysOnTop(false);
-            // Precise window state restoration
+            // Restore previous window state
             if (lastKnownWindowState) {
                 if (lastKnownWindowState.isMaximized) {
                     win.maximize();

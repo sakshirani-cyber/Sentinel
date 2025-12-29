@@ -158,6 +158,8 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
     }
 
     setIsPublishing(true);
+    console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] 📝 Starting poll creation process...`);
+
     try {
       const validOptions = options.filter(o => o.trim());
       const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
@@ -183,7 +185,19 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         alertBeforeMinutes: 15
       };
 
+      console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] 📋 Poll data prepared:`, {
+        id: poll.id,
+        question: poll.question,
+        optionsCount: poll.options.length,
+        consumersCount: poll.consumers.length,
+        deadline: poll.deadline,
+        isPersistentFinalAlert: poll.isPersistentFinalAlert,
+        anonymityMode: poll.anonymityMode
+      });
+
+      console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] 🚀 Calling onCreatePoll...`);
       await onCreatePoll(poll);
+      console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] ✅ Poll creation completed successfully`);
 
       // Reset form
       setQuestion('');
@@ -200,7 +214,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
       setUploadStats(null);
       setShowErrors(false);
     } catch (error) {
-      console.error('Error publishing poll:', error);
+      console.error(`[CreatePoll] [${new Date().toLocaleTimeString()}] ❌ Error publishing poll:`, error);
     } finally {
       setIsPublishing(false);
     }

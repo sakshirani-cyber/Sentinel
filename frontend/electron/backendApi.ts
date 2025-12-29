@@ -128,19 +128,28 @@ function mapPollToDTO(poll: any): PollCreateDTO {
     const localId = parseInt(poll.id.split('-')[1]) || Date.now();
     const endTimestamp = new Date(poll.deadline).toISOString();
 
-    return {
+    const dto = {
         createdBy: poll.publisherEmail,
         anonymous: poll.anonymityMode === 'anonymous',
         endTimestamp,
         sharedWith: poll.consumers,
         type: 'POLL',
         localId,
-        defaultFlag: !!poll.defaultResponse,
+        defaultFlag: poll.showDefaultToConsumers, // ✅ FIX: Use actual user preference, not derived value
         defaultOption: poll.defaultResponse || poll.options[0]?.text || '',
-        persistentAlert: !!poll.isPersistentFinalAlert, // Add required field
+        persistentAlert: !!poll.isPersistentFinalAlert,
         question: poll.question,
         options: poll.options.map((o: any) => o.text),
     };
+
+    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);
+    console.log('  showDefaultToConsumers:', poll.showDefaultToConsumers, '→ defaultFlag:', dto.defaultFlag);
+    console.log('  defaultResponse:', poll.defaultResponse, '→ defaultOption:', dto.defaultOption);
+    console.log('  isPersistentFinalAlert:', poll.isPersistentFinalAlert, '→ persistentAlert:', dto.persistentAlert);
+    console.log('  anonymityMode:', poll.anonymityMode, '→ anonymous:', dto.anonymous);
+    console.log('  consumers.length:', poll.consumers?.length, '→ sharedWith.length:', dto.sharedWith?.length);
+
+    return dto;
 }
 
 // ============================================================================
@@ -148,18 +157,26 @@ function mapPollToDTO(poll: any): PollCreateDTO {
 // ============================================================================
 
 export async function createPoll(poll: any): Promise<CreatePollResponse> {
-    console.log('[Backend API] Creating poll:', poll.question);
-    console.log('[Backend API] Request URL:', `${API_BASE_URL}/api/signals/create/poll`);
+    console.log('\n' + '-'.repeat(80));
+    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🌐 createPoll called`);
+    console.log('[Backend API] Poll Question:', poll.question);
+    console.log('[Backend API] Full Request URL:', `${API_BASE_URL}/api/signals/create/poll`);
 
     const dto = mapPollToDTO(poll);
-    console.log('[Backend API] Poll DTO:', dto);
+    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 📦 Transformed Poll DTO:`);
+    console.log(JSON.stringify(dto, null, 2));
 
+    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🚀 Sending POST request to backend...`);
     const response = await apiClient.post<ApiResponse<CreatePollResponse>>(
         '/api/signals/create/poll',
         dto
     );
 
-    console.log('[Backend API] Create poll response:', response.data);
+    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 📬 Response received:`);
+    console.log('[Backend API] Status:', response.status);
+    console.log('[Backend API] Response Data:', JSON.stringify(response.data, null, 2));
+    console.log('-'.repeat(80) + '\n');
+
     return response.data.data;
 }
 

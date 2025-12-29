@@ -154,11 +154,22 @@ function App() {
   };
 
   const handleCreatePoll = async (newPoll: Poll) => {
+    console.log(`[App] [${new Date().toLocaleTimeString()}] 📥 handleCreatePoll called with poll:`, {
+      id: newPoll.id,
+      question: newPoll.question,
+      consumersCount: newPoll.consumers.length
+    });
+
     try {
       // Always save to local DB
       if ((window as any).electron) {
-        const result = await (window as any).electron.db.createPoll(newPoll);
+        console.log(`[App] [${new Date().toLocaleTimeString()}] 💾 Calling electron.backend.createPoll (IPC: backend-create-poll)...`);
+        const result = await (window as any).electron.backend.createPoll(newPoll);
+
+        console.log(`[App] [${new Date().toLocaleTimeString()}] 📬 Received result from IPC:`, result);
+
         if (result.success) {
+          console.log(`[App] [${new Date().toLocaleTimeString()}] ✅ Poll saved to local DB successfully`);
           setPolls(prev => [...prev, newPoll]);
 
           // Redirect to consumer view with success message
@@ -168,12 +179,14 @@ function App() {
           // Clear message after 5 seconds
           setTimeout(() => setSuccessMessage(null), 5000);
         } else {
-          console.error('Failed to create poll locally:', result.error);
+          console.error('[App] ❌ Failed to create poll locally:', result.error);
           alert('Failed to create poll: ' + result.error);
         }
+      } else {
+        console.warn('[App] ⚠️ Electron API not available');
       }
     } catch (error) {
-      console.error('Error creating poll:', error);
+      console.error('[App] ❌ Error creating poll:', error);
       alert('Error creating poll: ' + (error as Error).message);
     }
   };

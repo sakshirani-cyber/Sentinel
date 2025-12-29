@@ -9,7 +9,6 @@ exports.getPollResults = getPollResults;
 exports.editPoll = editPoll;
 exports.deletePoll = deletePoll;
 exports.login = login;
-exports.getActivePolls = getActivePolls;
 exports.syncPolls = syncPolls;
 exports.extractBackendError = extractBackendError;
 const axios_1 = __importDefault(require("axios"));
@@ -54,30 +53,44 @@ apiClient.interceptors.response.use(response => {
 function mapPollToDTO(poll) {
     const localId = parseInt(poll.id.split('-')[1]) || Date.now();
     const endTimestamp = new Date(poll.deadline).toISOString();
-    return {
+    const dto = {
         createdBy: poll.publisherEmail,
         anonymous: poll.anonymityMode === 'anonymous',
         endTimestamp,
         sharedWith: poll.consumers,
         type: 'POLL',
         localId,
-        defaultFlag: !!poll.defaultResponse,
+        defaultFlag: poll.showDefaultToConsumers, // ✅ FIX: Use actual user preference, not derived value
         defaultOption: poll.defaultResponse || poll.options[0]?.text || '',
-        persistentAlert: !!poll.isPersistentFinalAlert, // Add required field
+        persistentAlert: !!poll.isPersistentFinalAlert,
         question: poll.question,
         options: poll.options.map((o) => o.text),
     };
+    console.log('[Backend API] 🔍 DTO Field Mapping:');
+    console.log('  showDefaultToConsumers:', poll.showDefaultToConsumers, '→ defaultFlag:', dto.defaultFlag);
+    console.log('  defaultResponse:', poll.defaultResponse, '→ defaultOption:', dto.defaultOption);
+    console.log('  isPersistentFinalAlert:', poll.isPersistentFinalAlert, '→ persistentAlert:', dto.persistentAlert);
+    console.log('  anonymityMode:', poll.anonymityMode, '→ anonymous:', dto.anonymous);
+    console.log('  consumers.length:', poll.consumers?.length, '→ sharedWith.length:', dto.sharedWith?.length);
+    return dto;
 }
 // ============================================================================
 // API Methods
 // ============================================================================
 async function createPoll(poll) {
-    console.log('[Backend API] Creating poll:', poll.question);
-    console.log('[Backend API] Request URL:', `${API_BASE_URL}/api/signals/create/poll`);
+    console.log('\n' + '-'.repeat(80));
+    console.log('[Backend API] 🌐 createPoll called');
+    console.log('[Backend API] Poll Question:', poll.question);
+    console.log('[Backend API] Full Request URL:', `${API_BASE_URL}/api/signals/create/poll`);
     const dto = mapPollToDTO(poll);
-    console.log('[Backend API] Poll DTO:', dto);
+    console.log('[Backend API] 📦 Transformed Poll DTO:');
+    console.log(JSON.stringify(dto, null, 2));
+    console.log('[Backend API] 🚀 Sending POST request to backend...');
     const response = await apiClient.post('/api/signals/create/poll', dto);
-    console.log('[Backend API] Create poll response:', response.data);
+    console.log('[Backend API] 📬 Response received:');
+    console.log('[Backend API] Status:', response.status);
+    console.log('[Backend API] Response Data:', JSON.stringify(response.data, null, 2));
+    console.log('-'.repeat(80) + '\n');
     return response.data.data;
 }
 async function submitVote(signalId, userId, selectedOption, defaultResponse, reason) {
@@ -133,26 +146,6 @@ async function login(email, password) {
     const response = await apiClient.post('/api/signals/login', null, { params: { userEmail: email, password } });
     console.log('[Backend API] Login success, role:', response.data.data);
     return response.data.data;
-}
-async function getActivePolls(userEmail) {
-    console.log('[Backend API] Fetching active polls for:', userEmail);
-    try {
-        const response = await apiClient.get('/api/polls/active', {
-            params: { userEmail: userEmail }
-        });
-        console.log(`[Backend API] Success! Received ${response.data.length} polls.`);
-        return response.data;
-    }
-    catch (error) {
-        if (error.response) {
-            console.error('[Backend API] 500 Internal Server Error Details:', {
-                status: error.response.status,
-                data: error.response.data,
-                config: error.config.url
-            });
-        }
-        throw error;
-    }
 }
 async function syncPolls(email, since) {
     console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);
