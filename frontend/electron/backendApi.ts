@@ -99,18 +99,7 @@ interface ApiResponse<T> {
     data: T;
 }
 
-export interface ActivePollDTO {
-    signalId: number;
-    question: string;
-    options: string[];
-    endTimestamp: string;
-    anonymous: boolean;
-    defaultOption: string;
-    defaultFlag: boolean;
-    publisherEmail: string;
-    persistentAlert: boolean;
-    sharedWith?: string[]; // Added missing field
-}
+
 
 export interface PollSyncDTO {
     signalId: number;
@@ -259,25 +248,7 @@ export async function login(email: string, password: string): Promise<string> {
     return response.data.data;
 }
 
-export async function getActivePolls(userEmail: string): Promise<ActivePollDTO[]> {
-    console.log('[Backend API] Fetching active polls for:', userEmail);
-    try {
-        const response = await apiClient.get<ActivePollDTO[]>('/api/polls/active', {
-            params: { userEmail: userEmail }
-        });
-        console.log(`[Backend API] Success! Received ${response.data.length} polls.`);
-        return response.data;
-    } catch (error: any) {
-        if (error.response) {
-            console.error('[Backend API] 500 Internal Server Error Details:', {
-                status: error.response.status,
-                data: error.response.data,
-                config: error.config.url
-            });
-        }
-        throw error;
-    }
-}
+
 
 export async function syncPolls(email: string, since: string | null): Promise<PollSyncDTO[]> {
     console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);

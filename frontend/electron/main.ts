@@ -327,18 +327,7 @@ app.whenReady().then(async () => {
         }
     });
 
-    ipcMain.handle('backend-get-active-polls', async (_event, userEmail) => {
-        console.log(`[IPC Handler] backend-get-active-polls called for user: ${userEmail}`);
-        try {
-            const polls = await backendApi.getActivePolls(userEmail);
-            console.log(`[IPC Handler] backend-get-active-polls success, found ${polls.length} polls`);
-            return { success: true, data: polls };
-        } catch (error: any) {
-            const errorMessage = backendApi.extractBackendError(error);
-            console.error('[IPC Handler] backend-get-active-polls error:', errorMessage);
-            return { success: false, error: errorMessage };
-        }
-    });
+
 
     try {
         console.log('[Main] Initializing local database...');

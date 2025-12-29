@@ -9,7 +9,6 @@ export class SyncManager {
     private sse: EventSource | null = null;
     private isOnline: boolean = false;
     private deviceStatus: string = 'active';
-    private syncInterval: NodeJS.Timeout | null = null;
     private checkOnlineInterval: NodeJS.Timeout | null = null;
     private lastSyncTime: string | null = null;
     private isSyncing: boolean = false;
@@ -29,7 +28,6 @@ export class SyncManager {
 
     public logout() {
         this.email = null;
-        this.stopSyncLoop();
         this.disconnectSSE();
     }
 
@@ -217,13 +215,7 @@ export class SyncManager {
     }
 
     private startSyncLoop() {
-        // We no longer use a 30-second interval to avoid unnecessary API load.
-        // Sync is now triggered by updateConnection() on specific events (login, resume, online).
         this.performSync();
-    }
-
-    private stopSyncLoop() {
-        // No interval to clear anymore
     }
 
     private async performSync() {
