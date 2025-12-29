@@ -6,6 +6,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 @Component
 @Slf4j
@@ -67,5 +68,9 @@ public class SseEmitterRegistry {
         }
 
         return emitter;
+    }
+
+    public void forEach(BiConsumer<String, SseEmitter> consumer) {
+        emitters.forEach(consumer);
     }
 }

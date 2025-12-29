@@ -52,6 +52,7 @@ public class SseController {
             emitter.send(
                     SseEmitter.event()
                             .name("CONNECTED")
+                            .reconnectTime(3000)
                             .data("SSE connected")
             );
 
