@@ -20,7 +20,6 @@ public class PollResultDTO {
     private Map<String, UserVoteDTO[]> optionVotes;
 
     private Map<String, UserVoteDTO[]> removedOptions;
-    private Map<String, UserVoteDTO[]> removedUsers;
 
     private UserVoteDTO[] defaultResponses;
     private Map<String, String> reasonResponses;
