@@ -40,7 +40,6 @@ import static com.sentinel.backend.constant.Constants.POLL;
 import static com.sentinel.backend.constant.Constants.POLL_CREATED;
 import static com.sentinel.backend.constant.Constants.POLL_DELETED;
 import static com.sentinel.backend.constant.Constants.POLL_EDITED;
-import static com.sentinel.backend.constant.Constants.REMOVED;
 import static com.sentinel.backend.constant.Queries.GET_ROLE_BY_EMAIL_AND_PASSWORD;
 import static org.springframework.util.StringUtils.hasText;
 
@@ -376,12 +375,10 @@ public class SignalServiceImpl implements SignalService {
         List<PollResult> results = pollResultRepository.findByIdSignalId(signalId);
 
         Set<String> activeOptions = new LinkedHashSet<>(Arrays.asList(poll.getOptions()));
-        Set<String> activeUsers = new HashSet<>(Arrays.asList(signal.getSharedWith()));
 
         Map<String, Integer> optionCounts = new LinkedHashMap<>();
         Map<String, List<UserVoteDTO>> optionVotes = new LinkedHashMap<>();
         Map<String, List<UserVoteDTO>> archivedOptions = new LinkedHashMap<>();
-        List<UserVoteDTO> removedUsers = new ArrayList<>();
         List<UserVoteDTO> defaultResponses = new ArrayList<>();
         Map<String, String> reasonResponses = new LinkedHashMap<>();
 
@@ -397,11 +394,6 @@ public class SignalServiceImpl implements SignalService {
                     resolveResponseText(r),
                     r.getTimeOfSubmission()
             );
-
-            if (!activeUsers.contains(r.getId().getUserEmail())) {
-                removedUsers.add(vote);
-                continue;
-            }
 
             if (r.getSelectedOption() != null) {
                 if (!activeOptions.contains(r.getSelectedOption())) {
@@ -439,9 +431,6 @@ public class SignalServiceImpl implements SignalService {
                 archivedOptions.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getKey,
                                 e -> e.getValue().toArray(new UserVoteDTO[0]))));
-
-        dto.setRemovedUsers(removedUsers.isEmpty() ? null :
-                Map.of(REMOVED, removedUsers.toArray(new UserVoteDTO[0])));
 
         dto.setDefaultResponses(defaultResponses.isEmpty() ? null :
                 defaultResponses.toArray(new UserVoteDTO[0]));
