@@ -12,7 +12,6 @@ public class Constants {
     public static final String POLL_EDITED = "POLL_EDITED";
     public static final String POLL_DELETED = "POLL_DELETED";
 
-    public static final String REMOVED = "removed";
     private Constants() {
     }
 }
