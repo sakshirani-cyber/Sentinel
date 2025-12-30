@@ -37,6 +37,17 @@ let isPersistentAlertLocked = false;
 const handleWindowBlur = () => {
     if (isPersistentAlertLocked && win) {
         console.log('[Main] Window blurred during persistent alert, reclaiming focus...');
+        if (win.isMinimized()) win.restore();
+        win.focus();
+        win.moveTop();
+        app.focus({ steal: true });
+    }
+};
+
+const handleWindowMinimize = () => {
+    if (isPersistentAlertLocked && win) {
+        console.log('[Main] Minimize detected during persistent alert, restoring!');
+        win.restore();
         win.focus();
         win.moveTop();
         app.focus({ steal: true });
@@ -568,6 +579,16 @@ function createSecondaryWindow(display: Electron.Display) {
     // Immediate refocus for secondary monitors
     secondaryWin.on('blur', () => {
         if (isPersistentAlertLocked && !secondaryWin.isDestroyed()) {
+            if (secondaryWin.isMinimized()) secondaryWin.restore();
+            secondaryWin.focus();
+            secondaryWin.moveTop();
+            app.focus({ steal: true });
+        }
+    });
+
+    secondaryWin.on('minimize', () => {
+        if (isPersistentAlertLocked && !secondaryWin.isDestroyed()) {
+            secondaryWin.restore();
             secondaryWin.focus();
             secondaryWin.moveTop();
             app.focus({ steal: true });
@@ -575,7 +596,8 @@ function createSecondaryWindow(display: Electron.Display) {
     });
 
     if (isLinux) {
-        secondaryWin.setSimpleFullScreen(true);
+        secondaryWin.setFullScreen(true);
+        secondaryWin.setKiosk(true);
         secondaryWin.setSkipTaskbar(true);
     }
 
@@ -646,9 +668,10 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             // Force maximize before fullscreen to ensure coverage
             win.maximize();
 
-            // Linux-specific: Use simpleFullscreen instead of native fullscreen
+            // Linux-specific: Standard fullscreen + Kiosk
             if (isLinux) {
-                win.setSimpleFullScreen(true);
+                win.setFullScreen(true);
+                win.setKiosk(true);
                 win.setSkipTaskbar(true);
             } else {
                 win.setFullScreen(true);
@@ -664,8 +687,9 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             win.show();
             win.focus();
 
-            // Immediate Refocus Listener
+            // Immediate Refocus Listeners
             win.on('blur', handleWindowBlur);
+            win.on('minimize', handleWindowMinimize);
 
             // Block keyboard shortcuts (Alt+Tab, Super, etc.)
             const shortcutsToBlock = [
@@ -719,6 +743,7 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
                         win.setSkipTaskbar(true);
                         win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                     }
+                    if (win.isMinimized()) win.restore();
                     win.moveTop();
                     win.focus();
                     app.focus({ steal: true });
@@ -753,11 +778,6 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             // Unregister all global shortcuts
             globalShortcut.unregisterAll();
 
-            // Remove blur listener
-            if (win) {
-                win.removeListener('blur', handleWindowBlur);
-            }
-
             // Cleanup heartbeat
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
@@ -775,7 +795,8 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             // Restore window state
             const isLinux = process.platform === 'linux';
             if (isLinux) {
-                win.setSimpleFullScreen(false);
+                win.setKiosk(false);
+                win.setFullScreen(false);
             } else {
                 win.setKiosk(false);
                 win.setFullScreen(false);
@@ -789,6 +810,12 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             win.setResizable(true);
             win.setMaximizable(true);
             win.setFullScreenable(true);
+
+            // Remove listeners
+            if (win) {
+                win.removeListener('blur', handleWindowBlur);
+                win.removeListener('minimize', handleWindowMinimize);
+            }
 
             // Restore previous window state
             if (lastKnownWindowState) {
