@@ -36,4 +36,13 @@ public class Queries {
         )
         ORDER BY s.created_on ASC
         """;
+
+    public static final String DELETE_BY_SIGNAL_ID_AND_USER_EMAILS = """
+        DELETE
+            FROM poll_result
+        WHERE
+            signal_id = :signalId
+        AND
+            user_email IN (:userEmails)
+        """;
 }

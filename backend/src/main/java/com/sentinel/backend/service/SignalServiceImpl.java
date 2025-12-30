@@ -151,10 +151,38 @@ public class SignalServiceImpl implements SignalService {
         Poll poll = getPoll(dto.getSignalId());
 
         if (dto.getRepublish()) {
+
             long dbStart = System.currentTimeMillis();
             pollResultRepository.deleteByIdSignalId(dto.getSignalId());
-            log.info("[DB] Poll responses cleared for republish | signalId={} | durationMs={}",
-                    dto.getSignalId(), System.currentTimeMillis() - dbStart);
+            log.info(
+                    "[DB] Poll responses cleared for republish | signalId={} | durationMs={}",
+                    dto.getSignalId(),
+                    System.currentTimeMillis() - dbStart
+            );
+
+        } else {
+
+            Set<String> oldSharedWith = new HashSet<>(Arrays.asList(signal.getSharedWith()));
+            Set<String> newSharedWith = new HashSet<>(Arrays.asList(dto.getSharedWith()));
+
+            Set<String> removedUsers = new HashSet<>(oldSharedWith);
+            removedUsers.removeAll(newSharedWith);
+
+            if (!removedUsers.isEmpty()) {
+                long dbStart = System.currentTimeMillis();
+
+                pollResultRepository.deleteBySignalIdAndUserEmails(
+                        dto.getSignalId(),
+                        removedUsers
+                );
+
+                log.info(
+                        "[DB] Poll responses removed for unshared users | signalId={} | removedUsersCount={} | durationMs={}",
+                        dto.getSignalId(),
+                        removedUsers.size(),
+                        System.currentTimeMillis() - dbStart
+                );
+            }
         }
 
         poll.setQuestion(dto.getQuestion());
