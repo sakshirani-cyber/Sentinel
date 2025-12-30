@@ -3,11 +3,28 @@ package com.sentinel.backend.repository;
 import com.sentinel.backend.entity.PollResult;
 import com.sentinel.backend.entity.PollResultId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
+import java.util.Set;
+
+import static com.sentinel.backend.constant.Queries.DELETE_BY_SIGNAL_ID_AND_USER_EMAILS;
 
 public interface PollResultRepository extends JpaRepository<PollResult, PollResultId> {
 
     List<PollResult> findByIdSignalId(Integer signalId);
 
     void deleteByIdSignalId(Integer signalId);
+
+    @Modifying
+    @Query(
+            value = DELETE_BY_SIGNAL_ID_AND_USER_EMAILS,
+            nativeQuery = true
+    )
+    void deleteBySignalIdAndUserEmails(
+            @Param("signalId") Integer signalId,
+            @Param("userEmails") Set<String> userEmails
+    );
 }
