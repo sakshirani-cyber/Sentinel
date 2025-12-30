@@ -516,14 +516,15 @@ let lastKnownWindowState: {
 
 // Helper to create a secondary alert window
 function createSecondaryWindow(display: Electron.Display) {
+    const isLinux = process.platform === 'linux';
     const secondaryWin = new BrowserWindow({
         x: display.bounds.x,
         y: display.bounds.y,
         width: display.bounds.width,
         height: display.bounds.height,
         frame: false,
-        fullscreen: true,
-        kiosk: true,
+        fullscreen: !isLinux, // Linux: use setSimpleFullScreen later
+        kiosk: !isLinux,      // Linux: kiosk can be buggy on Wayland
         alwaysOnTop: true,
         backgroundColor: '#000000',
         skipTaskbar: true,
@@ -534,6 +535,11 @@ function createSecondaryWindow(display: Electron.Display) {
             preload: path.join(__dirname, 'preload.js'),
         },
     });
+
+    if (isLinux) {
+        secondaryWin.setSimpleFullScreen(true);
+        secondaryWin.setSkipTaskbar(true);
+    }
 
     secondaryWin.setAlwaysOnTop(true, 'screen-saver', 1);
     secondaryWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -584,7 +590,12 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
             };
 
             const isLinux = process.platform === 'linux';
-            console.log(`[Main] Platform: ${process.platform}, Linux-specific handling: ${isLinux}`);
+            const sessionType = process.env.XDG_SESSION_TYPE || 'unknown';
+            console.log(`[Main] Platform: ${process.platform}, Session: ${sessionType}, Linux Handling: ${isLinux}`);
+
+            if (isLinux && sessionType === 'wayland') {
+                console.warn('[Main] ⚠️ Running on Wayland. System shortcuts (Alt+Tab) might NOT be fully blockable due to OS security policy.');
+            }
 
             win.setMinimizable(false);
             win.setClosable(false);
