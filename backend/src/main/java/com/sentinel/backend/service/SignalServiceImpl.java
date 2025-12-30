@@ -280,7 +280,6 @@ public class SignalServiceImpl implements SignalService {
                 .orElseThrow(() -> new CustomException("Poll not found", HttpStatus.NOT_FOUND));
     }
 
-
     private void normalizeAndValidateCreate(PollCreateDTO dto) {
         dto.normalizeCommon();
         dto.normalizePoll();
