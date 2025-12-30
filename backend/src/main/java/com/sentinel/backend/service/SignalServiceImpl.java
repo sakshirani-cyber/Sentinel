@@ -16,7 +16,6 @@ import com.sentinel.backend.repository.PollResultRepository;
 import com.sentinel.backend.repository.SignalRepository;
 import com.sentinel.backend.sse.PollSsePublisher;
 import com.sentinel.backend.sse.dto.PollSsePayload;
-import com.sentinel.backend.util.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -64,7 +63,6 @@ public class SignalServiceImpl implements SignalService {
         log.info("[SERVICE] Create poll started | createdBy={}", dto.getCreatedBy());
 
         normalizeAndValidateCreate(dto);
-        validateDuplicateActivePoll(dto);
 
         Signal signal = buildSignal(dto);
 
@@ -283,17 +281,6 @@ public class SignalServiceImpl implements SignalService {
         s.setStatus(ACTIVE);
         s.setPersistentAlert(Boolean.TRUE.equals(dto.getPersistentAlert()));
         return s;
-    }
-
-    private void validateDuplicateActivePoll(PollCreateDTO dto) {
-        String q = NormalizationUtils.normalizeQuestion(dto.getQuestion());
-        List<String> opts = NormalizationUtils.normalizeForComparison(dto.getOptions());
-
-        for (Poll p : pollRepository.findActivePollsByQuestion(q)) {
-            if (opts.equals(NormalizationUtils.normalizeForComparison(p.getOptions()))) {
-                throw new CustomException("Similar active poll exists", HttpStatus.CONFLICT);
-            }
-        }
     }
 
     private Signal getValidActivePollSignal(Integer signalId, String userEmail) {
