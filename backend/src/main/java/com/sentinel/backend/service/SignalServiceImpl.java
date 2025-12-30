@@ -377,7 +377,7 @@ public class SignalServiceImpl implements SignalService {
 
         Map<String, Integer> optionCounts = new LinkedHashMap<>();
         Map<String, List<UserVoteDTO>> optionVotes = new LinkedHashMap<>();
-        Map<String, List<UserVoteDTO>> archivedOptions = new LinkedHashMap<>();
+        Map<String, List<UserVoteDTO>> removedOptions = new LinkedHashMap<>();
         List<UserVoteDTO> defaultResponses = new ArrayList<>();
         Map<String, String> reasonResponses = new LinkedHashMap<>();
 
@@ -396,7 +396,7 @@ public class SignalServiceImpl implements SignalService {
 
             if (r.getSelectedOption() != null) {
                 if (!activeOptions.contains(r.getSelectedOption())) {
-                    archivedOptions.computeIfAbsent(r.getSelectedOption(), k -> new ArrayList<>()).add(vote);
+                    removedOptions.computeIfAbsent(r.getSelectedOption(), k -> new ArrayList<>()).add(vote);
                 } else {
                     optionCounts.compute(r.getSelectedOption(), (k, v) -> v + 1);
                     optionVotes.get(r.getSelectedOption()).add(vote);
@@ -426,8 +426,8 @@ public class SignalServiceImpl implements SignalService {
                 .collect(Collectors.toMap(Map.Entry::getKey,
                         e -> e.getValue().toArray(new UserVoteDTO[0]))));
 
-        dto.setRemovedOptions(archivedOptions.isEmpty() ? null :
-                archivedOptions.entrySet().stream()
+        dto.setRemovedOptions(removedOptions.isEmpty() ? null :
+                removedOptions.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getKey,
                                 e -> e.getValue().toArray(new UserVoteDTO[0]))));
 
