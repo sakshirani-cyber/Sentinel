@@ -64,6 +64,15 @@ let tray = null;
 let win = null;
 let secondaryWindows = [];
 let isPersistentAlertLocked = false;
+// Global blur handler to prevent focus stealing on Linux/Wayland
+const handleWindowBlur = () => {
+    if (isPersistentAlertLocked && win) {
+        console.log('[Main] Window blurred during persistent alert, reclaiming focus...');
+        win.focus();
+        win.moveTop();
+        electron_1.app.focus({ steal: true });
+    }
+};
 // Simple icon for tray (16x16 blue circle)
 const iconBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFMSURBVDiNpZMxSwNBEIW/vb29JBcQFBELsbATrPwBNv4CK/+Alf9AO0EQrGwsLCwEwUKwsLOxEQQLC0EQbCwUQUQQvLu9nZndsUgOc5dEfM3uzHvfzO4MrLH+V8AYcwI0gQPgEHgCboAr4FJKebcSgDHmGDgFdoEt4BV4AC6Acynl8xKAMWYPOAO2gQ/gHrgFbqSUH0sAxpgGcAzsAJ/APXADXEsp3xcAjDFN4AjYBl6AO+AauJBSvi0CGGN2gUNgC3gG7oBr4FJK+bIIYIzZBw6ATeAJuAWugXMp5esiQB04ADaAR+AWuAHOpZRviwB14BDYBx6AW+AGuJBSvi8C1IFDoBZ4AG6BG+BcSvm+CFAHjoAa8ADcAjfAhZTyfRGgDhwBNeABuAVugHMp5ccigDHmCGgAD8AtcANcSCk/FwGMMUdAA3gAbv8A/FbXX2v9D/gBnqV8VC6kqXwAAAAASUVORK5CYII=';
 function createWindow() {
@@ -82,18 +91,22 @@ function createWindow() {
     });
     // Remove menu bar
     win.setMenuBarVisibility(false);
-    // Disable DevTools shortcuts - DISABLED for debugging
-    // win.webContents.on('before-input-event', (event, input) => {
-    //     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
-    //         event.preventDefault();
-    //     }
-    //     if (input.key === 'F12') {
-    //         event.preventDefault();
-    //     }
-    // });
+    // Disable DevTools shortcuts ALWAYS
+    win.webContents.on('before-input-event', (event, input) => {
+        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+            event.preventDefault();
+        }
+        if (input.key === 'F12') {
+            event.preventDefault();
+        }
+    });
+    // Disable Right-Click (Inspect Element bypass)
+    win.webContents.on('context-menu', (e) => {
+        e.preventDefault();
+    });
     if (electron_is_dev_1.default) {
         win.loadURL('http://localhost:3000');
-        win.webContents.openDevTools(); // Re-enabled per user request
+        // win.webContents.openDevTools(); // Disabled per user request
     }
     else {
         win.loadFile(path.join(__dirname, '../dist/index.html'));
@@ -495,14 +508,15 @@ let heartbeatInterval = null;
 let lastKnownWindowState = null;
 // Helper to create a secondary alert window
 function createSecondaryWindow(display) {
+    const isLinux = process.platform === 'linux';
     const secondaryWin = new electron_1.BrowserWindow({
         x: display.bounds.x,
         y: display.bounds.y,
         width: display.bounds.width,
         height: display.bounds.height,
         frame: false,
-        fullscreen: true,
-        kiosk: true,
+        fullscreen: !isLinux, // Linux: use setSimpleFullScreen later
+        kiosk: !isLinux, // Linux: kiosk can be buggy on Wayland
         alwaysOnTop: true,
         backgroundColor: '#000000',
         skipTaskbar: true,
@@ -513,6 +527,30 @@ function createSecondaryWindow(display) {
             preload: path.join(__dirname, 'preload.js'),
         },
     });
+    // Disable DevTools and Context Menu for secondary windows too
+    secondaryWin.webContents.on('before-input-event', (event, input) => {
+        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+            event.preventDefault();
+        }
+        if (input.key === 'F12') {
+            event.preventDefault();
+        }
+    });
+    secondaryWin.webContents.on('context-menu', (e) => {
+        e.preventDefault();
+    });
+    // Immediate refocus for secondary monitors
+    secondaryWin.on('blur', () => {
+        if (isPersistentAlertLocked && !secondaryWin.isDestroyed()) {
+            secondaryWin.focus();
+            secondaryWin.moveTop();
+            electron_1.app.focus({ steal: true });
+        }
+    });
+    if (isLinux) {
+        secondaryWin.setSimpleFullScreen(true);
+        secondaryWin.setSkipTaskbar(true);
+    }
     secondaryWin.setAlwaysOnTop(true, 'screen-saver', 1);
     secondaryWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     const url = electron_is_dev_1.default
@@ -556,7 +594,11 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                 isMinimized: win.isMinimized()
             };
             const isLinux = process.platform === 'linux';
-            console.log(`[Main] Platform: ${process.platform}, Linux-specific handling: ${isLinux}`);
+            const sessionType = process.env.XDG_SESSION_TYPE || 'unknown';
+            console.log(`[Main] Platform: ${process.platform}, Session: ${sessionType}, Linux Handling: ${isLinux}`);
+            if (isLinux && sessionType === 'wayland') {
+                console.warn('[Main] ⚠️ Running on Wayland. System shortcuts (Alt+Tab) might NOT be fully blockable due to OS security policy.');
+            }
             win.setMinimizable(false);
             win.setClosable(false);
             win.setMovable(false);
@@ -582,6 +624,8 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             win.setSkipTaskbar(true);
             win.show();
             win.focus();
+            // Immediate Refocus Listener
+            win.on('blur', handleWindowBlur);
             // Block keyboard shortcuts (Alt+Tab, Super, etc.)
             const shortcutsToBlock = [
                 'Alt+Tab',
@@ -618,8 +662,8 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             electron_1.screen.on('display-added', handleDisplayAdded);
             electron_1.screen.on('display-removed', handleDisplayRemoved);
             // Focus Heartbeat: Force windows to front
-            // Linux needs faster heartbeat (250ms) due to window manager differences
-            const heartbeatDelay = isLinux ? 250 : 500;
+            // Linux needs faster heartbeat (100ms) due to gesture/workspace switching
+            const heartbeatDelay = isLinux ? 100 : 500;
             if (heartbeatInterval)
                 clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
@@ -632,6 +676,7 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                     }
                     win.moveTop();
                     win.focus();
+                    electron_1.app.focus({ steal: true });
                 }
                 secondaryWindows = secondaryWindows.filter(sw => {
                     if (sw.win.isDestroyed())
@@ -659,6 +704,10 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             isPersistentAlertLocked = false;
             // Unregister all global shortcuts
             electron_1.globalShortcut.unregisterAll();
+            // Remove blur listener
+            if (win) {
+                win.removeListener('blur', handleWindowBlur);
+            }
             // Cleanup heartbeat
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
