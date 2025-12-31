@@ -1,5 +1,7 @@
 package com.sentinel.backend.sse.controller;
 
+import com.sentinel.backend.sse.DeliveryStateStore;
+import com.sentinel.backend.sse.PollSyncCache;
 import com.sentinel.backend.sse.SseEmitterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.Instant;
+
+import static com.sentinel.backend.constant.Constants.CONNECTED;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,6 +22,8 @@ import java.io.IOException;
 public class SseController {
 
     private final SseEmitterRegistry registry;
+    private final PollSyncCache pollSyncCache;
+    private final DeliveryStateStore deliveryStateStore;
 
     @GetMapping(value = "/sse/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@RequestParam String userEmail) {
@@ -27,6 +34,30 @@ public class SseController {
 
         registry.add(userEmail, emitter);
         log.info("[SSE] Connection registered | userEmail={}", userEmail);
+
+        try {
+            emitter.send(
+                    SseEmitter.event()
+                            .name(CONNECTED)
+                            .reconnectTime(3000)
+                            .data("SSE connected")
+            );
+
+            log.info("[SSE] Initial handshake event sent | userEmail={}", userEmail);
+
+            checkAndReplayMissedData(userEmail);
+
+        } catch (IOException e) {
+            registry.remove(userEmail);
+            log.error(
+                    "[SSE][ERROR] Failed during handshake | userEmail={} | exception={} | message={}",
+                    userEmail,
+                    e.getClass().getSimpleName(),
+                    e.getMessage(),
+                    e
+            );
+            return emitter;
+        }
 
         emitter.onCompletion(() -> {
             registry.remove(userEmail);
@@ -48,29 +79,48 @@ public class SseController {
             );
         });
 
-        try {
-            emitter.send(
-                    SseEmitter.event()
-                            .name("CONNECTED")
-                            .reconnectTime(3000)
-                            .data("SSE connected")
-            );
+        return emitter;
+    }
 
-            log.info("[SSE] Initial handshake event sent | userEmail={}", userEmail);
+    private void checkAndReplayMissedData(String userEmail) {
 
-        } catch (IOException e) {
+        Instant lastDelivered = deliveryStateStore.getLastDelivered(userEmail);
 
-            registry.remove(userEmail);
+        var missedEvents = pollSyncCache.getAfter(userEmail, lastDelivered);
 
-            log.error(
-                    "[SSE][ERROR] Failed to send initial SSE event | userEmail={} | exception={} | message={}",
-                    userEmail,
-                    e.getClass().getSimpleName(),
-                    e.getMessage(),
-                    e
-            );
+        if (missedEvents.isEmpty()) {
+            return;
         }
 
-        return emitter;
+        SseEmitter emitter = registry.get(userEmail);
+        if (emitter == null) {
+            return;
+        }
+
+        for (var event : missedEvents) {
+            try {
+                emitter.send(
+                        SseEmitter.event()
+                                .name(event.getEventType())
+                                .data(event)
+                );
+
+                deliveryStateStore.updateLastDelivered(
+                        userEmail,
+                        event.getEventTime()
+                );
+
+            } catch (Exception ex) {
+                log.warn(
+                        "[SSE][SYNC] Replay failed | userEmail={} | reason={}",
+                        userEmail,
+                        ex.getMessage()
+                );
+                return;
+            }
+        }
+
+        pollSyncCache.clear(userEmail);
+        log.info("[SSE][SYNC] Replay completed | userEmail={}", userEmail);
     }
 }
