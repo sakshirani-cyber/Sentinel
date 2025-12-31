@@ -29,7 +29,7 @@ public class Queries {
             poll_result r
         ON
             r.signal_id = s.id
-        AND 
+        AND
             r.user_email = ?
         WHERE
             (
