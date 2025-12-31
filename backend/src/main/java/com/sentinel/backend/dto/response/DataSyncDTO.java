@@ -7,7 +7,7 @@ import java.time.Instant;
 
 @Data
 @AllArgsConstructor
-public class PollSyncDTO {
+public class DataSyncDTO {
 
     private Integer signalId;
     private String question;

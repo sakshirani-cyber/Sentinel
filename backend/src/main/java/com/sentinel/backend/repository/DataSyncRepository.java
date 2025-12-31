@@ -1,29 +1,25 @@
 package com.sentinel.backend.repository;
 
-import com.sentinel.backend.dto.response.PollSyncDTO;
+import com.sentinel.backend.dto.response.DataSyncDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
 
-import static com.sentinel.backend.constant.Queries.SYNC_POLLS_SQL;
+import static com.sentinel.backend.constant.Queries.DATA_SYNC;
 
 @Repository
 @RequiredArgsConstructor
-public class PollSyncRepository {
+public class DataSyncRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public List<PollSyncDTO> syncPolls(String userEmail, Instant sinceUtc) {
-
-        Timestamp sinceTs = Timestamp.from(sinceUtc);
+    public List<DataSyncDTO> syncData(String userEmail) {
 
         return jdbcTemplate.query(
-                SYNC_POLLS_SQL,
-                (rs, rowNum) -> new PollSyncDTO(
+                DATA_SYNC,
+                (rs, rowNum) -> new DataSyncDTO(
                         rs.getInt("signal_id"),
                         rs.getString("question"),
                         (String[]) rs.getArray("options").getArray(),
@@ -47,10 +43,7 @@ public class PollSyncRepository {
                 ),
                 userEmail,
                 userEmail,
-                sinceTs,
-                sinceTs,
-                sinceTs,
-                sinceTs
+                userEmail
         );
     }
 }

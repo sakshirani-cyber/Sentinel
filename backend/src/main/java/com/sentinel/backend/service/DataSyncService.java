@@ -1,43 +1,42 @@
 package com.sentinel.backend.service;
 
-import com.sentinel.backend.dto.response.PollSyncDTO;
-import com.sentinel.backend.repository.PollSyncRepository;
+import com.sentinel.backend.dto.response.DataSyncDTO;
+import com.sentinel.backend.repository.DataSyncRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class PollSyncService {
+public class DataSyncService {
 
-    private final PollSyncRepository pollSyncRepository;
+    private final DataSyncRepository dataSyncRepository;
 
-    public List<PollSyncDTO> sync(String userEmail, Instant sinceUtc) {
+    public List<DataSyncDTO> sync(String userEmail) {
 
         long serviceStart = System.currentTimeMillis();
 
         log.info(
-                "[SERVICE] Poll sync started | userEmail={} | sinceUtc={}",
-                userEmail, sinceUtc
+                "[SERVICE] Data sync started | userEmail={}",
+                userEmail
         );
 
         long dbStart = System.currentTimeMillis();
-        List<PollSyncDTO> result = pollSyncRepository.syncPolls(userEmail, sinceUtc);
+        List<DataSyncDTO> result = dataSyncRepository.syncData(userEmail);
         long dbDuration = System.currentTimeMillis() - dbStart;
 
         log.info(
-                "[SERVICE] Poll sync DB call completed | userEmail={} | recordCount={} | dbDurationMs={}",
+                "[SERVICE] Data sync DB call completed | userEmail={} | recordCount={} | dbDurationMs={}",
                 userEmail,
                 result != null ? result.size() : 0,
                 dbDuration
         );
 
         log.info(
-                "[SERVICE] Poll sync completed | userEmail={} | totalDurationMs={}",
+                "[SERVICE] Data sync completed | userEmail={} | totalDurationMs={}",
                 userEmail,
                 System.currentTimeMillis() - serviceStart
         );
