@@ -10,6 +10,6 @@ import java.time.Instant;
 public class SseEvent<T> {
 
     private String eventType;
-    private Instant timestamp;
+    private Instant eventTime;
     private T payload;
 }
