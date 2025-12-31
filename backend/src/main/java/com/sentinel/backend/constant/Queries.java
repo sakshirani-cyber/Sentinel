@@ -3,7 +3,7 @@ package com.sentinel.backend.constant;
 public class Queries {
     public static final String GET_ROLE_BY_EMAIL_AND_PASSWORD = "SELECT role FROM users WHERE user_email = ? AND password = ?";
 
-    public static final String DATA_SYNC = """
+    public static final String DATA_SYNC_SQL = """
         SELECT
             s.id AS signal_id,
             p.question,
