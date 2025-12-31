@@ -3,7 +3,7 @@ package com.sentinel.backend.constant;
 public class Queries {
     public static final String GET_ROLE_BY_EMAIL_AND_PASSWORD = "SELECT role FROM users WHERE user_email = ? AND password = ?";
 
-    public static final String SYNC_POLLS_SQL = """
+    public static final String DATA_SYNC = """
         SELECT
             s.id AS signal_id,
             p.question,
@@ -21,19 +21,22 @@ public class Queries {
             r.default_response,
             r.reason,
             r.time_of_submission
-        FROM signal s
-        JOIN poll p ON p.signal_id = s.id
-        LEFT JOIN poll_result r
-               ON r.signal_id = s.id
-              AND r.user_email = ?
+        FROM
+            signal s
+        JOIN
+            poll p ON p.signal_id = s.id
+        LEFT JOIN
+            poll_result r
+        ON
+            r.signal_id = s.id
+        AND 
+            r.user_email = ?
         WHERE
-            ? = ANY (s.shared_with)
-        AND (
-                s.created_on         > ?
-             OR s.last_edited        > ?
-             OR s.end_timestamp      > ?
-             OR r.time_of_submission > ?
-        )
+            (
+                s.created_by = ?
+                OR
+                ? = ANY (s.shared_with)
+            )
         ORDER BY s.created_on ASC
         """;
 

@@ -1,61 +1,25 @@
 package com.sentinel.backend.repository;
 
-import com.sentinel.backend.dto.response.PollSyncDTO;
+import com.sentinel.backend.dto.response.DataSyncDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
+
+import static com.sentinel.backend.constant.Queries.DATA_SYNC;
 
 @Repository
 @RequiredArgsConstructor
-public class PollSyncRepository {
+public class DataSyncRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public List<PollSyncDTO> syncPolls(String userEmail, Instant sinceUtc) {
-
-        Timestamp sinceTs = Timestamp.from(sinceUtc);
-
-        String sql = """
-        SELECT
-            s.id AS signal_id,
-            p.question,
-            p.options,
-            s.status,
-            s.created_by AS publisher,
-            s.shared_with,
-            s.anonymous,
-            s.default_flag,
-            s.default_option,
-            s.persistent_alert,
-            s.end_timestamp,
-            s.last_edited,
-            r.selected_option,
-            r.default_response,
-            r.reason,
-            r.time_of_submission
-        FROM signal s
-        JOIN poll p ON p.signal_id = s.id
-        LEFT JOIN poll_result r
-               ON r.signal_id = s.id
-              AND r.user_id = ?
-        WHERE
-            ? = ANY (s.shared_with)
-        AND (
-                s.created_on         > ?
-             OR s.last_edited        > ?
-             OR s.end_timestamp      > ?
-             OR r.time_of_submission > ?
-        )
-        ORDER BY s.created_on ASC
-        """;
+    public List<DataSyncDTO> syncData(String userEmail) {
 
         return jdbcTemplate.query(
-                sql,
-                (rs, rowNum) -> new PollSyncDTO(
+                DATA_SYNC,
+                (rs, rowNum) -> new DataSyncDTO(
                         rs.getInt("signal_id"),
                         rs.getString("question"),
                         (String[]) rs.getArray("options").getArray(),
@@ -79,10 +43,7 @@ public class PollSyncRepository {
                 ),
                 userEmail,
                 userEmail,
-                sinceTs,
-                sinceTs,
-                sinceTs,
-                sinceTs
+                userEmail
         );
     }
 }
