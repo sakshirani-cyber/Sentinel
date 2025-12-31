@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-import static com.sentinel.backend.constant.Queries.DATA_SYNC;
+import static com.sentinel.backend.constant.Queries.DATA_SYNC_SQL;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,7 +18,7 @@ public class DataSyncRepository {
     public List<DataSyncDTO> syncData(String userEmail) {
 
         return jdbcTemplate.query(
-                DATA_SYNC,
+                DATA_SYNC_SQL,
                 (rs, rowNum) -> new DataSyncDTO(
                         rs.getInt("signal_id"),
                         rs.getString("question"),
