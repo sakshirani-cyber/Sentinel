@@ -14,6 +14,8 @@ import java.time.Instant;
 public class PollSsePublisher {
 
     private final SseEmitterRegistry registry;
+    private final DeliveryStateStore deliveryStateStore;
+    private final PollSyncCache pollSyncCache;
 
     public <T> void publish(String[] recipients, String eventType, T payload) {
 
@@ -42,11 +44,7 @@ public class PollSsePublisher {
 
             if (emitter == null) {
                 offline++;
-                log.debug(
-                        "[SSE][PUBLISH] Recipient offline | eventType={} | userEmail={}",
-                        eventType,
-                        userEmail
-                );
+                pollSyncCache.put(userEmail, event);
                 continue;
             }
 
@@ -59,16 +57,19 @@ public class PollSsePublisher {
 
                 delivered++;
 
+                deliveryStateStore.updateLastDelivered(userEmail, event.getEventTime());
+
             } catch (Exception ex) {
 
                 failed++;
                 registry.remove(userEmail);
 
+                pollSyncCache.put(userEmail, event);
+
                 log.warn(
-                        "[SSE][PUBLISH][ERROR] Delivery failed | eventType={} | userEmail={} | exception={} | message={}",
+                        "[SSE][PUBLISH][ERROR] Delivery failed | eventType={} | userEmail={} | exception={}",
                         eventType,
                         userEmail,
-                        ex.getClass().getSimpleName(),
                         ex.getMessage()
                 );
             }

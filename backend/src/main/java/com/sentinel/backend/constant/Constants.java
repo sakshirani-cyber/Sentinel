@@ -11,6 +11,9 @@ public class Constants {
     public static final String POLL_CREATED = "POLL_CREATED";
     public static final String POLL_EDITED = "POLL_EDITED";
     public static final String POLL_DELETED = "POLL_DELETED";
+    public static final String CONNECTED = "CONNECTED";
+    public static final String HEARTBEAT = "HEARTBEAT";
+    public static final String KEEP_ALIVE = "keep-alive";
 
     private Constants() {
     }
