@@ -9,12 +9,11 @@ exports.getPollResults = getPollResults;
 exports.editPoll = editPoll;
 exports.deletePoll = deletePoll;
 exports.login = login;
-exports.syncPolls = syncPolls;
 exports.extractBackendError = extractBackendError;
 const axios_1 = __importDefault(require("axios"));
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
-const API_BASE_URL = process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com';
+const API_BASE_URL = process.env.VITE_BACKEND_URL || 'http://localhost:8080';
 console.log(`[Backend API] Initialized with BASE_URL: ${API_BASE_URL}`);
 const apiClient = axios_1.default.create({
     baseURL: API_BASE_URL,
@@ -60,7 +59,7 @@ function mapPollToDTO(poll) {
         sharedWith: poll.consumers,
         type: 'POLL',
         localId,
-        defaultFlag: poll.showDefaultToConsumers, // ✅ FIX: Use actual user preference, not derived value
+        defaultFlag: poll.showDefaultToConsumers,
         defaultOption: poll.defaultResponse || poll.options[0]?.text || '',
         persistentAlert: !!poll.isPersistentFinalAlert,
         question: poll.question,
@@ -74,9 +73,6 @@ function mapPollToDTO(poll) {
     console.log('  consumers.length:', poll.consumers?.length, '→ sharedWith.length:', dto.sharedWith?.length);
     return dto;
 }
-// ============================================================================
-// API Methods
-// ============================================================================
 async function createPoll(poll) {
     console.log('\n' + '-'.repeat(80));
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🌐 createPoll called`);
@@ -146,21 +142,6 @@ async function login(email, password) {
     const response = await apiClient.post('/api/signals/login', null, { params: { userEmail: email, password } });
     console.log('[Backend API] Login success, role:', response.data.data);
     return response.data.data;
-}
-async function syncPolls(email, since) {
-    console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);
-    try {
-        const params = { userEmail: email };
-        if (since)
-            params.since = since;
-        const response = await apiClient.get('/polls/sync', { params });
-        console.log(`[Backend API] Sync success! Received ${response.data.length} updates.`);
-        return response.data;
-    }
-    catch (error) {
-        console.error('[Backend API] Sync error:', extractBackendError(error));
-        throw error;
-    }
 }
 // ============================================================================
 // Error Handling Utility

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Poll, Response } from '../App';
 import { mapResultsToResponses } from '../services/pollService';
 import { Clock, Users, BarChart3, Trash2, Calendar, Edit, PenTool, X, Eye } from 'lucide-react';
@@ -76,7 +76,27 @@ export default function PublishedPolls({
   };
 
   const sortedPolls = [...polls].sort((a, b) => {
-    return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
+    const now = new Date();
+    const timeA = new Date(a.deadline).getTime();
+    const timeB = new Date(b.deadline).getTime();
+
+    // Determine expiration status
+    // Note: Poll is expired if status is 'completed' OR deadline passed
+    const isExpiredA = a.status === 'completed' || timeA < now.getTime();
+    const isExpiredB = b.status === 'completed' || timeB < now.getTime();
+
+    // If one is expired and the other isn't, put expired last
+    if (isExpiredA !== isExpiredB) {
+      return isExpiredA ? 1 : -1;
+    }
+
+    // If both are expired, sort by deadline descending (newest expired first)
+    if (isExpiredA) {
+      return timeB - timeA;
+    }
+
+    // If both are active, sort by deadline ascending (closest deadline first)
+    return timeA - timeB;
   });
 
   const handleAnalyticsClick = async (poll: Poll) => {
@@ -261,6 +281,7 @@ export default function PublishedPolls({
             setSelectedPollForAnalytics(null);
             setAnalyticsResponses([]);
           }}
+          canExport={true}
         />
       )}
 

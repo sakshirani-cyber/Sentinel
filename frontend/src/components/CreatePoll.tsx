@@ -460,7 +460,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               min={getMinDateTime()}
             />
             {showErrors && !isDateValid(deadline) && (
-              <p className="text-red-500 text-xs mt-1">Please select a valid future date</p>
+              <p className="text-red-500 text-xs mt-1">Deadline must be in future date and time</p>
             )}
             <p className="text-sm text-slate-500 mt-2">
               Notifications will be sent at 60, 30, 15, and 1 minute before this deadline

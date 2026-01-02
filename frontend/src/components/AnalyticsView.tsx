@@ -1,13 +1,15 @@
 import { Poll, Response } from '../App';
-import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download } from 'lucide-react';
 
 interface AnalyticsViewProps {
   poll: Poll;
   responses: Response[];
   onClose: () => void;
+  canExport?: boolean;
 }
 
-export default function AnalyticsView({ poll, responses, onClose }: AnalyticsViewProps) {
+export default function AnalyticsView({ poll, responses, onClose, canExport = false }: AnalyticsViewProps) {
   const totalConsumers = poll.consumers.length;
   const totalResponses = responses.length;
   // Use unique responders who manually submitted (exclude defaults) to avoid > 100% rate
@@ -51,6 +53,61 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
     });
   };
 
+  const handleExport = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // --- Sheet 1: Summary ---
+      const summaryData = [
+        { Metric: 'Poll Question', Value: poll.question },
+        { Metric: 'Total Consumers', Value: totalConsumers },
+        { Metric: 'Response Rate', Value: `${responseRate.toFixed(1)}%` },
+        { Metric: 'Submitted Responses', Value: submittedResponses.length },
+        { Metric: 'Default Responses', Value: defaultResponses.length },
+        { Metric: 'Skipped Responses', Value: skippedResponses.length },
+        { Metric: 'Generated At', Value: new Date().toLocaleString() }
+      ];
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+      // --- Sheet 2: Distribution ---
+      const distributionData = Object.entries(responseCounts).map(([option, count]) => {
+        const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
+        const isDefaultOption = option === poll.defaultResponse;
+        const isRemoved = !currentOptionTexts.has(option) && !isDefaultOption;
+
+        return {
+          'Option': option,
+          'Count': count,
+          'Percentage': `${percentage.toFixed(1)}%`,
+          'Status': isDefaultOption ? 'Default Option' : (isRemoved ? 'Removed Option' : 'Active')
+        };
+      });
+      const wsDistribution = XLSX.utils.json_to_sheet(distributionData);
+      XLSX.utils.book_append_sheet(wb, wsDistribution, 'Distribution');
+
+      // --- Sheet 3: Individual Responses ---
+      const responsesData = responses.map(r => ({
+        'Consumer Email': r.consumerEmail,
+        'Response': r.response,
+        'Status': r.isDefault ? 'Default' : (r.skipReason ? 'Skipped' : 'Submitted'),
+        'Submitted At': new Date(r.submittedAt).toLocaleString(),
+        'Skip Reason': r.skipReason || ''
+      }));
+      const wsResponses = XLSX.utils.json_to_sheet(responsesData);
+      XLSX.utils.book_append_sheet(wb, wsResponses, 'Responses');
+
+      // Generate file name
+      const fileName = `poll_analytics_${poll.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Save file
+      XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export analytics');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -60,12 +117,23 @@ export default function AnalyticsView({ poll, responses, onClose }: AnalyticsVie
             <h2 className="text-mono-text mb-1 text-lg font-medium">Poll Analytics</h2>
             <p className="text-sm text-mono-text/60">{poll.question}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {canExport && (
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 px-3 py-1.5 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-accent hover:text-mono-primary transition-colors text-sm font-medium"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}

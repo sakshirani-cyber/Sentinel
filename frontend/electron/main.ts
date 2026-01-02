@@ -75,24 +75,24 @@ function createWindow() {
     // Remove menu bar
     win.setMenuBarVisibility(false);
 
-    // Disable DevTools shortcuts ALWAYS
-    win.webContents.on('before-input-event', (event, input) => {
-        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
-            event.preventDefault();
-        }
-        if (input.key === 'F12') {
-            event.preventDefault();
-        }
-    });
+    // Disable DevTools shortcuts ALWAYS - DISABLED for debugging
+    // win.webContents.on('before-input-event', (event, input) => {
+    //     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    //         event.preventDefault();
+    //     }
+    //     if (input.key === 'F12') {
+    //         event.preventDefault();
+    //     }
+    // });
 
-    // Disable Right-Click (Inspect Element bypass)
-    win.webContents.on('context-menu', (e) => {
-        e.preventDefault();
-    });
+    // Disable Right-Click (Inspect Element bypass) - DISABLED for debugging
+    // win.webContents.on('context-menu', (e) => {
+    //     e.preventDefault();
+    // });
 
     if (isDev) {
         win.loadURL('http://localhost:3000');
-        // win.webContents.openDevTools(); // Disabled per user request
+        win.webContents.openDevTools(); // Disabled per user request
     } else {
         win.loadFile(path.join(__dirname, '../dist/index.html'));
     }
@@ -562,19 +562,19 @@ function createSecondaryWindow(display: Electron.Display) {
         },
     });
 
-    // Disable DevTools and Context Menu for secondary windows too
-    secondaryWin.webContents.on('before-input-event', (event, input) => {
-        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
-            event.preventDefault();
-        }
-        if (input.key === 'F12') {
-            event.preventDefault();
-        }
-    });
+    // Disable DevTools and Context Menu for secondary windows too - DISABLED for debug
+    // secondaryWin.webContents.on('before-input-event', (event, input) => {
+    //     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    //         event.preventDefault();
+    //     }
+    //     if (input.key === 'F12') {
+    //         event.preventDefault();
+    //     }
+    // });
 
-    secondaryWin.webContents.on('context-menu', (e) => {
-        e.preventDefault();
-    });
+    // secondaryWin.webContents.on('context-menu', (e) => {
+    //     e.preventDefault();
+    // });
 
     // Immediate refocus for secondary monitors
     secondaryWin.on('blur', () => {

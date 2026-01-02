@@ -13,6 +13,8 @@ export class SyncManager {
     private lastSyncTime: string | null = null;
     private isSyncing: boolean = false;
     private syncPending: boolean = false;
+    private pingTimeoutTrace: NodeJS.Timeout | null = null;
+    private readonly PING_TIMEOUT_MS = 65000;
 
     constructor() {
         this.setupDeviceMonitoring();
@@ -115,7 +117,7 @@ export class SyncManager {
             return;
         }
 
-        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
 
         try {
@@ -139,6 +141,7 @@ export class SyncManager {
 
             sse.addEventListener('POLL_EDITED', async (event: any) => {
                 console.log('[SyncManager] SSE: POLL_EDITED:', event.data);
+                this.resetPingWatchdog(); // Activity counts as ping
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
@@ -146,6 +149,13 @@ export class SyncManager {
                 } catch (e) {
                     console.error('[SyncManager] Error handling POLL_EDITED:', e);
                 }
+            });
+
+            // Heartbeat / Ping Listener
+            sse.addEventListener('ping', () => {
+                const now = new Date().toLocaleTimeString();
+                console.log(`[SyncManager] 📡 SSE Ping received at ${now}`);
+                this.resetPingWatchdog()
             });
 
             sse.addEventListener('POLL_DELETED', async (event: any) => {
@@ -176,11 +186,27 @@ export class SyncManager {
     }
 
     private disconnectSSE() {
+        if (this.pingTimeoutTrace) {
+            clearTimeout(this.pingTimeoutTrace);
+            this.pingTimeoutTrace = null;
+        }
         if (this.sse) {
             console.log('[SyncManager] Disconnecting SSE');
             this.sse.close();
             this.sse = null;
         }
+    }
+
+    private resetPingWatchdog() {
+        if (this.pingTimeoutTrace) clearTimeout(this.pingTimeoutTrace);
+
+        console.log(`[SyncManager] ⏱️ Watchdog reset at ${new Date().toLocaleTimeString()}. Timeout in ${this.PING_TIMEOUT_MS}ms`);
+
+        this.pingTimeoutTrace = setTimeout(() => {
+            console.warn(`[SyncManager] ⚠️ SSE Ping Timeout (${this.PING_TIMEOUT_MS}ms). Reconnecting...`);
+            this.disconnectSSE();
+            this.updateConnection();
+        }, this.PING_TIMEOUT_MS);
     }
 
     private async handleIncomingPoll(dto: any) {
@@ -306,19 +332,11 @@ export class SyncManager {
                 }
             }
 
-            // 3. Fetch updates from cloud (Incremental Sync)
-            // Use last sync time or default to a past date if first run
-            const since = this.lastSyncTime || new Date(0).toISOString();
-
-            const updates = await backendApi.syncPolls(this.email, since);
-
-            if (updates.length > 0) {
-                for (const dto of updates) {
-                    await this.handleIncomingSync(dto);
-                }
-                // Update lastSyncTime to now (or max lastEdited)
-                this.lastSyncTime = new Date().toISOString();
-            }
+            // 3. Fetch updates from cloud (Incremental Sync) - REMOVED per user request
+            // We now rely solely on SSE for updates.
+            // If we missed updates, the SSE connection logic (reconnect) will handle it
+            // or we could implement a different recovery mechanism if needed.
+            this.lastSyncTime = new Date().toISOString();
         } catch (error) {
             console.error('[SyncManager] Error during sync loop:', error);
         } finally {

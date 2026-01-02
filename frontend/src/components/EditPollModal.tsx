@@ -20,7 +20,6 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
 
     const getMinDateTime = () => {
         const now = new Date();
-        now.setMinutes(now.getMinutes() + 1);
         const offset = now.getTimezoneOffset() * 60000;
         return new Date(now.getTime() - offset).toISOString().slice(0, 16);
     };
@@ -188,6 +187,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
             };
 
             console.log('[EditPollModal] Saving updates:', { updates, republish });
+            // Republish flag is passed from state. Validation ensures it's correct.
             await onUpdate(poll.id, updates, republish);
             onClose();
         } catch (error) {
@@ -209,7 +209,19 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         isPersistentFinalAlert !== poll.isPersistentFinalAlert ||
         JSON.stringify([...selectedConsumers].sort()) !== JSON.stringify([...poll.consumers].sort());
 
-    const isDeadlineChanged = deadline !== formatDateForInput(poll.deadline);
+
+    const isAnonymityChanged = anonymityMode !== poll.anonymityMode;
+    const isRepublishMissing = isAnonymityChanged && !republish;
+
+    // Check for 15-min buffer requirement when enabling persistent alert
+    const isPersistentAlertEnabled = !poll.isPersistentFinalAlert && isPersistentFinalAlert;
+    const getMinutesUntilDeadline = () => {
+        if (!deadline) return 0;
+        const now = new Date();
+        const d = new Date(deadline);
+        return (d.getTime() - now.getTime()) / 60000;
+    };
+    const isBufferInsufficient = isPersistentAlertEnabled && getMinutesUntilDeadline() < 15;
 
     const isValid =
         question.trim() &&
@@ -217,8 +229,10 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         !hasDuplicateOptions() &&
         currentDefaultResponse &&
         isDateValid(deadline) &&
-        isDeadlineChanged &&
         selectedConsumers.length > 0 &&
+        selectedConsumers.length > 0 &&
+        !isRepublishMissing &&
+        !isBufferInsufficient &&
         hasChanges;
 
     return (
@@ -387,6 +401,15 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     <p className="text-mono-text/60 mt-0.5">
                                         The 1-minute warning will require action before it can be dismissed
                                     </p>
+                                    {showErrors && isBufferInsufficient && (
+                                        <p className="text-red-500 text-xs mt-2 font-medium flex items-start gap-2 bg-red-50 p-2 rounded border border-red-100">
+                                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                            <span>
+                                                Enabling persistent alerts requires at least 15 minutes notice.
+                                                Please extend the deadline.
+                                            </span>
+                                        </p>
+                                    )}
                                 </label>
                             </div>
 
@@ -396,13 +419,19 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                     id="republish"
                                     checked={republish}
                                     onChange={(e) => setRepublish(e.target.checked)}
-                                    className="mt-1 w-4 h-4 text-mono-primary rounded border-mono-primary/30 focus:ring-mono-accent"
+                                    className={`mt-1 w-4 h-4 text-mono-primary rounded border-mono-primary/30 focus:ring-mono-accent ${showErrors && isRepublishMissing ? 'ring-2 ring-red-500 border-red-500' : ''}`}
                                 />
                                 <label htmlFor="republish" className="text-mono-text text-sm">
                                     <span className="font-medium">Republish Poll</span>
                                     <p className="text-mono-text/60 mt-0.5">
                                         If enabled, <strong>all existing responses will be deleted</strong> and consumers must submit again.
                                     </p>
+                                    {showErrors && isRepublishMissing && (
+                                        <p className="text-red-500 text-xs mt-2 font-medium flex items-start gap-2 bg-red-50 p-2 rounded border border-red-100">
+                                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                            <span>Required when changing response tracking mode</span>
+                                        </p>
+                                    )}
                                 </label>
                             </div>
                         </div>
@@ -422,9 +451,6 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                 />
                                 {showErrors && !isDateValid(deadline) && (
                                     <p className="text-red-500 text-xs mt-1">Please select a valid future date</p>
-                                )}
-                                {showErrors && isDateValid(deadline) && !isDeadlineChanged && (
-                                    <p className="text-red-500 text-xs mt-1">Please update the deadline to a new time</p>
                                 )}
                                 <p className="text-sm text-mono-text/60 mt-2">
                                     Notifications will be sent at 60, 30, 15, and 1 minute before deadline

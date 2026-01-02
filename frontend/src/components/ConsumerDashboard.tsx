@@ -119,6 +119,29 @@ export default function ConsumerDashboard({
     }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
   }, [userPolls, responses, user.email]);
 
+  const analyticsPolls = useMemo(() => {
+    const now = new Date();
+    return [...userPolls].sort((a, b) => {
+      const timeA = new Date(a.deadline).getTime();
+      const timeB = new Date(b.deadline).getTime();
+      const isExpiredA = timeA < now.getTime();
+      const isExpiredB = timeB < now.getTime();
+
+      // If one is expired and the other isn't, put expired last
+      if (isExpiredA !== isExpiredB) {
+        return isExpiredA ? 1 : -1;
+      }
+
+      // If both are expired, sort by deadline descending (newest expired first)
+      if (isExpiredA) {
+        return timeB - timeA;
+      }
+
+      // If both are active, sort by deadline ascending (closest deadline first)
+      return timeA - timeB;
+    });
+  }, [userPolls]);
+
   // Notify when new polls are assigned to the user
   useEffect(() => {
     if (Notification.permission !== 'granted') return;
@@ -702,7 +725,7 @@ export default function ConsumerDashboard({
               </div>
             ) : (
               <div className="space-y-4">
-                {userPolls.map(poll => {
+                {analyticsPolls.map(poll => {
                   const totalConsumers = poll.consumers.length;
 
                   return (

@@ -322,6 +322,28 @@ function updatePoll(pollId, updates, republish = false) {
                 }
             }
         });
+        // Check for re-added consumers BEFORE applying updates if we are not republishing
+        // This handles the case where a user was removed (edit 1) and then re-added (edit 2)
+        // We want to wipe their old response so they see "Incoming" again.
+        let reAddedConsumers = [];
+        if (!republish && updates.consumers) {
+            try {
+                const currentPollStmt = getDb().prepare('SELECT consumers FROM polls WHERE localId = ?');
+                const currentPollRow = currentPollStmt.get(pollId);
+                if (currentPollRow) {
+                    const currentConsumers = JSON.parse(currentPollRow.consumers);
+                    const newConsumers = updates.consumers; // already parsed array from frontend
+                    // Identify consumers present in NEW list but NOT in OLD list
+                    reAddedConsumers = newConsumers.filter(nc => !currentConsumers.includes(nc));
+                    if (reAddedConsumers.length > 0) {
+                        console.log(`[SQLite DB] Found re-added consumers for poll ${pollId}:`, reAddedConsumers);
+                    }
+                }
+            }
+            catch (e) {
+                console.warn('[SQLite DB] Error checking for re-added consumers:', e);
+            }
+        }
         if (sets.length > 0) {
             const stmt = getDb().prepare(`UPDATE polls SET ${sets.join(', ')} WHERE localId = @localId`);
             stmt.run(values);
@@ -329,6 +351,14 @@ function updatePoll(pollId, updates, republish = false) {
         if (republish) {
             const deleteStmt = getDb().prepare('DELETE FROM responses WHERE pollLocalId = ?');
             deleteStmt.run(pollId);
+        }
+        else if (reAddedConsumers.length > 0) {
+            // Delete responses only for the specific consumers who were re-added
+            // Note: The column name in 'responses' table is 'userId', not 'consumerEmail'
+            const placeholders = reAddedConsumers.map(() => '?').join(',');
+            const deleteReAddedStmt = getDb().prepare(`DELETE FROM responses WHERE pollLocalId = ? AND userId IN (${placeholders})`);
+            deleteReAddedStmt.run(pollId, ...reAddedConsumers);
+            console.log(`[SQLite DB] Cleared old responses for ${reAddedConsumers.length} re-added consumers.`);
         }
         return { changes: 1 };
     }

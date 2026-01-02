@@ -3,7 +3,7 @@ import axios, { AxiosInstance } from 'axios';
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
 
-const API_BASE_URL = process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com';
+const API_BASE_URL = process.env.VITE_BACKEND_URL || 'http://localhost:8080';
 console.log(`[Backend API] Initialized with BASE_URL: ${API_BASE_URL}`);
 
 const apiClient: AxiosInstance = axios.create({
@@ -135,7 +135,7 @@ function mapPollToDTO(poll: any): PollCreateDTO {
         sharedWith: poll.consumers,
         type: 'POLL',
         localId,
-        defaultFlag: poll.showDefaultToConsumers, // ✅ FIX: Use actual user preference, not derived value
+        defaultFlag: poll.showDefaultToConsumers,
         defaultOption: poll.defaultResponse || poll.options[0]?.text || '',
         persistentAlert: !!poll.isPersistentFinalAlert,
         question: poll.question,
@@ -152,9 +152,6 @@ function mapPollToDTO(poll: any): PollCreateDTO {
     return dto;
 }
 
-// ============================================================================
-// API Methods
-// ============================================================================
 
 export async function createPoll(poll: any): Promise<CreatePollResponse> {
     console.log('\n' + '-'.repeat(80));
@@ -267,20 +264,6 @@ export async function login(email: string, password: string): Promise<string> {
 
 
 
-export async function syncPolls(email: string, since: string | null): Promise<PollSyncDTO[]> {
-    console.log(`[Backend API] Syncing polls for ${email} since ${since || 'BEGINNING'}`);
-    try {
-        const params: any = { userEmail: email };
-        if (since) params.since = since;
-
-        const response = await apiClient.get<PollSyncDTO[]>('/polls/sync', { params });
-        console.log(`[Backend API] Sync success! Received ${response.data.length} updates.`);
-        return response.data;
-    } catch (error: any) {
-        console.error('[Backend API] Sync error:', extractBackendError(error));
-        throw error;
-    }
-}
 
 
 // ============================================================================

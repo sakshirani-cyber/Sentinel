@@ -68,6 +68,17 @@ let isPersistentAlertLocked = false;
 const handleWindowBlur = () => {
     if (isPersistentAlertLocked && win) {
         console.log('[Main] Window blurred during persistent alert, reclaiming focus...');
+        if (win.isMinimized())
+            win.restore();
+        win.focus();
+        win.moveTop();
+        electron_1.app.focus({ steal: true });
+    }
+};
+const handleWindowMinimize = () => {
+    if (isPersistentAlertLocked && win) {
+        console.log('[Main] Minimize detected during persistent alert, restoring!');
+        win.restore();
         win.focus();
         win.moveTop();
         electron_1.app.focus({ steal: true });
@@ -91,22 +102,22 @@ function createWindow() {
     });
     // Remove menu bar
     win.setMenuBarVisibility(false);
-    // Disable DevTools shortcuts ALWAYS
-    win.webContents.on('before-input-event', (event, input) => {
-        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
-            event.preventDefault();
-        }
-        if (input.key === 'F12') {
-            event.preventDefault();
-        }
-    });
-    // Disable Right-Click (Inspect Element bypass)
-    win.webContents.on('context-menu', (e) => {
-        e.preventDefault();
-    });
+    // Disable DevTools shortcuts ALWAYS - DISABLED for debugging
+    // win.webContents.on('before-input-event', (event, input) => {
+    //     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    //         event.preventDefault();
+    //     }
+    //     if (input.key === 'F12') {
+    //         event.preventDefault();
+    //     }
+    // });
+    // Disable Right-Click (Inspect Element bypass) - DISABLED for debugging
+    // win.webContents.on('context-menu', (e) => {
+    //     e.preventDefault();
+    // });
     if (electron_is_dev_1.default) {
         win.loadURL('http://localhost:3000');
-        // win.webContents.openDevTools(); // Disabled per user request
+        win.webContents.openDevTools(); // Disabled per user request
     }
     else {
         win.loadFile(path.join(__dirname, '../dist/index.html'));
@@ -527,28 +538,39 @@ function createSecondaryWindow(display) {
             preload: path.join(__dirname, 'preload.js'),
         },
     });
-    // Disable DevTools and Context Menu for secondary windows too
-    secondaryWin.webContents.on('before-input-event', (event, input) => {
-        if (input.control && input.shift && input.key.toLowerCase() === 'i') {
-            event.preventDefault();
-        }
-        if (input.key === 'F12') {
-            event.preventDefault();
-        }
-    });
-    secondaryWin.webContents.on('context-menu', (e) => {
-        e.preventDefault();
-    });
+    // Disable DevTools and Context Menu for secondary windows too - DISABLED for debug
+    // secondaryWin.webContents.on('before-input-event', (event, input) => {
+    //     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    //         event.preventDefault();
+    //     }
+    //     if (input.key === 'F12') {
+    //         event.preventDefault();
+    //     }
+    // });
+    // secondaryWin.webContents.on('context-menu', (e) => {
+    //     e.preventDefault();
+    // });
     // Immediate refocus for secondary monitors
     secondaryWin.on('blur', () => {
         if (isPersistentAlertLocked && !secondaryWin.isDestroyed()) {
+            if (secondaryWin.isMinimized())
+                secondaryWin.restore();
+            secondaryWin.focus();
+            secondaryWin.moveTop();
+            electron_1.app.focus({ steal: true });
+        }
+    });
+    secondaryWin.on('minimize', () => {
+        if (isPersistentAlertLocked && !secondaryWin.isDestroyed()) {
+            secondaryWin.restore();
             secondaryWin.focus();
             secondaryWin.moveTop();
             electron_1.app.focus({ steal: true });
         }
     });
     if (isLinux) {
-        secondaryWin.setSimpleFullScreen(true);
+        secondaryWin.setFullScreen(true);
+        secondaryWin.setKiosk(true);
         secondaryWin.setSkipTaskbar(true);
     }
     secondaryWin.setAlwaysOnTop(true, 'screen-saver', 1);
@@ -607,9 +629,10 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             win.setFullScreenable(true);
             // Force maximize before fullscreen to ensure coverage
             win.maximize();
-            // Linux-specific: Use simpleFullscreen instead of native fullscreen
+            // Linux-specific: Standard fullscreen + Kiosk
             if (isLinux) {
-                win.setSimpleFullScreen(true);
+                win.setFullScreen(true);
+                win.setKiosk(true);
                 win.setSkipTaskbar(true);
             }
             else {
@@ -624,8 +647,9 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             win.setSkipTaskbar(true);
             win.show();
             win.focus();
-            // Immediate Refocus Listener
+            // Immediate Refocus Listeners
             win.on('blur', handleWindowBlur);
+            win.on('minimize', handleWindowMinimize);
             // Block keyboard shortcuts (Alt+Tab, Super, etc.)
             const shortcutsToBlock = [
                 'Alt+Tab',
@@ -674,6 +698,8 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                         win.setSkipTaskbar(true);
                         win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                     }
+                    if (win.isMinimized())
+                        win.restore();
                     win.moveTop();
                     win.focus();
                     electron_1.app.focus({ steal: true });
@@ -704,10 +730,6 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             isPersistentAlertLocked = false;
             // Unregister all global shortcuts
             electron_1.globalShortcut.unregisterAll();
-            // Remove blur listener
-            if (win) {
-                win.removeListener('blur', handleWindowBlur);
-            }
             // Cleanup heartbeat
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
@@ -724,7 +746,8 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             // Restore window state
             const isLinux = process.platform === 'linux';
             if (isLinux) {
-                win.setSimpleFullScreen(false);
+                win.setKiosk(false);
+                win.setFullScreen(false);
             }
             else {
                 win.setKiosk(false);
@@ -738,6 +761,11 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             win.setResizable(true);
             win.setMaximizable(true);
             win.setFullScreenable(true);
+            // Remove listeners
+            if (win) {
+                win.removeListener('blur', handleWindowBlur);
+                win.removeListener('minimize', handleWindowMinimize);
+            }
             // Restore previous window state
             if (lastKnownWindowState) {
                 if (lastKnownWindowState.isMaximized) {
