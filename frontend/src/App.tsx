@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import AuthPage from './components/AuthPage';
 import PublisherDashboard from './components/PublisherDashboard';
 import ConsumerDashboard from './components/ConsumerDashboard';
+import GlobalAlertManager from './components/GlobalAlertManager';
 
 export interface User {
   name: string;
@@ -303,30 +304,46 @@ function App() {
 
   if (viewMode === 'publisher' && user.isPublisher) {
     return (
-      <PublisherDashboard
-        user={user}
-        polls={polls}
-        responses={responses}
-        onCreatePoll={handleCreatePoll}
-        onDeletePoll={handleDeletePoll}
-        onUpdatePoll={handleUpdatePoll}
-        onSwitchMode={() => setViewMode('consumer')}
-        onLogout={handleLogout}
-      />
+      <>
+        <GlobalAlertManager
+          user={user}
+          polls={polls}
+          responses={responses}
+          onSubmitResponse={handleSubmitResponse}
+        />
+        <PublisherDashboard
+          user={user}
+          polls={polls}
+          responses={responses}
+          onCreatePoll={handleCreatePoll}
+          onDeletePoll={handleDeletePoll}
+          onUpdatePoll={handleUpdatePoll}
+          onSwitchMode={() => setViewMode('consumer')}
+          onLogout={handleLogout}
+        />
+      </>
     );
   }
 
   return (
-    <ConsumerDashboard
-      user={user}
-      polls={polls}
-      responses={responses}
-      onSubmitResponse={handleSubmitResponse}
-      onSwitchMode={() => user.isPublisher && setViewMode('publisher')}
-      onLogout={handleLogout}
-      successMessage={successMessage}
-      onClearMessage={() => setSuccessMessage(null)}
-    />
+    <>
+      <GlobalAlertManager
+        user={user}
+        polls={polls}
+        responses={responses}
+        onSubmitResponse={handleSubmitResponse}
+      />
+      <ConsumerDashboard
+        user={user}
+        polls={polls}
+        responses={responses}
+        onSubmitResponse={handleSubmitResponse}
+        onSwitchMode={() => user.isPublisher && setViewMode('publisher')}
+        onLogout={handleLogout}
+        successMessage={successMessage}
+        onClearMessage={() => setSuccessMessage(null)}
+      />
+    </>
   );
 }
 
