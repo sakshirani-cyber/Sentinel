@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { User, Poll, Response } from '../App';
 import { mapResultsToResponses } from '../services/pollService';
-import { Clock, CheckCircle, LogOut, ArrowRightLeft, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Clock, CheckCircle, LogOut, AlertTriangle, BarChart3 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import SignalCard from './SignalCard';
 import SignalDetail from './SignalDetail';
@@ -213,8 +213,7 @@ export default function ConsumerDashboard({
                   onClick={onSwitchMode}
                   className="flex items-center gap-2 px-4 py-2.5 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg"
                 >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Publisher</span>
+                  <span className="hidden sm:inline">Switch to Publisher</span>
                 </button>
               )}
 

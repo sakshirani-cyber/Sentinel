@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User, Poll, Response } from '../App';
-import { PlusCircle, List, LogOut, ArrowRightLeft, Shield } from 'lucide-react';
+import { PlusCircle, List, LogOut } from 'lucide-react';
 import logo from '../assets/logo.png';
 import CreatePoll from './CreatePoll';
 import PublishedPolls from './PublishedPolls';
@@ -66,8 +66,7 @@ export default function PublisherDashboard({
                 onClick={onSwitchMode}
                 className="flex items-center gap-2 px-4 py-2.5 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg"
               >
-                <ArrowRightLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Consumer</span>
+                <span className="hidden sm:inline">Switch to Consumer</span>
               </button>
 
               <button
