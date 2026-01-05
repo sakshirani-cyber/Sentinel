@@ -89,6 +89,62 @@ export function mapPollToDTO(poll: Poll): PollCreateDTO {
 export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[] {
     const responses: Response[] = [];
 
+    // Check if this is an anonymous poll (no individual vote data)
+    const isAnonymous = !dto.optionVotes;
+
+    if (isAnonymous) {
+        // For anonymous polls, create synthetic responses from optionCounts
+        // We don't have individual user data, so we create placeholder responses
+        let syntheticIndex = 0;
+
+        // Process option counts
+        if (dto.optionCounts) {
+            for (const [option, count] of Object.entries(dto.optionCounts)) {
+                for (let i = 0; i < count; i++) {
+                    responses.push({
+                        pollId: poll.id,
+                        consumerEmail: `anonymous-${syntheticIndex++}`,
+                        response: option,
+                        submittedAt: new Date().toISOString(),
+                        isDefault: false,
+                        skipReason: undefined,
+                    });
+                }
+            }
+        }
+
+        // Add default responses count
+        if (dto.defaultCount > 0) {
+            for (let i = 0; i < dto.defaultCount; i++) {
+                responses.push({
+                    pollId: poll.id,
+                    consumerEmail: `anonymous-${syntheticIndex++}`,
+                    response: poll.defaultResponse || 'Default',
+                    submittedAt: poll.deadline,
+                    isDefault: true,
+                    skipReason: undefined,
+                });
+            }
+        }
+
+        // Add skipped responses count
+        if (dto.reasonCount > 0) {
+            for (let i = 0; i < dto.reasonCount; i++) {
+                responses.push({
+                    pollId: poll.id,
+                    consumerEmail: `anonymous-${syntheticIndex++}`,
+                    response: poll.defaultResponse || 'Skipped',
+                    submittedAt: new Date().toISOString(),
+                    isDefault: true,
+                    skipReason: 'Reason provided (anonymous)',
+                });
+            }
+        }
+
+        return responses;
+    }
+
+    // Non-anonymous polls: Process individual vote data as before
     // 1. Process standard votes (optionVotes)
     if (dto.optionVotes) {
         for (const [option, votes] of Object.entries(dto.optionVotes)) {
