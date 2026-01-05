@@ -138,19 +138,32 @@ export class SyncManager {
             });
 
             sse.addEventListener('POLL_EDITED', async (event: any) => {
-                console.log('[SyncManager] SSE: POLL_EDITED:', event.data);
+                console.log('[SyncManager] SSE: POLL_EDITED received');
                 this.resetPingWatchdog(); // Activity counts as ping
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
 
+                    console.log(`[SyncManager] POLL_EDITED Payload keys: ${Object.keys(payload).join(', ')}`);
+                    console.log(`[SyncManager] POLL_EDITED Republish flag: ${payload.republish} (Type: ${typeof payload.republish})`);
+
                     // Check if this is a republish event - if so, delete local responses
-                    if (payload.republish === true || payload.republished === true) {
+                    // Handle various truthy values (boolean true, string "true", number 1)
+                    const isRepublish = payload.republish === true ||
+                        String(payload.republish).toLowerCase() === 'true' ||
+                        payload.republished === true ||
+                        payload.republished === 'true';
+
+                    if (isRepublish) {
                         const pollId = payload.signalId ? `poll-${payload.signalId}` : (payload.localId ? `poll-${payload.localId}` : null);
                         if (pollId) {
-                            console.log(`[SyncManager] Republish detected for poll ${pollId}, deleting local responses`);
+                            console.log(`[SyncManager] 🔄 Republish detected for poll ${pollId}, deleting local responses`);
                             deleteResponsesForPoll(pollId);
+                        } else {
+                            console.warn('[SyncManager] Republish detected but could not determine pollId');
                         }
+                    } else {
+                        console.log('[SyncManager] Normal edit (not republish), keeping responses');
                     }
 
                     await this.handleIncomingPoll(payload); // handleIncomingPoll uses INSERT OR REPLACE
