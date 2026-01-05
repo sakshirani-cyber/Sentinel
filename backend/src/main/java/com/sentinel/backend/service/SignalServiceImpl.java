@@ -202,10 +202,13 @@ public class SignalServiceImpl implements SignalService {
         log.info("[DB] Poll & Signal updated | signalId={} | durationMs={}",
                 dto.getSignalId(), System.currentTimeMillis() - dbStart);
 
+        PollSsePayload response = buildPollSsePayload(signal, poll);
+        response.setRepublish(dto.getRepublish());
+
         pollSsePublisher.publish(
                 signal.getSharedWith(),
                 POLL_EDITED,
-                buildPollSsePayload(signal, poll)
+                response
         );
 
         log.info("[SSE] Poll edited event published | signalId={} | recipients={}",

@@ -23,4 +23,6 @@ public class PollSsePayload {
 
     private String createdBy;
     private String[] sharedWith;
+
+    private boolean republish;
 }
