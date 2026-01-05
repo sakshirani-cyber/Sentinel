@@ -3,7 +3,7 @@ import axios, { AxiosInstance } from 'axios';
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
 
-const API_BASE_URL = process.env.VITE_BACKEND_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com';
 console.log(`[Backend API] Initialized with BASE_URL: ${API_BASE_URL}`);
 
 const apiClient: AxiosInstance = axios.create({
