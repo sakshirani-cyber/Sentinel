@@ -453,6 +453,20 @@ export function deletePollByCloudId(cloudSignalId: number) {
     }
 }
 
+export function deleteResponsesForPoll(pollId: string) {
+    console.log(`[SQLite DB] Deleting all responses for poll: ${pollId}`);
+    try {
+        const db = getDb();
+        const deleteStmt = db.prepare('DELETE FROM responses WHERE pollLocalId = ?');
+        const result = deleteStmt.run(pollId);
+        console.log(`[SQLite DB] Deleted ${result.changes} responses for poll ${pollId}`);
+        return result;
+    } catch (error) {
+        console.error('[SQLite DB] Error deleting responses for poll:', error);
+        throw error;
+    }
+}
+
 export function submitResponse(response: Response) {
     validateResponse(response);
     try {

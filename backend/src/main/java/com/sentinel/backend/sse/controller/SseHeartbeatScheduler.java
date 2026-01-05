@@ -25,6 +25,7 @@ public class SseHeartbeatScheduler {
                 emitter.send(
                         SseEmitter.event()
                                 .name(HEARTBEAT)
+                                .data("ping")
                                 .comment(KEEP_ALIVE)
                 );
             } catch (Exception ex) {

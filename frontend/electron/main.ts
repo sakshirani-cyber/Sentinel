@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen, globalShortcut } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
-import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll, deletePollByCloudId, updateResponseSyncStatus } from './db';
+import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus } from './db';
 import * as backendApi from './backendApi';
 import { autoUpdater } from 'electron-updater';
 import { syncManager } from './syncManager';

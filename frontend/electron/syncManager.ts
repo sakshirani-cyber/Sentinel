@@ -2,7 +2,7 @@ import { powerMonitor, net } from 'electron';
 const EventSourceLib = require('eventsource');
 const EventSource = EventSourceLib.EventSource || EventSourceLib.default || EventSourceLib;
 import * as backendApi from './backendApi';
-import { getPolls, getResponses, createPoll, submitResponse, updatePoll, deletePollByCloudId, updateResponseSyncStatus } from './db';
+import { getPolls, getResponses, createPoll, submitResponse, updatePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus } from './db';
 
 export class SyncManager {
     private email: string | null = null;
@@ -143,6 +143,16 @@ export class SyncManager {
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
+
+                    // Check if this is a republish event - if so, delete local responses
+                    if (payload.republish === true || payload.republished === true) {
+                        const pollId = payload.signalId ? `poll-${payload.signalId}` : (payload.localId ? `poll-${payload.localId}` : null);
+                        if (pollId) {
+                            console.log(`[SyncManager] Republish detected for poll ${pollId}, deleting local responses`);
+                            deleteResponsesForPoll(pollId);
+                        }
+                    }
+
                     await this.handleIncomingPoll(payload); // handleIncomingPoll uses INSERT OR REPLACE
                 } catch (e) {
                     console.error('[SyncManager] Error handling POLL_EDITED:', e);

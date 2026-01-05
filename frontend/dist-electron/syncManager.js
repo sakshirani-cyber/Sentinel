@@ -161,6 +161,14 @@ class SyncManager {
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
+                    // Check if this is a republish event - if so, delete local responses
+                    if (payload.republish === true || payload.republished === true) {
+                        const pollId = payload.signalId ? `poll-${payload.signalId}` : (payload.localId ? `poll-${payload.localId}` : null);
+                        if (pollId) {
+                            console.log(`[SyncManager] Republish detected for poll ${pollId}, deleting local responses`);
+                            (0, db_1.deleteResponsesForPoll)(pollId);
+                        }
+                    }
                     await this.handleIncomingPoll(payload); // handleIncomingPoll uses INSERT OR REPLACE
                 }
                 catch (e) {

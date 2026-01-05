@@ -20,6 +20,7 @@ public class PollSsePayload {
     private String defaultOption;
 
     private Boolean persistentAlert;
+    private Boolean republish;
 
     private String createdBy;
     private String[] sharedWith;
