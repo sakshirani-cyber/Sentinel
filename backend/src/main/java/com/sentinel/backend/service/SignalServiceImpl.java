@@ -202,10 +202,13 @@ public class SignalServiceImpl implements SignalService {
         log.info("[DB] Poll & Signal updated | signalId={} | durationMs={}",
                 dto.getSignalId(), System.currentTimeMillis() - dbStart);
 
+        PollSsePayload response = buildPollSsePayload(signal, poll);
+        response.setRepublish(dto.getRepublish());
+
         pollSsePublisher.publish(
                 signal.getSharedWith(),
                 POLL_EDITED,
-                buildPollSsePayload(signal, poll, dto.getRepublish())
+                response
         );
 
         log.info("[SSE] Poll edited event published | signalId={} | recipients={}",
@@ -471,10 +474,6 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private PollSsePayload buildPollSsePayload(Signal signal, Poll poll) {
-        return buildPollSsePayload(signal, poll, null);
-    }
-
-    private PollSsePayload buildPollSsePayload(Signal signal, Poll poll, Boolean republish) {
         return PollSsePayload.builder()
                 .signalId(signal.getId())
                 .question(poll.getQuestion())
@@ -484,7 +483,6 @@ public class SignalServiceImpl implements SignalService {
                 .defaultFlag(signal.getDefaultFlag())
                 .defaultOption(signal.getDefaultOption())
                 .persistentAlert(signal.getPersistentAlert())
-                .republish(republish)
                 .createdBy(signal.getCreatedBy())
                 .sharedWith(signal.getSharedWith())
                 .build();
