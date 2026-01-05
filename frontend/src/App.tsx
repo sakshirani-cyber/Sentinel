@@ -234,15 +234,22 @@ function App() {
       // Delete from local DB via Electron IPC
       if ((window as any).electron) {
         try {
-          console.log('[Frontend] Deleting from local DB:', pollId);
+          console.log('[Frontend] Initiating DB deletion for:', pollId);
           const result = await (window as any).electron.db.deletePoll(pollId);
           if (result.success) {
-            console.log('[Frontend] Poll deleted from local DB successfully');
+            console.log('[Frontend] Poll deleted from local DB successfully. Changes:', result.changes);
+            if (result.changes === 0) {
+              console.warn('[Frontend] Deletion called but 0 rows affected in DB. Poll might have been already deleted.');
+            }
           } else {
             console.error('[Frontend] Failed to delete poll from local DB:', result.error);
+            alert(`Failed to delete poll from local database: ${result.error}`);
+            // Re-fetch to restore state if deletion failed
+            const latestPolls = await (window as any).electron.db.getPolls();
+            setPolls(latestPolls);
           }
         } catch (error) {
-          console.error('[Frontend] Error deleting from local DB:', error);
+          console.error('[Frontend] IPC Error deleting from local DB:', error);
         }
       }
 

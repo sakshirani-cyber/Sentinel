@@ -8,6 +8,7 @@ exports.createPoll = createPoll;
 exports.getPolls = getPolls;
 exports.updatePoll = updatePoll;
 exports.deletePoll = deletePoll;
+exports.deletePollByCloudId = deletePollByCloudId;
 exports.submitResponse = submitResponse;
 exports.getResponses = getResponses;
 exports.updateResponseSyncStatus = updateResponseSyncStatus;
@@ -368,17 +369,41 @@ function updatePoll(pollId, updates, republish = false) {
     }
 }
 function deletePoll(pollId) {
+    console.log(`[SQLite DB] Deleting poll ${pollId} and its responses...`);
     try {
         const db = getDb();
         // Delete responses first to avoid foreign key constraint
         const deleteResponses = db.prepare('DELETE FROM responses WHERE pollLocalId = ?');
-        deleteResponses.run(pollId);
+        const respResult = deleteResponses.run(pollId);
+        console.log(`[SQLite DB] Deleted ${respResult.changes} responses for poll ${pollId}`);
         // Then delete the poll
         const deletePollStmt = db.prepare('DELETE FROM polls WHERE localId = ?');
-        return deletePollStmt.run(pollId);
+        const pollResult = deletePollStmt.run(pollId);
+        console.log(`[SQLite DB] Poll ${pollId} deletion result: ${pollResult.changes} row(s) affected`);
+        return pollResult;
     }
     catch (error) {
         console.error('[SQLite DB] Error deleting poll:', error);
+        throw error;
+    }
+}
+function deletePollByCloudId(cloudSignalId) {
+    console.log(`[SQLite DB] Deleting poll by cloudSignalId: ${cloudSignalId}`);
+    try {
+        const db = getDb();
+        // Find localId first
+        const stmt = db.prepare('SELECT localId FROM polls WHERE cloudSignalId = ?');
+        const row = stmt.get(cloudSignalId);
+        if (row) {
+            return deletePoll(row.localId);
+        }
+        else {
+            console.log(`[SQLite DB] No local poll found with cloudSignalId ${cloudSignalId}`);
+            return { changes: 0 };
+        }
+    }
+    catch (error) {
+        console.error('[SQLite DB] Error deleting poll by cloudId:', error);
         throw error;
     }
 }

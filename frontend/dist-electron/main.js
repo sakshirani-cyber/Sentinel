@@ -292,18 +292,36 @@ electron_1.app.whenReady().then(async () => {
             // Get the poll first to check if it has a cloudSignalId
             const polls = (0, db_1.getPolls)();
             const poll = polls.find(p => p.id === pollId);
+            if (!poll) {
+                console.warn(`[IPC Handler] db-delete-poll: Poll ${pollId} not found in DB`);
+            }
             // Delete from local DB
-            (0, db_1.deletePoll)(pollId);
+            const result = (0, db_1.deletePoll)(pollId);
+            console.log(`[IPC Handler] Local deletion result for ${pollId}:`, result);
             // If poll has cloudSignalId, sync deletion to cloud
             if (poll?.cloudSignalId) {
-                backendApi.deletePoll(poll.cloudSignalId).catch(err => {
-                    console.error('[IPC Handler] Failed to sync poll deletion to cloud:', err);
+                console.log(`[IPC Handler] Syncing deletion to cloud for signalId: ${poll.cloudSignalId}`);
+                backendApi.deletePoll(poll.cloudSignalId).then(() => {
+                    console.log(`[IPC Handler] Cloud deletion successful for signalId: ${poll.cloudSignalId}`);
+                }).catch(err => {
+                    console.error('[IPC Handler] Failed to sync poll deletion to cloud:', err.message);
                 });
             }
-            return { success: true };
+            return { success: true, changes: result.changes };
         }
         catch (error) {
             console.error('[IPC Handler] db-delete-poll error:', error.message);
+            return { success: false, error: error.message };
+        }
+    });
+    electron_1.ipcMain.handle('db-delete-poll-by-cloud-id', async (_event, cloudSignalId) => {
+        console.log(`[IPC Handler] db-delete-poll-by-cloud-id called for: ${cloudSignalId}`);
+        try {
+            const result = (0, db_1.deletePollByCloudId)(Number(cloudSignalId));
+            return { success: true, changes: result.changes };
+        }
+        catch (error) {
+            console.error('[IPC Handler] db-delete-poll-by-cloud-id error:', error.message);
             return { success: false, error: error.message };
         }
     });

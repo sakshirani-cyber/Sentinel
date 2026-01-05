@@ -2,7 +2,7 @@ import { powerMonitor, net } from 'electron';
 const EventSourceLib = require('eventsource');
 const EventSource = EventSourceLib.EventSource || EventSourceLib.default || EventSourceLib;
 import * as backendApi from './backendApi';
-import { getPolls, getResponses, createPoll, submitResponse, updatePoll, updateResponseSyncStatus } from './db';
+import { getPolls, getResponses, createPoll, submitResponse, updatePoll, deletePollByCloudId, updateResponseSyncStatus } from './db';
 
 export class SyncManager {
     private email: string | null = null;
@@ -92,9 +92,7 @@ export class SyncManager {
     private updateConnection() {
         if (!this.email) return;
 
-        const shouldBeConnected =
-            (this.deviceStatus === 'active' || this.deviceStatus === 'idle') &&
-            this.isOnline;
+        const shouldBeConnected = this.isOnline;
 
         if (shouldBeConnected) {
             if (!this.sse) {
@@ -152,7 +150,7 @@ export class SyncManager {
             });
 
             // Heartbeat / Ping Listener
-            sse.addEventListener('ping', () => {
+            sse.addEventListener('HEARTBEAT', () => {
                 const now = new Date().toLocaleTimeString();
                 console.log(`[SyncManager] 📡 SSE Ping received at ${now}`);
                 this.resetPingWatchdog()
@@ -163,8 +161,10 @@ export class SyncManager {
                 try {
                     const data = JSON.parse(event.data);
                     const signalId = data.payload || data;
-                    // Logic to delete local poll by cloudSignalId would go here
-                    // For now, let's just log it. We might need a db function for this.
+                    if (signalId) {
+                        deletePollByCloudId(Number(signalId));
+                        console.log(`[SyncManager] Successfully handled deletion for signalId: ${signalId}`);
+                    }
                 } catch (e) {
                     console.error('[SyncManager] Error handling POLL_DELETED:', e);
                 }
