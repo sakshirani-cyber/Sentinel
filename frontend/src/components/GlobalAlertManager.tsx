@@ -8,13 +8,15 @@ interface GlobalAlertManagerProps {
     polls: Poll[];
     responses: Response[];
     onSubmitResponse: (response: Response) => void;
+    onOpenPoll?: (pollId: string) => void;
 }
 
 export default function GlobalAlertManager({
     user,
     polls,
     responses,
-    onSubmitResponse
+    onSubmitResponse,
+    onOpenPoll
 }: GlobalAlertManagerProps) {
     const [showPersistentAlert, setShowPersistentAlert] = useState(false);
     const [persistentAlertPoll, setPersistentAlertPoll] = useState<Poll | null>(null);
@@ -96,14 +98,18 @@ export default function GlobalAlertManager({
             });
 
             notification.onclick = () => {
+                console.log('[GlobalAlertManager] Notification clicked for poll:', poll.id);
                 if ((window as any).electron) {
                     (window as any).electron.ipcRenderer.send('restore-window');
                 }
                 window.focus();
-                // If we are consumer, ideally we switch tab, but global manager just opens modal if needed? 
-                // For simple notification click, we might just focus window. 
-                // Or we could let App.tsx handle navigation? 
-                // For now, focusing window is good.
+                // Open the poll response modal
+                if (onOpenPoll) {
+                    console.log('[GlobalAlertManager] Calling onOpenPoll with pollId:', poll.id);
+                    onOpenPoll(poll.id);
+                } else {
+                    console.warn('[GlobalAlertManager] onOpenPoll callback not provided!');
+                }
             };
         });
     }, [userPolls, notifiedPolls, responses, user.email]);
@@ -129,10 +135,16 @@ export default function GlobalAlertManager({
                 });
 
                 notification.onclick = () => {
+                    console.log('[GlobalAlertManager] Update notification clicked for poll:', poll.id);
                     if ((window as any).electron) {
                         (window as any).electron.ipcRenderer.send('restore-window');
                     }
                     window.focus();
+                    // Open the poll response modal
+                    if (onOpenPoll) {
+                        console.log('[GlobalAlertManager] Calling onOpenPoll with pollId:', poll.id);
+                        onOpenPoll(poll.id);
+                    }
                 };
             }
         });
@@ -188,8 +200,10 @@ export default function GlobalAlertManager({
                             notification.onclick = () => {
                                 if ((window as any).electron) (window as any).electron.ipcRenderer.send('restore-window');
                                 window.focus();
-                                // If it's the 1-min alert and persistent is ON, we might want to handle differently, 
-                                // but usually focusing is enough.
+                                // Open the poll response modal
+                                if (onOpenPoll) {
+                                    onOpenPoll(poll.id);
+                                }
                             };
                         }
                     }

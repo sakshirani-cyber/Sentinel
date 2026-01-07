@@ -16,6 +16,8 @@ interface ConsumerDashboardProps {
   onLogout: () => void;
   successMessage?: string | null;
   onClearMessage?: () => void;
+  openPollId?: string | null;
+  onPollOpened?: () => void;
 }
 
 export default function ConsumerDashboard({
@@ -26,7 +28,9 @@ export default function ConsumerDashboard({
   onSwitchMode,
   onLogout,
   successMessage,
-  onClearMessage
+  onClearMessage,
+  openPollId,
+  onPollOpened
 }: ConsumerDashboardProps) {
   const [activeTab, setActiveTab] = useState<'incomplete' | 'completed' | 'analytics'>('incomplete');
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
@@ -75,10 +79,24 @@ export default function ConsumerDashboard({
     }
   };
 
-
-
-
-
+  // Handle opening poll from notification click
+  useEffect(() => {
+    console.log('[ConsumerDashboard] openPollId changed:', openPollId);
+    if (openPollId) {
+      const poll = polls.find(p => p.id === openPollId);
+      console.log('[ConsumerDashboard] Found poll:', poll);
+      if (poll) {
+        console.log('[ConsumerDashboard] Opening poll modal for:', poll.question);
+        setSelectedPoll(poll);
+        setActiveTab('incomplete'); // Switch to incomplete tab
+        if (onPollOpened) {
+          onPollOpened(); // Clear the openPollId in parent
+        }
+      } else {
+        console.warn('[ConsumerDashboard] Poll not found with id:', openPollId);
+      }
+    }
+  }, [openPollId, polls, onPollOpened]);
 
   // Track which alerts have been sent for each poll, including the deadline they were sent for
 

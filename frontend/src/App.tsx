@@ -62,8 +62,9 @@ function App() {
     return <PersistentAlertSecondary />;
   }
   // We need a view mode state to allow publishers to switch to consumer view
-  const [viewMode, setViewMode] = useState<'publisher' | 'consumer'>('publisher');
+  const [viewMode, setViewMode] = useState<'consumer' | 'publisher'>('consumer');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [openPollId, setOpenPollId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginSuccess, setLoginSuccess] = useState<string | null>(null);
 
@@ -173,8 +174,8 @@ function App() {
           console.log(`[App] [${new Date().toLocaleTimeString()}] ✅ Poll saved to local DB successfully`);
           setPolls(prev => [...prev, newPoll]);
 
-          // Redirect to consumer view with success message
-          setViewMode('consumer');
+          // Redirect to publisher view with success message
+          setViewMode('publisher');
           setSuccessMessage('Poll published successfully!');
 
           // Clear message after 5 seconds
@@ -285,6 +286,8 @@ function App() {
         if (result.success) {
           setResponses(prev => [...prev, response]);
         } else {
+          // Show user-friendly error message
+          alert(result.error || 'Failed to submit response');
           throw new Error(result.error || 'Failed to submit response');
         }
       } else {
@@ -317,6 +320,11 @@ function App() {
           polls={polls}
           responses={responses}
           onSubmitResponse={handleSubmitResponse}
+          onOpenPoll={(pollId) => {
+            console.log('[App Publisher Mode] onOpenPoll called with pollId:', pollId);
+            setOpenPollId(pollId);
+            setViewMode('consumer'); // Switch to consumer view to show the poll
+          }}
         />
         <PublisherDashboard
           user={user}
@@ -339,6 +347,10 @@ function App() {
         polls={polls}
         responses={responses}
         onSubmitResponse={handleSubmitResponse}
+        onOpenPoll={(pollId) => {
+          console.log('[App] onOpenPoll called with pollId:', pollId);
+          setOpenPollId(pollId);
+        }}
       />
       <ConsumerDashboard
         user={user}
@@ -349,6 +361,8 @@ function App() {
         onLogout={handleLogout}
         successMessage={successMessage}
         onClearMessage={() => setSuccessMessage(null)}
+        openPollId={openPollId}
+        onPollOpened={() => setOpenPollId(null)}
       />
     </>
   );

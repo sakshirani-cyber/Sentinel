@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen, globalShortcut, net } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
 import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus } from './db';
@@ -320,8 +320,18 @@ app.whenReady().then(async () => {
     });
 
     ipcMain.handle('backend-submit-vote', async (_event, pollId, signalId, userId, selectedOption, defaultResponse, reason) => {
-        console.log(`[IPC Handler] backend-submit-vote (local-first) called for pollId: ${pollId}, user: ${userId}`);
+        console.log(`[IPC Handler] backend-submit-vote called for pollId: ${pollId}, user: ${userId}`);
+
         try {
+            // Check if device is online before allowing submission
+            if (!net.isOnline()) {
+                console.warn('[IPC Handler] Device is offline, blocking vote submission');
+                return {
+                    success: false,
+                    error: 'Cannot submit response while offline. Please connect to the internet and try again.'
+                };
+            }
+
             // Write response to local DB first
             const responseData = {
                 pollId: pollId || (signalId ? signalId.toString() : undefined),
