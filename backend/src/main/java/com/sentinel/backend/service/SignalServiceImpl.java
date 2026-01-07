@@ -40,6 +40,7 @@ import static com.sentinel.backend.constant.Constants.POLL;
 import static com.sentinel.backend.constant.Constants.POLL_CREATED;
 import static com.sentinel.backend.constant.Constants.POLL_DELETED;
 import static com.sentinel.backend.constant.Constants.POLL_EDITED;
+import static com.sentinel.backend.constant.Constants.STATUS_DELETED;
 import static com.sentinel.backend.constant.Queries.GET_ROLE_BY_EMAIL_AND_PASSWORD;
 import static org.springframework.util.StringUtils.hasText;
 
@@ -234,9 +235,19 @@ public class SignalServiceImpl implements SignalService {
         }
 
         long dbStart = System.currentTimeMillis();
-        signalRepository.delete(signal);
-        log.info("[DB] Signal deleted | signalId={} | durationMs={}",
-                signalId, System.currentTimeMillis() - dbStart);
+
+        int pollResultsDeleted = pollResultRepository.deleteBySignalId(signalId);
+        int pollsDeleted = pollRepository.deleteBySignalId(signalId);
+        int signalsUpdated = signalRepository.updateSignalStatus(signalId, STATUS_DELETED);
+
+        log.info(
+                "[DB] Delete completed | signalId={} | pollResultsDeleted={} | pollsDeleted={} | signalUpdated={} | durationMs={}",
+                signalId,
+                pollResultsDeleted,
+                pollsDeleted,
+                signalsUpdated,
+                System.currentTimeMillis() - dbStart
+        );
 
         pollSsePublisher.publish(
                 signal.getSharedWith(),
