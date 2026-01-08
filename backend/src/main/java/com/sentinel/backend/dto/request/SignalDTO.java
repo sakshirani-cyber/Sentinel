@@ -40,6 +40,8 @@ public abstract class SignalDTO {
     @NotNull(message = "Persistent Flag is required")
     private Boolean persistentAlert;
 
+    private String[] labels;
+
     private Instant parsedEndUtc;
 
     public void normalizeCommon() {
@@ -49,6 +51,7 @@ public abstract class SignalDTO {
         defaultOption = NormalizationUtils.trimToNull(defaultOption);
 
         sharedWith = NormalizationUtils.trimArray(sharedWith);
+        labels = NormalizationUtils.trimArray(labels);
     }
 
     public void validateCommon() {
@@ -56,6 +59,7 @@ public abstract class SignalDTO {
         validateType();
         validateEndTimestamp();
         validateSharedWith();
+        validateLabels();
     }
 
     private void validateEndTimestamp() {
@@ -85,6 +89,13 @@ public abstract class SignalDTO {
         NormalizationUtils.validateUniqueIgnoreCase(sharedWith, "Shared With List");
 
         sharedWith = NormalizationUtils.trimAndUniquePreserveOrder(sharedWith);
+    }
+
+    private void validateLabels() {
+        if (labels == null) return;
+
+        NormalizationUtils.validateNoBlanks(labels, "Labels");
+        NormalizationUtils.validateUniqueCaseSensitive(labels, "Labels");
     }
 
     public Instant getEndTimestampUtc() {
