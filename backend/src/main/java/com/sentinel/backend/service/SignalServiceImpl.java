@@ -47,6 +47,7 @@ import static org.springframework.util.StringUtils.hasText;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class SignalServiceImpl implements SignalService {
 
     private final SignalRepository signalRepository;
@@ -56,134 +57,101 @@ public class SignalServiceImpl implements SignalService {
     private final PollSsePublisher pollSsePublisher;
 
     @Override
-    @Transactional
     public CreatePollResponse createPoll(PollCreateDTO dto) {
 
         long start = System.currentTimeMillis();
         log.info("[SERVICE] Create poll started | createdBy={}", dto.getCreatedBy());
 
-        normalizeAndValidateCreate(dto);
+        dto.normalizeCommon();
+        dto.normalizePoll();
+        dto.validateCommon();
+        dto.validatePoll();
 
         Signal signal = buildSignal(dto);
-
-        long dbStart = System.currentTimeMillis();
-        Signal savedSignal = signalRepository.save(signal);
-        log.info("[DB] Signal saved | signalId={} | durationMs={}",
-                savedSignal.getId(), System.currentTimeMillis() - dbStart);
+        signalRepository.save(signal);
 
         Poll poll = new Poll();
-        poll.setSignal(savedSignal);
+        poll.setSignal(signal);
         poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());
-
-        dbStart = System.currentTimeMillis();
         pollRepository.save(poll);
-        log.info("[DB] Poll saved | signalId={} | durationMs={}",
-                savedSignal.getId(), System.currentTimeMillis() - dbStart);
 
-        PollSsePayload payload = buildPollSsePayload(savedSignal, poll);
+        publish(signal, poll, POLL_CREATED, false);
 
-        pollSsePublisher.publish(
-                savedSignal.getSharedWith(),
-                POLL_CREATED,
-                payload
-        );
+        log.info("[SERVICE] Create poll completed | signalId={} | durationMs={}",
+                signal.getId(), System.currentTimeMillis() - start);
 
-        log.info("[SSE] Poll created event published | signalId={} | recipients={}",
-                savedSignal.getId(), savedSignal.getSharedWith().length);
-
-        log.info("[SERVICE] Create poll completed | signalId={} | totalDurationMs={}",
-                savedSignal.getId(), System.currentTimeMillis() - start);
-
-        return new CreatePollResponse(savedSignal.getId(), dto.getLocalId());
+        return new CreatePollResponse(signal.getId(), dto.getLocalId());
     }
 
     @Override
-    @Transactional
-    public void submitOrUpdateVote(PollSubmitDTO req) {
+    public void submitOrUpdateVote(PollSubmitDTO dto) {
 
         long start = System.currentTimeMillis();
-        log.info("[SERVICE] Submit poll response started | signalId={} | user={}",
-                req.getSignalId(), req.getUserEmail());
+        log.info("[SERVICE] Submit poll response | signalId={} | user={}",
+                dto.getSignalId(), dto.getUserEmail());
 
-        req.normalize();
+        dto.normalize();
 
-        Signal signal = getValidActivePollSignal(req.getSignalId(), req.getUserEmail());
-        Poll poll = getPoll(req.getSignalId());
+        Signal signal = getActivePollSignal(dto.getSignalId(), dto.getUserEmail());
+        Poll poll = getPoll(dto.getSignalId());
 
-        PollResult pr = buildOrUpdatePollResult(req, signal, poll);
+        PollResultId id = new PollResultId(signal.getId(), dto.getUserEmail());
 
-        long dbStart = System.currentTimeMillis();
-        pollResultRepository.save(pr);
-        log.info("[DB] Poll response saved | signalId={} | user={} | durationMs={}",
-                req.getSignalId(), req.getUserEmail(), System.currentTimeMillis() - dbStart);
+        PollResult result = pollResultRepository.findById(id)
+                .orElseGet(() -> {
+                    PollResult r = new PollResult();
+                    r.setId(id);
+                    r.setSignal(signal);
+                    return r;
+                });
 
-        log.info("[SERVICE] Submit poll response completed | signalId={} | user={} | totalDurationMs={}",
-                req.getSignalId(), req.getUserEmail(), System.currentTimeMillis() - start);
+        result.setSelectedOption(dto.getSelectedOption());
+        result.setDefaultResponse(dto.getDefaultResponse());
+        result.setReason(dto.getReason());
+
+        pollResultRepository.save(result);
+
+        log.info("[SERVICE] Submit poll response completed | signalId={} | durationMs={}",
+                dto.getSignalId(), System.currentTimeMillis() - start);
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public PollResultDTO getPollResults(Integer signalId) {
 
         long start = System.currentTimeMillis();
-        log.info("[SERVICE] Fetch poll results started | signalId={}", signalId);
+        log.info("[SERVICE] Fetch poll results | signalId={}", signalId);
 
-        PollResultDTO dto = buildPollResults(signalId);
+        Signal signal = getPollSignal(signalId);
+        Poll poll = getPoll(signalId);
 
-        log.info("[SERVICE] Fetch poll results completed | signalId={} | totalDurationMs={}",
-                signalId, System.currentTimeMillis() - start);
+        List<PollResult> results =
+                pollResultRepository.findByIdSignalId(signalId);
+
+        PollResultDTO dto = buildPollResults(signal, poll, results);
+
+        log.info("[SERVICE] Fetch poll results completed | durationMs={}",
+                System.currentTimeMillis() - start);
 
         return dto;
     }
 
     @Override
-    @Transactional
     public void editSignal(PollEditDTO dto) {
 
         long start = System.currentTimeMillis();
-        log.info("[SERVICE] Edit poll started | signalId={} | editedBy={}",
-                dto.getSignalId(), dto.getLastEditedBy());
+        log.info("[SERVICE] Edit poll | signalId={}", dto.getSignalId());
 
-        normalizeAndValidateEdit(dto);
+        dto.normalizeCommon();
+        dto.normalizePoll();
+        dto.validateCommon();
+        dto.validatePoll();
 
         Signal signal = getEditablePollSignal(dto.getSignalId());
         Poll poll = getPoll(dto.getSignalId());
 
-        if (dto.getRepublish()) {
-
-            long dbStart = System.currentTimeMillis();
-            pollResultRepository.deleteByIdSignalId(dto.getSignalId());
-            log.info(
-                    "[DB] Poll responses cleared for republish | signalId={} | durationMs={}",
-                    dto.getSignalId(),
-                    System.currentTimeMillis() - dbStart
-            );
-
-        } else {
-
-            Set<String> oldSharedWith = new HashSet<>(Arrays.asList(signal.getSharedWith()));
-            Set<String> newSharedWith = new HashSet<>(Arrays.asList(dto.getSharedWith()));
-
-            Set<String> removedUsers = new HashSet<>(oldSharedWith);
-            removedUsers.removeAll(newSharedWith);
-
-            if (!removedUsers.isEmpty()) {
-                long dbStart = System.currentTimeMillis();
-
-                pollResultRepository.deleteBySignalIdAndUserEmails(
-                        dto.getSignalId(),
-                        removedUsers
-                );
-
-                log.info(
-                        "[DB] Poll responses removed for unshared users | signalId={} | removedUsersCount={} | durationMs={}",
-                        dto.getSignalId(),
-                        removedUsers.size(),
-                        System.currentTimeMillis() - dbStart
-                );
-            }
-        }
+        handleRepublishOrUnshare(dto, signal);
 
         poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());
@@ -198,96 +166,66 @@ public class SignalServiceImpl implements SignalService {
         signal.setPersistentAlert(dto.getPersistentAlert());
         signal.setLabels(dto.getLabels());
 
-        long dbStart = System.currentTimeMillis();
         pollRepository.save(poll);
         signalRepository.save(signal);
-        log.info("[DB] Poll & Signal updated | signalId={} | durationMs={}",
-                dto.getSignalId(), System.currentTimeMillis() - dbStart);
 
-        PollSsePayload response = buildPollSsePayload(signal, poll);
-        response.setRepublish(dto.getRepublish());
+        publish(signal, poll, POLL_EDITED, dto.getRepublish());
 
-        pollSsePublisher.publish(
-                signal.getSharedWith(),
-                POLL_EDITED,
-                response
-        );
-
-        log.info("[SSE] Poll edited event published | signalId={} | recipients={}",
-                signal.getId(), signal.getSharedWith().length);
-
-        log.info("[SERVICE] Edit poll completed | signalId={} | totalDurationMs={}",
-                dto.getSignalId(), System.currentTimeMillis() - start);
+        log.info("[SERVICE] Edit poll completed | durationMs={}",
+                System.currentTimeMillis() - start);
     }
 
     @Override
-    @Transactional
     public void deleteSignal(Integer signalId) {
 
         long start = System.currentTimeMillis();
-        log.info("[SERVICE] Delete signal started | signalId={}", signalId);
+        log.info("[SERVICE] Delete poll | signalId={}", signalId);
 
-        Signal signal = signalRepository.findById(signalId)
-                .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
+        Signal signal = getPollSignal(signalId);
 
-        if (!POLL.equalsIgnoreCase(signal.getTypeOfSignal())) {
-            log.warn("[SERVICE] Delete rejected – not a poll | signalId={}", signalId);
-            throw new CustomException("Only poll signals can be deleted", HttpStatus.BAD_REQUEST);
-        }
-
-        long dbStart = System.currentTimeMillis();
-
-        int pollResultsDeleted = pollResultRepository.deleteBySignalId(signalId);
-        int pollsDeleted = pollRepository.deleteBySignalId(signalId);
-        int signalsUpdated = signalRepository.updateSignalStatus(signalId, STATUS_DELETED);
-
-        log.info(
-                "[DB] Delete completed | signalId={} | pollResultsDeleted={} | pollsDeleted={} | signalUpdated={} | durationMs={}",
-                signalId,
-                pollResultsDeleted,
-                pollsDeleted,
-                signalsUpdated,
-                System.currentTimeMillis() - dbStart
-        );
+        pollResultRepository.deleteBySignalId(signalId);
+        pollRepository.deleteBySignalId(signalId);
+        signalRepository.updateSignalStatus(signalId, STATUS_DELETED);
 
         pollSsePublisher.publish(
                 signal.getSharedWith(),
                 POLL_DELETED,
-                signal.getId()
+                signalId
         );
 
-        log.info("[SSE] Poll deleted event published | signalId={}", signalId);
-
-        log.info("[SERVICE] Delete signal completed | signalId={} | totalDurationMs={}",
-                signalId, System.currentTimeMillis() - start);
+        log.info("[SERVICE] Delete poll completed | durationMs={}",
+                System.currentTimeMillis() - start);
     }
 
     @Override
     public String login(String userEmail, String password) {
 
-        long start = System.currentTimeMillis();
-        log.info("[AUTH] Login attempt | userEmail={}", userEmail);
-
         try {
-            String role = jdbcTemplate.queryForObject(
+            return jdbcTemplate.queryForObject(
                     GET_ROLE_BY_EMAIL_AND_PASSWORD,
                     String.class,
                     userEmail,
                     password
             );
-
-            log.info("[AUTH] Login successful | userEmail={} | role={} | durationMs={}",
-                    userEmail, role, System.currentTimeMillis() - start);
-
-            return role;
-
-        } catch (EmptyResultDataAccessException e) {
-
-            log.warn("[AUTH] Login failed | userEmail={} | durationMs={}",
-                    userEmail, System.currentTimeMillis() - start);
-
+        } catch (EmptyResultDataAccessException ex) {
             return null;
         }
+    }
+
+    private Signal buildSignal(PollCreateDTO dto) {
+
+        Signal s = new Signal();
+        s.setCreatedBy(dto.getCreatedBy());
+        s.setAnonymous(dto.getAnonymous());
+        s.setTypeOfSignal(POLL);
+        s.setSharedWith(dto.getSharedWith());
+        s.setDefaultFlag(dto.getDefaultFlag());
+        s.setDefaultOption(dto.getDefaultOption());
+        s.setEndTimestamp(dto.getEndTimestampUtc());
+        s.setStatus(ACTIVE);
+        s.setPersistentAlert(dto.getPersistentAlert());
+        s.setLabels(dto.getLabels());
+        return s;
     }
 
     private Poll getPoll(Integer signalId) {
@@ -295,37 +233,7 @@ public class SignalServiceImpl implements SignalService {
                 .orElseThrow(() -> new CustomException("Poll not found", HttpStatus.NOT_FOUND));
     }
 
-    private void normalizeAndValidateCreate(PollCreateDTO dto) {
-        dto.normalizeCommon();
-        dto.normalizePoll();
-        dto.validateCommon();
-        dto.validatePoll();
-
-        if (!POLL.equalsIgnoreCase(dto.getType())) {
-            throw new CustomException("Invalid signal type", HttpStatus.BAD_REQUEST);
-        }
-
-        if (Boolean.TRUE.equals(dto.getDefaultFlag()) && !hasText(dto.getDefaultOption())) {
-            throw new CustomException("Default Option required", HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    private Signal buildSignal(PollCreateDTO dto) {
-        Signal s = new Signal();
-        s.setCreatedBy(dto.getCreatedBy());
-        s.setAnonymous(dto.getAnonymous());
-        s.setTypeOfSignal(POLL);
-        s.setSharedWith(dto.getSharedWith());
-        s.setDefaultFlag(Boolean.TRUE.equals(dto.getDefaultFlag()));
-        s.setDefaultOption(dto.getDefaultOption());
-        s.setEndTimestamp(dto.getEndTimestampUtc());
-        s.setStatus(ACTIVE);
-        s.setPersistentAlert(Boolean.TRUE.equals(dto.getPersistentAlert()));
-        s.setLabels(dto.getLabels());
-        return s;
-    }
-
-    private Signal getValidActivePollSignal(Integer signalId, String userEmail) {
+    private Signal getPollSignal(Integer signalId) {
 
         Signal s = signalRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
@@ -333,63 +241,73 @@ public class SignalServiceImpl implements SignalService {
         if (!POLL.equalsIgnoreCase(s.getTypeOfSignal())) {
             throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
         }
+        return s;
+    }
+
+    private Signal getActivePollSignal(Integer signalId, String userEmail) {
+
+        Signal s = getPollSignal(signalId);
 
         if (!ACTIVE.equals(s.getStatus())) {
             throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
         }
-
         if (!Arrays.asList(s.getSharedWith()).contains(userEmail)) {
             throw new CustomException("User not assigned", HttpStatus.BAD_REQUEST);
         }
-
         return s;
     }
 
-    private PollResult buildOrUpdatePollResult(
-            PollSubmitDTO req, Signal signal, Poll poll) {
+    private Signal getEditablePollSignal(Integer signalId) {
 
-        boolean opt = hasText(req.getSelectedOption());
-        boolean def = hasText(req.getDefaultResponse());
-        boolean rea = hasText(req.getReason());
+        Signal s = getPollSignal(signalId);
 
-        if ((opt ? 1 : 0) + (def ? 1 : 0) + (rea ? 1 : 0) != 1) {
-            throw new CustomException("Exactly one response required", HttpStatus.BAD_REQUEST);
+        if (!ACTIVE.equals(s.getStatus())) {
+            throw new CustomException("Poll completed", HttpStatus.BAD_REQUEST);
         }
-
-        if (opt && Arrays.stream(poll.getOptions()).noneMatch(req.getSelectedOption()::equals)) {
-            throw new CustomException("Invalid option", HttpStatus.BAD_REQUEST);
-        }
-
-        PollResultId id = new PollResultId(signal.getId(), req.getUserEmail());
-
-        PollResult pr = pollResultRepository.findById(id)
-                .orElseGet(() -> {
-                    PollResult x = new PollResult();
-                    x.setId(id);
-                    x.setSignal(signal);
-                    return x;
-                });
-
-        pr.setSelectedOption(opt ? req.getSelectedOption() : null);
-        pr.setDefaultResponse(def ? req.getDefaultResponse() : null);
-        pr.setReason(rea ? req.getReason() : null);
-
-        return pr;
+        return s;
     }
 
-    private PollResultDTO buildPollResults(Integer signalId) {
+    private void handleRepublishOrUnshare(PollEditDTO dto, Signal signal) {
 
-        Signal signal = signalRepository.findById(signalId)
-                .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
-
-        if (!POLL.equalsIgnoreCase(signal.getTypeOfSignal())) {
-            throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
+        if (Boolean.TRUE.equals(dto.getRepublish())) {
+            pollResultRepository.deleteByIdSignalId(dto.getSignalId());
+            return;
         }
 
-        Poll poll = getPoll(signalId);
-        List<PollResult> results = pollResultRepository.findByIdSignalId(signalId);
+        Set<String> removedUsers = new HashSet<>(Arrays.asList(signal.getSharedWith()));
+        removedUsers.removeAll(Arrays.asList(dto.getSharedWith()));
 
-        Set<String> activeOptions = new LinkedHashSet<>(Arrays.asList(poll.getOptions()));
+        if (!removedUsers.isEmpty()) {
+            pollResultRepository.deleteBySignalIdAndUserEmails(
+                    dto.getSignalId(), removedUsers
+            );
+        }
+    }
+
+    private void publish(
+            Signal signal,
+            Poll poll,
+            String event,
+            boolean republish
+    ) {
+        PollSsePayload payload = buildPollSsePayload(signal, poll);
+        payload.setRepublish(republish);
+
+        pollSsePublisher.publish(
+                signal.getSharedWith(),
+                event,
+                payload
+        );
+    }
+
+    private PollResultDTO buildPollResults(
+            Signal signal,
+            Poll poll,
+            List<PollResult> results
+    ) {
+
+        Set<String> activeOptions =
+                new LinkedHashSet<>(Arrays.asList(poll.getOptions()));
 
         Map<String, Integer> optionCounts = new LinkedHashMap<>();
         Map<String, List<UserVoteDTO>> optionVotes = new LinkedHashMap<>();
@@ -397,10 +315,10 @@ public class SignalServiceImpl implements SignalService {
         List<UserVoteDTO> defaultResponses = new ArrayList<>();
         Map<String, String> reasonResponses = new LinkedHashMap<>();
 
-        for (String opt : activeOptions) {
+        activeOptions.forEach(opt -> {
             optionCounts.put(opt, 0);
             optionVotes.put(opt, new ArrayList<>());
-        }
+        });
 
         for (PollResult r : results) {
 
@@ -412,7 +330,9 @@ public class SignalServiceImpl implements SignalService {
 
             if (r.getSelectedOption() != null) {
                 if (!activeOptions.contains(r.getSelectedOption())) {
-                    removedOptions.computeIfAbsent(r.getSelectedOption(), k -> new ArrayList<>()).add(vote);
+                    removedOptions
+                            .computeIfAbsent(r.getSelectedOption(), k -> new ArrayList<>())
+                            .add(vote);
                 } else {
                     optionCounts.compute(r.getSelectedOption(), (k, v) -> v + 1);
                     optionVotes.get(r.getSelectedOption()).add(vote);
@@ -425,7 +345,7 @@ public class SignalServiceImpl implements SignalService {
         }
 
         PollResultDTO dto = new PollResultDTO();
-        dto.setSignalId(signalId);
+        dto.setSignalId(signal.getId());
         dto.setTotalAssigned(signal.getSharedWith().length);
         dto.setTotalResponded(
                 optionVotes.values().stream().mapToInt(List::size).sum()
@@ -436,21 +356,33 @@ public class SignalServiceImpl implements SignalService {
         dto.setDefaultCount(defaultResponses.size());
         dto.setReasonCount(reasonResponses.size());
 
-        if (Boolean.TRUE.equals(signal.getAnonymous())) return dto;
+        if (Boolean.TRUE.equals(signal.getAnonymous())) {
+            return dto;
+        }
 
         dto.setOptionVotes(optionVotes.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey,
-                        e -> e.getValue().toArray(new UserVoteDTO[0]))));
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().toArray(new UserVoteDTO[0])
+                )));
 
-        dto.setRemovedOptions(removedOptions.isEmpty() ? null :
-                removedOptions.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getKey,
-                                e -> e.getValue().toArray(new UserVoteDTO[0]))));
+        dto.setRemovedOptions(
+                removedOptions.isEmpty() ? null :
+                        removedOptions.entrySet().stream()
+                                .collect(Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        e -> e.getValue().toArray(new UserVoteDTO[0])
+                                ))
+        );
 
-        dto.setDefaultResponses(defaultResponses.isEmpty() ? null :
-                defaultResponses.toArray(new UserVoteDTO[0]));
+        dto.setDefaultResponses(
+                defaultResponses.isEmpty() ? null :
+                        defaultResponses.toArray(new UserVoteDTO[0])
+        );
 
-        dto.setReasonResponses(reasonResponses.isEmpty() ? null : reasonResponses);
+        dto.setReasonResponses(
+                reasonResponses.isEmpty() ? null : reasonResponses
+        );
 
         return dto;
     }
@@ -459,31 +391,6 @@ public class SignalServiceImpl implements SignalService {
         if (r.getSelectedOption() != null) return r.getSelectedOption();
         if (r.getDefaultResponse() != null) return r.getDefaultResponse();
         return r.getReason();
-    }
-
-    private void normalizeAndValidateEdit(PollEditDTO dto) {
-        dto.normalizeCommon();
-        dto.normalizePoll();
-        dto.validateCommon();
-        dto.validatePoll();
-
-        if (Boolean.TRUE.equals(dto.getDefaultFlag())
-                && !hasText(dto.getDefaultOption())) {
-            throw new CustomException("Default Option required", HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    private Signal getEditablePollSignal(Integer signalId) {
-        Signal s = signalRepository.findById(signalId)
-                .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
-
-        if (!POLL.equalsIgnoreCase(s.getTypeOfSignal())) {
-            throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
-        }
-        if (!ACTIVE.equals(s.getStatus())) {
-            throw new CustomException("Poll completed", HttpStatus.BAD_REQUEST);
-        }
-        return s;
     }
 
     private PollSsePayload buildPollSsePayload(Signal signal, Poll poll) {
