@@ -3,6 +3,7 @@ import AuthPage from './components/AuthPage';
 import PublisherDashboard from './components/PublisherDashboard';
 import ConsumerDashboard from './components/ConsumerDashboard';
 import GlobalAlertManager from './components/GlobalAlertManager';
+import LabelManager from './components/LabelManager';
 
 export interface User {
   name: string;
@@ -23,7 +24,8 @@ export interface Poll {
   publisherEmail: string;
   publisherName: string;
   deadline: string;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'scheduled';
+  scheduledFor?: string;
   consumers: string[];
   defaultResponse?: string;
   showDefaultToConsumers: boolean;
@@ -62,7 +64,7 @@ function App() {
     return <PersistentAlertSecondary />;
   }
   // We need a view mode state to allow publishers to switch to consumer view
-  const [viewMode, setViewMode] = useState<'consumer' | 'publisher'>('consumer');
+  const [viewMode, setViewMode] = useState<'consumer' | 'publisher' | 'labels'>('consumer');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [openPollId, setOpenPollId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -260,6 +262,30 @@ function App() {
     }
   };
 
+  const handlePublishNow = async (poll: Poll) => {
+    try {
+      console.log(`[App] 🚀 Publishing scheduled poll now: ${poll.id}`);
+      const updatedPoll = { ...poll, status: 'active' as const, scheduledFor: undefined, publishedAt: new Date().toISOString() };
+
+      // Treat it as a new creation to trigger the full sync flow (which now won't be skipped since status is active)
+      if ((window as any).electron) {
+        const result = await (window as any).electron.backend.createPoll(updatedPoll);
+        if (result.success) {
+          console.log('[App] ✅ Scheduled poll published successfully');
+          setPolls(prev => prev.map(p => p.id === poll.id ? updatedPoll : p));
+        } else {
+          console.error('[App] ❌ Failed to publish scheduled poll:', result.error);
+          alert('Failed to publish poll: ' + result.error);
+        }
+      }
+    } catch (error) {
+      console.error('[App] Error publishing poll:', error);
+      alert('Error publishing poll');
+    }
+  };
+
+
+
   const handleSubmitResponse = async (response: Response) => {
     try {
       // Find poll by ID or by cloudSignalId (for backend polls)
@@ -335,6 +361,31 @@ function App() {
           onUpdatePoll={handleUpdatePoll}
           onSwitchMode={() => setViewMode('consumer')}
           onLogout={handleLogout}
+          onManageLabels={() => setViewMode('labels')}
+          onPublishNow={handlePublishNow}
+        />
+      </>
+    );
+  }
+
+  if (viewMode === 'labels' && user.isPublisher) {
+    return (
+      <>
+        <GlobalAlertManager
+          user={user}
+          polls={polls}
+          responses={responses}
+          onSubmitResponse={handleSubmitResponse}
+          onOpenPoll={(pollId) => {
+            console.log('[App Label Mode] onOpenPoll called with pollId:', pollId);
+            setOpenPollId(pollId);
+            setViewMode('consumer');
+          }}
+        />
+        <LabelManager
+          onBack={() => setViewMode('publisher')}
+          polls={polls}
+          user={user}
         />
       </>
     );

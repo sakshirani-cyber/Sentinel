@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { User, Poll, Response } from '../App';
 import { mapResultsToResponses } from '../services/pollService';
-import { Clock, CheckCircle, LogOut, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Clock, CheckCircle, LogOut, AlertTriangle, BarChart3, Settings } from 'lucide-react';
 import logo from '../assets/logo.png';
 import SignalCard from './SignalCard';
 import SignalDetail from './SignalDetail';
@@ -37,6 +37,7 @@ export default function ConsumerDashboard({
   const [selectedPollForAnalytics, setSelectedPollForAnalytics] = useState<Poll | null>(null);
   const [analyticsResponses, setAnalyticsResponses] = useState<Response[]>([]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleAnalyticsClick = async (poll: Poll) => {
     setSelectedPollForAnalytics(poll);
@@ -106,6 +107,7 @@ export default function ConsumerDashboard({
 
   const userPolls = useMemo(() => {
     return polls.filter(p =>
+      p.status !== 'scheduled' && // Exclude scheduled polls - they're not published yet
       p.consumers.some((c: string) => c.toLowerCase() === user.email.toLowerCase())
     );
   }, [polls, user.email]);
@@ -235,13 +237,36 @@ export default function ConsumerDashboard({
                 </button>
               )}
 
-              <button
-                onClick={onLogout}
-                className="p-2.5 text-mono-bg/70 hover:text-mono-bg hover:bg-mono-bg/10 rounded-xl transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="p-2.5 text-mono-bg/70 hover:text-mono-bg hover:bg-mono-bg/10 rounded-xl transition-colors"
+                  title="Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+
+                {showSettings && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowSettings(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-mono-primary rounded-xl shadow-xl border border-mono-bg/10 py-1 z-50 overflow-hidden">
+                      <button
+                        onClick={() => {
+                          onLogout();
+                          setShowSettings(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-mono-bg hover:bg-mono-accent/10 flex items-center gap-2 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

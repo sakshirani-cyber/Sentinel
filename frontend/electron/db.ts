@@ -42,6 +42,7 @@ export function initDB() {
                     syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending', 'error'
                     isEdited INTEGER DEFAULT 0, -- boolean 0/1
                     updatedAt TEXT,
+                    scheduledFor TEXT,
                     createdAt TEXT DEFAULT CURRENT_TIMESTAMP
                 );
 
@@ -56,6 +57,14 @@ export function initDB() {
                     syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending'
                     FOREIGN KEY (pollLocalId) REFERENCES polls(localId),
                     UNIQUE(pollLocalId, userId)
+                );
+
+                CREATE TABLE IF NOT EXISTS labels (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    color TEXT NOT NULL,
+                    description TEXT,
+                    createdAt TEXT DEFAULT CURRENT_TIMESTAMP
                 );
             `);
             console.log('[SQLite DB] Tables created/verified successfully.');
@@ -89,6 +98,11 @@ export function initDB() {
             if (!columns.includes('updatedAt')) {
                 console.log('[SQLite DB] Migrating: Adding updatedAt to polls table');
                 db.exec("ALTER TABLE polls ADD COLUMN updatedAt TEXT");
+            }
+
+            if (!columns.includes('scheduledFor')) {
+                console.log('[SQLite DB] Migrating: Adding scheduledFor to polls table');
+                db.exec("ALTER TABLE polls ADD COLUMN scheduledFor TEXT");
             }
 
             const respTableInfo = db.prepare("PRAGMA table_info(responses)").all();
@@ -169,7 +183,8 @@ interface Poll {
     isPersistentFinalAlert: boolean;
     consumers: string[];
     publishedAt: string;
-    status: 'active' | 'completed';
+    status: 'active' | 'completed' | 'scheduled';
+    scheduledFor?: string;
     cloudSignalId?: number;
     syncStatus?: 'synced' | 'pending' | 'error';
     isEdited?: boolean;
@@ -247,12 +262,12 @@ export function createPoll(poll: Poll) {
                 localId, question, options, publisherEmail, publisherName, 
                 status, deadline, anonymityMode, isPersistentFinalAlert, 
                 consumers, defaultResponse, showDefaultToConsumers, publishedAt,
-                cloudSignalId, syncStatus, isEdited, updatedAt
+                cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor
             ) VALUES (
                 @localId, @question, @options, @publisherEmail, @publisherName, 
                 @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
                 @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
-                @cloudSignalId, @syncStatus, @isEdited, @updatedAt
+                @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor
             )
             ON CONFLICT(localId) DO UPDATE SET
                 question = excluded.question,
@@ -270,7 +285,8 @@ export function createPoll(poll: Poll) {
                 cloudSignalId = excluded.cloudSignalId,
                 syncStatus = excluded.syncStatus,
                 isEdited = excluded.isEdited,
-                updatedAt = excluded.updatedAt
+                updatedAt = excluded.updatedAt,
+                scheduledFor = excluded.scheduledFor
         `);
 
         const info = stmt.run({
@@ -290,7 +306,8 @@ export function createPoll(poll: Poll) {
             cloudSignalId: poll.cloudSignalId || null,
             syncStatus: poll.syncStatus || 'pending',
             isEdited: poll.isEdited ? 1 : 0,
-            updatedAt: poll.updatedAt || new Date().toISOString()
+            updatedAt: poll.updatedAt || new Date().toISOString(),
+            scheduledFor: poll.scheduledFor || null
         });
 
         return info;
@@ -313,7 +330,7 @@ export function getPolls(): Poll[] {
             options: JSON.parse(row.options),
             publisherEmail: row.publisherEmail,
             publisherName: row.publisherName,
-            status: row.status as 'active' | 'completed',
+            status: row.status as 'active' | 'completed' | 'scheduled',
             deadline: row.deadline,
             anonymityMode: row.anonymityMode as 'anonymous' | 'record',
             isPersistentFinalAlert: !!row.isPersistentFinalAlert,
@@ -324,7 +341,8 @@ export function getPolls(): Poll[] {
             cloudSignalId: row.cloudSignalId,
             syncStatus: (row.syncStatus as 'synced' | 'pending' | 'error') || 'pending',
             isEdited: !!row.isEdited,
-            updatedAt: row.updatedAt
+            updatedAt: row.updatedAt,
+            scheduledFor: row.scheduledFor
         }));
     } catch (error) {
         console.error('[SQLite DB] Error getting polls:', error);
@@ -345,7 +363,7 @@ export function updatePoll(pollId: string, updates: Partial<Poll>, republish: bo
         const fields = [
             'question', 'options', 'publisherEmail', 'publisherName', 'status',
             'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt'
+            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor'
         ];
 
         fields.forEach(field => {
@@ -524,6 +542,73 @@ export function updateResponseSyncStatus(pollLocalId: string, userId: string, st
         return stmt.run(status, pollLocalId, userId);
     } catch (error) {
         console.error('[SQLite DB] Error updating response sync status:', error);
+        throw error;
+    }
+}
+
+// Labels
+export function createLabel(label: { id: string, name: string, color: string, description?: string, createdAt: string }) {
+    try {
+        const stmt = getDb().prepare(`
+            INSERT INTO labels (id, name, color, description, createdAt)
+            VALUES (@id, @name, @color, @description, @createdAt)
+        `);
+        return stmt.run(label);
+    } catch (error) {
+        console.error('[SQLite DB] Error creating label:', error);
+        throw error;
+    }
+}
+
+export function getLabels() {
+    try {
+        const stmt = getDb().prepare('SELECT * FROM labels ORDER BY createdAt DESC');
+        return stmt.all();
+    } catch (error) {
+        console.error('[SQLite DB] Error getting labels:', error);
+        return [];
+    }
+}
+
+export function deleteLabel(id: string) {
+    try {
+        const stmt = getDb().prepare('DELETE FROM labels WHERE id = ?');
+        return stmt.run(id);
+    } catch (error) {
+        console.error('[SQLite DB] Error deleting label:', error);
+        throw error;
+    }
+}
+
+export function updateLabel(id: string, updates: { name?: string, color?: string, description?: string }) {
+    try {
+        const fields: string[] = [];
+        const values: any[] = [];
+
+        if (updates.name !== undefined) {
+            fields.push('name = ?');
+            values.push(updates.name);
+        }
+        if (updates.color !== undefined) {
+            fields.push('color = ?');
+            values.push(updates.color);
+        }
+        if (updates.description !== undefined) {
+            fields.push('description = ?');
+            values.push(updates.description);
+        }
+
+        if (fields.length === 0) {
+            throw new Error('No valid fields to update');
+        }
+
+        values.push(id); // Add id for WHERE clause
+
+        const query = `UPDATE labels SET ${fields.join(', ')} WHERE id = ?`;
+        const stmt = getDb().prepare(query);
+        return stmt.run(...values);
+    } catch (error) {
+        console.error('[SQLite DB] Error updating label:', error);
         throw error;
     }
 }

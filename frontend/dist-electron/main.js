@@ -43,6 +43,7 @@ const db_1 = require("./db");
 const backendApi = __importStar(require("./backendApi"));
 const electron_updater_1 = require("electron-updater");
 const syncManager_1 = require("./syncManager");
+const pollScheduler_1 = require("./pollScheduler");
 // Auto-updater logging
 electron_updater_1.autoUpdater.logger = console;
 // autoUpdater.autoDownload = true; // default is true
@@ -233,6 +234,12 @@ electron_1.app.whenReady().then(async () => {
             poll.syncStatus = 'pending';
             await (0, db_1.createPoll)(poll);
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending`);
+            // Check if this is a SCHEDULED poll
+            if (poll.status === 'scheduled') {
+                console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🕒 Poll is SCHEDULED for ${poll.scheduledFor}. Skipping cloud sync.`);
+                console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🎉 Returning success to frontend (scheduled poll saved locally)`);
+                return { success: true };
+            }
             // Try to sync to backend immediately but don't block
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ☁️ Step 2: Initiating cloud sync (non-blocking)...`);
             backendApi.createPoll(poll).then(async (result) => {
@@ -438,6 +445,9 @@ electron_1.app.whenReady().then(async () => {
         console.error('[Main] CRITICAL: Failed to initialize Database:', error);
     }
     setupAutoLaunch();
+    // Start poll scheduler to automatically publish scheduled polls
+    console.log('[Main] Starting poll scheduler...');
+    pollScheduler_1.pollScheduler.start();
     createWindow();
     // Check for updates
     if (!electron_is_dev_1.default) {
@@ -877,6 +887,53 @@ electron_1.ipcMain.handle('db-update-poll', async (_event, { pollId, updates, re
     }
     catch (error) {
         console.error('Error updating poll:', error);
+        return { success: false, error: error.message };
+    }
+});
+// ------------------------------------
+// Labels (Experimental)
+// ------------------------------------
+electron_1.ipcMain.handle('db-create-label', async (event, label) => {
+    console.log('[IPC Main] Handling db-create-label request:', label);
+    try {
+        const result = (0, db_1.createLabel)(label);
+        return { success: true, data: result };
+    }
+    catch (error) {
+        console.error('[IPC Main] Error creating label:', error);
+        return { success: false, error: error.message };
+    }
+});
+electron_1.ipcMain.handle('db-get-labels', async () => {
+    console.log('[IPC Main] Handling db-get-labels request');
+    try {
+        const labels = (0, db_1.getLabels)();
+        return { success: true, data: labels };
+    }
+    catch (error) {
+        console.error('[IPC Main] Error getting labels:', error);
+        return { success: false, error: error.message };
+    }
+});
+electron_1.ipcMain.handle('db-delete-label', async (event, id) => {
+    console.log('[IPC Main] Handling db-delete-label request:', id);
+    try {
+        const result = (0, db_1.deleteLabel)(id);
+        return { success: true, data: result };
+    }
+    catch (error) {
+        console.error('[IPC Main] Error deleting label:', error);
+        return { success: false, error: error.message };
+    }
+});
+electron_1.ipcMain.handle('db-update-label', async (event, { id, updates }) => {
+    console.log('[IPC Main] Handling db-update-label request:', id, updates);
+    try {
+        const result = (0, db_1.updateLabel)(id, updates);
+        return { success: true, data: result };
+    }
+    catch (error) {
+        console.error('[IPC Main] Error updating label:', error);
         return { success: false, error: error.message };
     }
 });
