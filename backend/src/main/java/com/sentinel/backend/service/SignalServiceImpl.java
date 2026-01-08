@@ -196,6 +196,7 @@ public class SignalServiceImpl implements SignalService {
         signal.setLastEdited(Instant.now());
         signal.setEndTimestamp(dto.getEndTimestampUtc());
         signal.setPersistentAlert(dto.getPersistentAlert());
+        signal.setLabels(dto.getLabels());
 
         long dbStart = System.currentTimeMillis();
         pollRepository.save(poll);
@@ -320,6 +321,7 @@ public class SignalServiceImpl implements SignalService {
         s.setEndTimestamp(dto.getEndTimestampUtc());
         s.setStatus(ACTIVE);
         s.setPersistentAlert(Boolean.TRUE.equals(dto.getPersistentAlert()));
+        s.setLabels(dto.getLabels());
         return s;
     }
 
@@ -496,6 +498,7 @@ public class SignalServiceImpl implements SignalService {
                 .persistentAlert(signal.getPersistentAlert())
                 .createdBy(signal.getCreatedBy())
                 .sharedWith(signal.getSharedWith())
+                .labels(signal.getLabels())
                 .build();
     }
 }
