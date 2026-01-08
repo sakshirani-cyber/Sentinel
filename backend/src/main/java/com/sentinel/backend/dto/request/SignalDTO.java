@@ -40,56 +40,51 @@ public abstract class SignalDTO {
     @NotNull(message = "Persistent Flag is required")
     private Boolean persistentAlert;
 
-    public void normalizeCommon() {
-        if (createdBy != null) createdBy = createdBy.trim();
-        if (endTimestamp != null) endTimestamp = endTimestamp.trim();
-        if (type != null) type = type.trim();
-        if (defaultOption != null) defaultOption = defaultOption.trim();
-
-        if (sharedWith != null) {
-            for (int i = 0; i < sharedWith.length; i++) {
-                if (sharedWith[i] != null) sharedWith[i] = sharedWith[i].trim();
-            }
-        }
-    }
-
     private Instant parsedEndUtc;
 
-    public void validateCommon() {
-        validateType();
+    public void normalizeCommon() {
+        createdBy = NormalizationUtils.trimToNull(createdBy);
+        endTimestamp = NormalizationUtils.trimToNull(endTimestamp);
+        type = NormalizationUtils.trimToNull(type);
+        defaultOption = NormalizationUtils.trimToNull(defaultOption);
 
+        sharedWith = NormalizationUtils.trimArray(sharedWith);
+    }
+
+    public void validateCommon() {
+
+        validateType();
+        validateEndTimestamp();
+        validateSharedWith();
+    }
+
+    private void validateEndTimestamp() {
         try {
             Instant parsed = Instant.parse(endTimestamp);
-
             if (parsed.isBefore(Instant.now())) {
-                throw new IllegalArgumentException("End Time Stamp must be in the future (UTC)");
+                throw new IllegalArgumentException(
+                        "End Time Stamp must be in the future (UTC)"
+                );
             }
-
             this.parsedEndUtc = parsed;
-
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException(
                     "End Time Stamp must be UTC ISO-8601 format, e.g. 2025-12-17T16:30:00Z"
             );
         }
+    }
 
+    private void validateSharedWith() {
         if (sharedWith == null || sharedWith.length == 0) {
-            throw new IllegalArgumentException("Shared With List must contain at least one user");
+            throw new IllegalArgumentException(
+                    "Shared With List must contain at least one user"
+            );
         }
 
-        this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
+        NormalizationUtils.validateNoBlanks(sharedWith, "Shared With List");
+        NormalizationUtils.validateUniqueIgnoreCase(sharedWith, "Shared With List");
 
-        for (String s : sharedWith) {
-            if (s == null || s.trim().isEmpty()) {
-                throw new IllegalArgumentException("Shared With List contains empty/blank user email(s)");
-            }
-        }
-
-        if (NormalizationUtils.hasDuplicatesIgnoreCase(sharedWith)) {
-            throw new IllegalArgumentException("Shared With List contains duplicate user email(s) (case-insensitive)");
-        }
-
-        this.sharedWith = NormalizationUtils.trimAndUnique(sharedWith);
+        sharedWith = NormalizationUtils.trimAndUniquePreserveOrder(sharedWith);
     }
 
     public Instant getEndTimestampUtc() {
@@ -97,17 +92,14 @@ public abstract class SignalDTO {
     }
 
     public void validateType() {
-        if (type == null || type.trim().isEmpty()) {
-            throw new IllegalArgumentException("Type is required");
-        }
-
         try {
-            String normalized = type.trim().toUpperCase();
+            String normalized = type.toUpperCase();
             SignalType.valueOf(normalized);
-            type = normalized;
-        } catch (IllegalArgumentException ex) {
+            this.type = normalized;
+        } catch (Exception e) {
             throw new IllegalArgumentException(
-                    "Invalid type. Allowed values: " + Arrays.toString(SignalType.values())
+                    "Invalid type. Allowed values: " +
+                            Arrays.toString(SignalType.values())
             );
         }
     }
