@@ -1,5 +1,6 @@
 package com.sentinel.backend.dto.request;
 
+import com.sentinel.backend.util.NormalizationUtils;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -14,13 +15,13 @@ public class PollSubmitDTO {
     private String userEmail;
 
     private String selectedOption;
-
     private String defaultResponse;
-
     private String reason;
 
     public void normalize() {
-        if (userEmail != null) userEmail = userEmail.trim();
-        if (selectedOption != null) selectedOption = selectedOption.trim();
+        userEmail = NormalizationUtils.trimToNull(userEmail);
+        selectedOption = NormalizationUtils.trimToNull(selectedOption);
+        defaultResponse = NormalizationUtils.trimToNull(defaultResponse);
+        reason = NormalizationUtils.trimToNull(reason);
     }
 }
