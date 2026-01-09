@@ -15,9 +15,9 @@ import static com.sentinel.backend.constant.Queries.DELETE_POLL_RESULTS_BY_SIGNA
 
 public interface PollResultRepository extends JpaRepository<PollResult, PollResultId> {
 
-    List<PollResult> findByIdSignalId(Integer signalId);
+    List<PollResult> findByIdSignalId(Long signalId);
 
-    void deleteByIdSignalId(Integer signalId);
+    void deleteByIdSignalId(Long signalId);
 
     @Modifying
     @Query(
@@ -25,12 +25,12 @@ public interface PollResultRepository extends JpaRepository<PollResult, PollResu
             nativeQuery = true
     )
     void deleteBySignalIdAndUserEmails(
-            @Param("signalId") Integer signalId,
+            @Param("signalId") Long signalId,
             @Param("userEmails") Set<String> userEmails
     );
 
     @Modifying
     @Query(DELETE_POLL_RESULTS_BY_SIGNAL_ID)
-    int deleteBySignalId(@Param("signalId") Integer signalId);
+    int deleteBySignalId(@Param("signalId") Long signalId);
 
 }

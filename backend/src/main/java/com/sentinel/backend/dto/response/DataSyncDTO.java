@@ -9,7 +9,7 @@ import java.time.Instant;
 @AllArgsConstructor
 public class DataSyncDTO {
 
-    private Integer signalId;
+    private Long signalId;
     private String question;
     private String[] options;
     private String status;

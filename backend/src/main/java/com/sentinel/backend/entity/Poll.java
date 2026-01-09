@@ -17,7 +17,7 @@ public class Poll {
 
     @Id
     @Column(name = "signal_id", nullable = false)
-    private Integer signalId;
+    private Long signalId;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId

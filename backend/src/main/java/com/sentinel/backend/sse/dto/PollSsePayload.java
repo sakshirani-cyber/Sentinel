@@ -9,7 +9,7 @@ import java.time.Instant;
 @Builder
 public class PollSsePayload {
 
-    private Integer signalId;
+    private Long signalId;
     private String question;
     private String[] options;
 

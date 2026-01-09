@@ -106,7 +106,7 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     @Transactional(readOnly = true)
-    public PollResultDTO getPollResults(Integer signalId) {
+    public PollResultDTO getPollResults(Long signalId) {
 
         Signal signal = getPollSignal(signalId);
         Poll poll = getPoll(signalId);
@@ -152,7 +152,7 @@ public class SignalServiceImpl implements SignalService {
     }
 
     @Override
-    public void deleteSignal(Integer signalId) {
+    public void deleteSignal(Long signalId) {
 
         Signal signal = getPollSignal(signalId);
 
@@ -198,12 +198,12 @@ public class SignalServiceImpl implements SignalService {
         return s;
     }
 
-    private Poll getPoll(Integer signalId) {
+    private Poll getPoll(Long signalId) {
         return pollRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Poll not found", HttpStatus.NOT_FOUND));
     }
 
-    private Signal getPollSignal(Integer signalId) {
+    private Signal getPollSignal(Long signalId) {
 
         Signal s = signalRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
@@ -214,7 +214,7 @@ public class SignalServiceImpl implements SignalService {
         return s;
     }
 
-    private Signal getActivePollSignal(Integer signalId, String userEmail) {
+    private Signal getActivePollSignal(Long signalId, String userEmail) {
 
         Signal s = getPollSignal(signalId);
 
@@ -227,7 +227,7 @@ public class SignalServiceImpl implements SignalService {
         return s;
     }
 
-    private Signal getEditablePollSignal(Integer signalId) {
+    private Signal getEditablePollSignal(Long signalId) {
 
         Signal s = getPollSignal(signalId);
 

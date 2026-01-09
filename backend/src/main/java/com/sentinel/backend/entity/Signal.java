@@ -18,7 +18,7 @@ public class Signal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Column(name = "created_by", nullable = false)
     private String createdBy;

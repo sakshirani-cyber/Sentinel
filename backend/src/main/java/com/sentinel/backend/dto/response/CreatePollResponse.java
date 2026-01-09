@@ -8,6 +8,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CreatePollResponse {
-    private Integer signalId;
+    private Long signalId;
     private Long localId;
 }

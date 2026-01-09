@@ -9,7 +9,7 @@ import lombok.Data;
 public class PollSubmitDTO {
 
     @NotNull(message = "Signal ID is required")
-    private Integer signalId;
+    private Long signalId;
 
     @NotBlank(message = "User Email is required")
     private String userEmail;
