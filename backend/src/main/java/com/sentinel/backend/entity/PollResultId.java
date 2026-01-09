@@ -15,7 +15,7 @@ import java.io.Serializable;
 public class PollResultId implements Serializable {
 
     @Column(name = "signal_id", nullable = false)
-    private Integer signalId;
+    private Long signalId;
 
     @Column(name = "user_email", nullable = false)
     private String userEmail;
