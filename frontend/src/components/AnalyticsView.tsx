@@ -2,6 +2,7 @@ import { Poll, Response } from '../App';
 import * as XLSX from 'xlsx';
 import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download } from 'lucide-react';
 import LabelText from './LabelText';
+import LabelPill from './LabelPill';
 import { useState, useEffect } from 'react';
 
 interface Label {
@@ -141,7 +142,14 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
           <div>
             <h2 className="text-mono-text mb-1 text-lg font-medium">Poll Analytics</h2>
-            <p className="text-mono-text/70 text-sm mt-1 break-all max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</p>
+            <div className="text-mono-text/70 text-sm mt-1 break-all max-w-full" style={{ wordBreak: 'break-all' }}>
+              <LabelText text={poll.question} labels={labels} />
+            </div>
+            {poll.labels && poll.labels.length > 0 && (
+              <div className="mt-2">
+                <LabelPill labels={poll.labels} />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {canExport && (

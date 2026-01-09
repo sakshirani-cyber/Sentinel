@@ -1,5 +1,6 @@
 import { cn } from './ui/utils';
 import { parseTextSegments } from '../utils/labelUtils';
+import { useState, useEffect } from 'react';
 
 interface Label {
     id: string;
@@ -10,11 +11,28 @@ interface Label {
 
 interface LabelTextProps {
     text: string;
-    labels: Label[];
+    labels?: Label[];
     className?: string;
 }
 
-export default function LabelText({ text, labels, className = '' }: LabelTextProps) {
+export default function LabelText({ text, labels: propLabels, className = '' }: LabelTextProps) {
+    const [fetchedLabels, setFetchedLabels] = useState<Label[]>([]);
+    const labels = propLabels || fetchedLabels;
+
+    useEffect(() => {
+        if (!propLabels && (window as any).electron?.db) {
+            const fetchLabels = async () => {
+                try {
+                    const result = await (window as any).electron.db.getLabels();
+                    setFetchedLabels(result.success ? result.data : []);
+                } catch (error) {
+                    console.error('Failed to fetch labels in LabelText:', error);
+                }
+            };
+            fetchLabels();
+        }
+    }, [propLabels]);
+
     const segments = parseTextSegments(text, labels);
 
     return (
@@ -24,12 +42,11 @@ export default function LabelText({ text, labels, className = '' }: LabelTextPro
                     return (
                         <span
                             key={index}
-                            className="inline-flex items-center mx-0.5 rounded-full px-3 py-0.5 border shadow-sm align-baseline"
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[0.85em] font-medium border shadow-sm align-baseline mx-0.5"
                             style={{
                                 backgroundColor: `${segment.label.color}20`,
                                 borderColor: `${segment.label.color}50`,
                                 color: segment.label.color,
-                                fontSize: '0.9em' // Match font adjustment if any
                             }}
                             title={segment.label.description || segment.label.name}
                         >

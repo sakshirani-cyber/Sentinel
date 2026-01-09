@@ -1,6 +1,7 @@
 import { Poll, Response } from '../App';
 import { Clock, User, Shield, AlertCircle, CheckCircle, XCircle, Edit } from 'lucide-react';
 import LabelText from './LabelText';
+import LabelPill from './LabelPill';
 import { useState, useEffect } from 'react';
 
 interface Label {
@@ -142,6 +143,13 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
             </div>
           )}
         </div>
+
+        {/* Labels */}
+        {poll.labels && poll.labels.length > 0 && (
+          <div className="mb-3">
+            <LabelPill labels={poll.labels} />
+          </div>
+        )}
 
         {/* Response Display (if completed) */}
         {isCompleted && userResponse && (

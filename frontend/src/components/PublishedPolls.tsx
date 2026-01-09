@@ -4,6 +4,8 @@ import { mapResultsToResponses } from '../services/pollService';
 import { Clock, Users, BarChart3, Trash2, Calendar, Edit, PenTool, X, Eye } from 'lucide-react';
 import AnalyticsView from './AnalyticsView';
 import EditPollModal from './EditPollModal';
+import LabelPill from './LabelPill';
+import LabelText from './LabelText';
 
 interface PublishedPollsProps {
   polls: Poll[];
@@ -186,7 +188,9 @@ export default function PublishedPolls({
                         </span>
                       )}
                     </div>
-                    <h3 className="text-mono-text text-lg font-medium mb-2 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</h3>
+                    <h3 className="text-mono-text text-lg font-medium mb-2 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
+                      <LabelText text={poll.question} />
+                    </h3>
                     <div className="flex flex-wrap gap-3 text-sm text-mono-text/60">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-4 h-4" />
@@ -216,6 +220,11 @@ export default function PublishedPolls({
                   <div className="px-2 py-1 bg-mono-primary/5 text-mono-text/70 rounded text-xs capitalize border border-mono-primary/10">
                     {poll.anonymityMode}
                   </div>
+                  {poll.labels && poll.labels.length > 0 && (
+                    <div className="flex-grow">
+                      <LabelPill labels={poll.labels} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 pt-4 border-t border-mono-primary/5">
@@ -342,15 +351,25 @@ export default function PublishedPolls({
 
               <div>
                 <p className="text-sm text-mono-text/60 mb-1 font-medium">Question</p>
-                <p className="text-mono-text text-lg break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{selectedPollForDetails.question}</p>
+                <p className="text-mono-text text-lg break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
+                  <LabelText text={selectedPollForDetails.question} />
+                </p>
               </div>
+              {selectedPollForDetails.labels && selectedPollForDetails.labels.length > 0 && (
+                <div>
+                  <p className="text-sm text-mono-text/60 mb-2 font-medium">Labels</p>
+                  <LabelPill labels={selectedPollForDetails.labels} />
+                </div>
+              )}
               <div>
                 <p className="text-sm text-mono-text/60 mb-2 font-medium">Options</p>
                 <ul className="space-y-2">
                   {selectedPollForDetails.options.map((opt) => (
                     <li key={opt.id} className="flex items-center gap-3 text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
                       <span className="w-2 h-2 bg-mono-accent rounded-full ring-2 ring-mono-accent/30"></span>
-                      <span className="flex-1 min-w-0 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{opt.text}</span>
+                      <span className="flex-1 min-w-0 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
+                        <LabelText text={opt.text} />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -358,7 +377,7 @@ export default function PublishedPolls({
               <div>
                 <p className="text-sm text-mono-text/60 mb-1 font-medium">Default Response</p>
                 <p className="text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10 inline-block break-all max-w-full" style={{ wordBreak: 'break-all' }}>
-                  {selectedPollForDetails.defaultResponse}
+                  <LabelText text={selectedPollForDetails.defaultResponse || 'None'} />
                 </p>
               </div>
               <div>
