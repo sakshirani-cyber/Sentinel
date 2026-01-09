@@ -5,14 +5,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
+import java.time.Instant;
 @Entity
 @Table(
         name = "label",
@@ -35,11 +33,11 @@ public class LabelEntity {
     @Column(nullable = false, length = 7)
     private String color;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false,
+            insertable = false
+    )
+    private Instant createdAt;
 }
