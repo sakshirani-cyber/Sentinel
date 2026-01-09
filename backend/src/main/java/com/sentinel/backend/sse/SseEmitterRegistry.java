@@ -49,7 +49,7 @@ public class SseEmitterRegistry {
                     emitters.size()
             );
         } else {
-            log.debug(
+            log.error(
                     "[SSE][REGISTRY] Remove requested but emitter not found | userEmail={}",
                     userEmail
             );
@@ -61,7 +61,7 @@ public class SseEmitterRegistry {
         SseEmitter emitter = emitters.get(userEmail);
 
         if (emitter == null) {
-            log.debug(
+            log.error(
                     "[SSE][REGISTRY] Emitter lookup miss | userEmail={}",
                     userEmail
             );

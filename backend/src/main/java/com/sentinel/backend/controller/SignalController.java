@@ -25,8 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 import static com.sentinel.backend.constant.Constants.CREATED;
 import static com.sentinel.backend.constant.Constants.DELETED;
 import static com.sentinel.backend.constant.Constants.EDITED;
-import static com.sentinel.backend.constant.Constants.OK;
 import static com.sentinel.backend.constant.Constants.SAVED;
+import static com.sentinel.backend.constant.Constants.SUCCESS;
 
 @RestController
 @RequestMapping("/api/signals")
@@ -103,7 +103,7 @@ public class SignalController {
                 System.currentTimeMillis() - start
         );
 
-        return ResponseEntity.ok(ApiResponse.success(OK, dto));
+        return ResponseEntity.ok(ApiResponse.success(SUCCESS, dto));
     }
 
     @PutMapping("/poll/edit")
@@ -184,6 +184,6 @@ public class SignalController {
                 System.currentTimeMillis() - start
         );
 
-        return ResponseEntity.ok(ApiResponse.success(OK, role));
+        return ResponseEntity.ok(ApiResponse.success(SUCCESS, role));
     }
 }
