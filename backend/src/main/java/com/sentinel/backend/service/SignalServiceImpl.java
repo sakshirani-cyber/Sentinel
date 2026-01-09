@@ -84,7 +84,6 @@ public class SignalServiceImpl implements SignalService {
         dto.normalize();
 
         Signal signal = getActivePollSignal(dto.getSignalId(), dto.getUserEmail());
-        Poll poll = getPoll(dto.getSignalId());
 
         PollResultId id = new PollResultId(signal.getId(), dto.getUserEmail());
 

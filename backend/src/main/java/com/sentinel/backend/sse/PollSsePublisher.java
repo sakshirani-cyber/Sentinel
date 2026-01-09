@@ -34,8 +34,7 @@ public class PollSsePublisher {
 
             if (emitter == null) {
                 offline++;
-                pollSyncCache.put(userEmail, event);
-                dbService.asyncInsert(userEmail, event);
+                storeForLater(userEmail, event);
                 continue;
             }
 
@@ -46,19 +45,23 @@ public class PollSsePublisher {
                                 .data(event)
                 );
                 delivered++;
+
+                log.debug("[SSE][PUBLISH] Delivered to active user | userEmail={} | eventType={}", userEmail, eventType);
+
             } catch (Exception ex) {
                 failed++;
                 registry.remove(userEmail);
-                pollSyncCache.put(userEmail, event);
+                storeForLater(userEmail, event);
+
                 log.warn(
                         "[SSE][PUBLISH][ERROR] Delivery failed | eventType={} | userEmail={} | exception={}",
                         eventType,
                         userEmail,
                         ex.getMessage()
                 );
-                dbService.asyncInsert(userEmail, event);
             }
         }
+
         log.info(
                 "[SSE][PUBLISH] Event publish completed | eventType={} | totalRecipients={} | delivered={} | offline={} | failed={} | durationMs={}",
                 eventType,
@@ -68,5 +71,10 @@ public class PollSsePublisher {
                 failed,
                 System.currentTimeMillis() - start
         );
+    }
+
+    private <T> void storeForLater(String userEmail, SseEvent<T> event) {
+        pollSyncCache.put(userEmail, event);
+        dbService.asyncInsert(userEmail, event);
     }
 }
