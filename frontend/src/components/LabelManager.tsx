@@ -395,7 +395,7 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
                                                         color: editingId === label.id ? editColor : label.color
                                                     }}
                                                 >
-                                                    {label.name}
+                                                    #{label.name}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 align-middle">

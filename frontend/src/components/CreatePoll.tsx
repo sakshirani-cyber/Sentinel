@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Poll } from '../App';
 import { Plus, X, Eye, Check, Upload, Loader2, CalendarClock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PollPreview from './PollPreview';
 import { cn } from './ui/utils';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { parseLabelsFromText } from '../utils/labelUtils';
+import LabelInput from './LabelInput';
+
+interface Label {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+}
 
 interface CreatePollProps {
   user: User;
@@ -30,6 +40,23 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [labels, setLabels] = useState<Label[]>([]);
+  const [explicitLabels, setExplicitLabels] = useState<string[]>([]);
+
+  // Fetch labels on mount
+  useEffect(() => {
+    const fetchLabels = async () => {
+      if ((window as any).electron?.db) {
+        try {
+          const result = await (window as any).electron.db.getLabels();
+          setLabels(result.success ? result.data : []);
+        } catch (error) {
+          console.error('Failed to fetch labels:', error);
+        }
+      }
+    };
+    fetchLabels();
+  }, []);
 
   // Set minimum datetime to current time
   const getMinDateTime = () => {
@@ -167,6 +194,11 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
       const validOptions = options.filter(o => o.trim());
       const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
 
+      const tLabels = parseLabelsFromText(question);
+      options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
+      const derived = new Set(tLabels);
+      const combinedLabels = Array.from(new Set([...Array.from(derived), ...explicitLabels]));
+
       const poll: Poll = {
         id: `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         publisherEmail: user.email,
@@ -186,7 +218,8 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         status: isScheduled ? 'scheduled' : 'active',
         isPersistentAlert: false,
         alertBeforeMinutes: 15,
-        scheduledFor: isScheduled ? new Date(scheduleTime).toISOString() : undefined
+        scheduledFor: isScheduled ? new Date(scheduleTime).toISOString() : undefined,
+        labels: combinedLabels
       };
 
       console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] 📋 Poll data prepared:`, {
@@ -216,6 +249,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
       setScheduleTime('');
       setIsPersistentFinalAlert(false);
       setSelectedConsumers([]);
+      setExplicitLabels([]);
       setShowPreview(false);
       setUploadStats(null);
       setShowErrors(false);
@@ -247,6 +281,75 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
     }
 
     return true;
+  };
+
+  const handleLabelClick = (labelName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    let targetId: string | null = null;
+
+    // Check Question
+    if (parseLabelsFromText(question).includes(labelName)) {
+      targetId = 'poll-question';
+    } else {
+      // Check Options
+      for (let i = 0; i < options.length; i++) {
+        if (parseLabelsFromText(options[i]).includes(labelName)) {
+          targetId = `poll-option-${i}`;
+          break;
+        }
+      }
+    }
+
+    if (targetId) {
+      const el = document.getElementById(targetId);
+      if (el) {
+        // Custom smooth scroll implementation for "slower/better" feel
+        const scrollContainer = el.closest('.overflow-y-auto') || document.scrollingElement || document.documentElement;
+        const start = (scrollContainer as HTMLElement).scrollTop || window.pageYOffset;
+
+        // Target position: center-aligned in viewport/container
+        const rect = el.getBoundingClientRect();
+        const containerRect = scrollContainer instanceof HTMLElement ? scrollContainer.getBoundingClientRect() : { top: 0, height: window.innerHeight };
+        const targetPos = start + rect.top - containerRect.top - (containerRect.height / 2) + (rect.height / 2);
+
+        const distance = targetPos - start;
+        const duration = 1000; // 1 second for a nice slow feel
+        let startTime: number | null = null;
+
+        const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        const animation = (currentTime: number) => {
+          if (startTime === null) startTime = currentTime;
+          const timeElapsed = currentTime - startTime;
+          const progress = Math.min(timeElapsed / duration, 1);
+          const easeProgress = easeInOutCubic(progress);
+
+          if (scrollContainer === document.documentElement || scrollContainer === document.scrollingElement) {
+            window.scrollTo(0, start + distance * easeProgress);
+          } else {
+            (scrollContainer as HTMLElement).scrollTop = start + distance * easeProgress;
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(animation);
+          } else {
+            el.focus();
+            // Visual feedback: Flash a blue highlight
+            el.style.transition = 'all 0.5s ease-in-out';
+            el.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.5)';
+            el.style.borderColor = '#3b82f6';
+
+            setTimeout(() => {
+              el.style.boxShadow = '';
+              el.style.borderColor = '';
+            }, 1500);
+          }
+        };
+
+        requestAnimationFrame(animation);
+      }
+    }
   };
 
   const isValid =
@@ -369,16 +472,16 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
             <label className="block text-slate-700 mb-2">
               Question <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <LabelInput
+              id="poll-question"
               value={question}
-              onChange={(e) => setQuestion(e.target.value)}
+              onChange={setQuestion}
+              labels={labels}
+              placeholder="e.g., Are you on leave tomorrow? (Type # to add labels)"
               className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !question.trim()
                 ? 'border-red-500 focus:ring-red-500'
                 : 'border-slate-300 focus:ring-blue-500'
                 }`}
-              placeholder="e.g., Are you on leave tomorrow?"
-              autoFocus
             />
             {showErrors && !question.trim() && (
               <p className="text-red-500 text-xs mt-1">Question is required</p>
@@ -394,15 +497,17 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
             <div className="space-y-3">
               {options.map((option, index) => (
                 <div key={index} className="flex gap-2">
-                  <input
-                    type="text"
+                  <LabelInput
+                    id={`poll-option-${index}`}
                     value={option}
-                    onChange={(e) => handleOptionChange(index, e.target.value)}
-                    className={`flex-1 px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !option.trim()
+                    onChange={(value) => handleOptionChange(index, value)}
+                    labels={labels}
+                    placeholder={`Option ${index + 1} (Type # to add labels)`}
+                    containerClassName="flex-1"
+                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !option.trim()
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-slate-300 focus:ring-blue-500'
                       }`}
-                    placeholder={`Option ${index + 1}`}
                   />
                   {options.length > 2 && (
                     <button
@@ -521,6 +626,124 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 </p>
               </label>
             </div>
+          </div>
+
+          {/* Poll Labels */}
+          <div>
+            <label className="block text-slate-700 mb-2">
+              Poll Labels
+              <span className="text-sm text-slate-500 ml-2">
+                (Tags from text are auto-selected)
+              </span>
+            </label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full justify-between flex items-center px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all text-left"
+                >
+                  <div className="flex flex-wrap gap-2 items-center py-1">
+                    {(() => {
+                      const tLabels = parseLabelsFromText(question);
+                      options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
+                      const derived = new Set(tLabels);
+                      const combined = Array.from(new Set([...Array.from(derived), ...explicitLabels]));
+
+                      if (combined.length === 0) return <span className="text-slate-500">Select Labels...</span>;
+
+                      return combined.map(name => {
+                        const labelObj = labels.find(l => l.name === name);
+                        const color = labelObj?.color || '#3b82f6';
+                        const count = tLabels.filter(l => l === name).length;
+
+                        return (
+                          <span
+                            key={name}
+                            onClick={(e) => count > 0 && handleLabelClick(name, e)}
+                            className={cn(
+                              "relative inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm transition-opacity",
+                              count > 0 ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                            )}
+                            style={{
+                              backgroundColor: `${color}20`,
+                              borderColor: `${color}50`,
+                              color: color
+                            }}
+                          >
+                            #{name}
+                            {count > 0 && (
+                              <span
+                                className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
+                                style={{ backgroundColor: color }}
+                              >
+                                {count}
+                              </span>
+                            )}
+                          </span>
+                        );
+                      });
+                    })()}
+                  </div>
+                  <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0 bg-white border border-slate-200 shadow-xl" align="start">
+                <div className="p-2 max-h-60 overflow-y-auto space-y-1">
+                  {labels.length === 0 ? (
+                    <p className="text-sm text-center text-slate-500 py-4">No labels available.</p>
+                  ) : (
+                    labels.map(label => {
+                      const tLabels = parseLabelsFromText(question);
+                      options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
+                      const derived = new Set(tLabels); // Re-calc for render safety
+
+                      // Count usages
+                      const count = tLabels.filter(l => l === label.name).length;
+
+                      const isDerived = derived.has(label.name);
+                      const isExplicit = explicitLabels.includes(label.name);
+                      const isSelected = isDerived || isExplicit;
+
+                      return (
+                        <div
+                          key={label.id}
+                          className="flex items-center gap-2 p-2 hover:bg-slate-100 rounded-md cursor-pointer"
+                          onClick={() => {
+                            if (isDerived) return; // Cannot toggle derived
+                            if (isExplicit) {
+                              setExplicitLabels(prev => prev.filter(l => l !== label.name));
+                            } else {
+                              setExplicitLabels(prev => [...prev, label.name]);
+                            }
+                          }}
+                        >
+                          <div className={cn(
+                            "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                            isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300",
+                            isDerived ? "opacity-50" : ""
+                          )}>
+                            {isSelected && <Check className="w-3 h-3 text-white" />}
+                          </div>
+
+                          <span
+                            className="text-sm font-medium"
+                            style={{
+                              color: label.color
+                            }}
+                          >
+                            #{label.name}
+                          </span>
+
+                          {count > 0 && <span className="text-xs text-slate-400">({count})</span>}
+
+                          {isDerived && <span className="text-xs text-slate-400 ml-auto italic">In text</span>}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Anonymity Mode */}
@@ -696,8 +919,8 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               )}
             </button>
           </div>
-
         </div>
+
       </div>
 
       {showPreview && (
@@ -720,11 +943,13 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
             publishedAt: new Date().toISOString(),
             status: 'active',
             isPersistentAlert: false,
-            alertBeforeMinutes: 15
+            alertBeforeMinutes: 15,
+            labels: Array.from(new Set([...parseLabelsFromText(question), ...options.flatMap(o => parseLabelsFromText(o)), ...explicitLabels]))
           }}
           onClose={() => setShowPreview(false)}
         />
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }

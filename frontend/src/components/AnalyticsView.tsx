@@ -1,6 +1,15 @@
 import { Poll, Response } from '../App';
 import * as XLSX from 'xlsx';
 import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download } from 'lucide-react';
+import LabelText from './LabelText';
+import { useState, useEffect } from 'react';
+
+interface Label {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+}
 
 interface AnalyticsViewProps {
   poll: Poll;
@@ -10,6 +19,23 @@ interface AnalyticsViewProps {
 }
 
 export default function AnalyticsView({ poll, responses, onClose, canExport = false }: AnalyticsViewProps) {
+  const [labels, setLabels] = useState<Label[]>([]);
+
+  // Fetch labels on mount
+  useEffect(() => {
+    const fetchLabels = async () => {
+      if ((window as any).electron?.db) {
+        try {
+          const result = await (window as any).electron.db.getLabels();
+          setLabels(result.success ? result.data : []);
+        } catch (error) {
+          console.error('Failed to fetch labels:', error);
+        }
+      }
+    };
+    fetchLabels();
+  }, []);
+
   const totalConsumers = poll.consumers.length;
   const totalResponses = responses.length;
   // Use unique responders who manually submitted (exclude defaults) to avoid > 100% rate
@@ -115,7 +141,9 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
           <div>
             <h2 className="text-mono-text mb-1 text-lg font-medium">Poll Analytics</h2>
-            <p className="text-sm text-mono-text/60">{poll.question}</p>
+            <p className="text-sm text-mono-text/60">
+              <LabelText text={poll.question} labels={labels} />
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {canExport && (
@@ -185,7 +213,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                   <div key={option} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-700 flex items-center gap-2">
-                        {option}
+                        <LabelText text={option} labels={labels} />
                         {isDefaultOption && (
                           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
                             Default
@@ -235,7 +263,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                               {response.consumerEmail}
                             </td>
                             <td className="px-4 py-3 text-sm text-slate-700">
-                              {response.response}
+                              <LabelText text={response.response} labels={labels} />
                             </td>
                             <td className="px-4 py-3">
                               {response.isDefault ? (

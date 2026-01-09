@@ -2,6 +2,14 @@
 import { useState, useEffect } from 'react';
 import { Poll, Response } from '../App';
 import { X, Send, AlertCircle, Clock, Shield, ArrowLeft, Loader, CheckCircle } from 'lucide-react';
+import LabelText from './LabelText';
+
+interface Label {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+}
 
 interface SignalDetailProps {
   poll: Poll;
@@ -25,6 +33,22 @@ export default function SignalDetail({
   const [selectedValue, setSelectedValue] = useState(draft || '');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [labels, setLabels] = useState<Label[]>([]);
+
+  // Fetch labels on mount
+  useEffect(() => {
+    const fetchLabels = async () => {
+      if ((window as any).electron?.db) {
+        try {
+          const result = await (window as any).electron.db.getLabels();
+          setLabels(result.success ? result.data : []);
+        } catch (error) {
+          console.error('Failed to fetch labels:', error);
+        }
+      }
+    };
+    fetchLabels();
+  }, []);
 
   useEffect(() => {
     // Auto-save draft every 30 seconds
@@ -91,7 +115,9 @@ export default function SignalDetail({
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm text-mono-text/60">From: {poll.publisherName}</span>
               </div>
-              <h2 className="text-mono-text text-xl font-medium mb-2">{poll.question}</h2>
+              <h2 className="text-mono-text text-xl font-medium mb-2">
+                <LabelText text={poll.question} labels={labels} />
+              </h2>
             </div>
             <button
               onClick={onClose}
@@ -162,7 +188,7 @@ export default function SignalDetail({
                     />
                   )}
                   <span className={`font-medium transition-colors ${isSelected ? 'text-mono-primary' : 'text-mono-text'}`}>
-                    {option.text}
+                    <LabelText text={option.text} labels={labels} />
                   </span>
                 </label>
               );
@@ -174,7 +200,7 @@ export default function SignalDetail({
             <div className="mb-6 p-4 bg-mono-accent/5 border border-mono-accent/20 rounded-xl">
               <h4 className="text-sm font-medium text-mono-primary mb-2">Your Response Details</h4>
               <div className="space-y-2 text-sm">
-                <p className="text-mono-text"><span className="opacity-60">Selected:</span> {userResponse.response}</p>
+                <p className="text-mono-text"><span className="opacity-60">Selected:</span> <LabelText text={userResponse.response} labels={labels} /></p>
                 {userResponse.skipReason && <p className="text-mono-text"><span className="opacity-60">Reason for skipping:</span> {userResponse.skipReason}</p>}
                 <p className="text-mono-text"><span className="opacity-60">Submitted:</span> {formatDateTime(userResponse.submittedAt)}</p>
                 {userResponse.isDefault && <p className="text-amber-600 font-medium italic">This was recorded as a default response.</p>}

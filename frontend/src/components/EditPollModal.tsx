@@ -1,7 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Poll } from '../App';
 import { Plus, X, Check, Upload, AlertCircle, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import LabelInput from './LabelInput';
+
+interface Label {
+    id: string;
+    name: string;
+    color: string;
+    description?: string;
+}
 
 interface EditPollModalProps {
     poll: Poll;
@@ -44,7 +52,24 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
     const [showErrors, setShowErrors] = useState(false);
+
     const [isSaving, setIsSaving] = useState(false);
+    const [labels, setLabels] = useState<Label[]>([]);
+
+    // Fetch labels on mount
+    useEffect(() => {
+        const fetchLabels = async () => {
+            if ((window as any).electron?.db) {
+                try {
+                    const result = await (window as any).electron.db.getLabels();
+                    setLabels(result.success ? result.data : []);
+                } catch (error) {
+                    console.error('Failed to fetch labels:', error);
+                }
+            }
+        };
+        fetchLabels();
+    }, []);
 
     const availableConsumers = Array.from(new Set([
         ...poll.consumers,
@@ -256,10 +281,11 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         <label className="block text-mono-text mb-2 font-medium">
                             Question <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="text"
+                        <LabelInput
                             value={question}
-                            onChange={(e) => setQuestion(e.target.value)}
+                            onChange={setQuestion}
+                            labels={labels}
+                            placeholder="Type # to add labels"
                             className={`w-full px-4 py-3 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !question.trim()
                                 ? 'border-red-500 focus:ring-1 focus:ring-red-500'
                                 : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
@@ -278,15 +304,15 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         <div className="space-y-3">
                             {options.map((option, index) => (
                                 <div key={index} className="flex gap-2">
-                                    <input
-                                        type="text"
+                                    <LabelInput
                                         value={option}
-                                        onChange={(e) => handleOptionChange(index, e.target.value)}
+                                        onChange={(value) => handleOptionChange(index, value)}
+                                        labels={labels}
+                                        placeholder={`Option ${index + 1} (Type # to add labels)`}
                                         className={`flex-1 px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !option.trim()
                                             ? 'border-red-500 focus:ring-1 focus:ring-red-500'
                                             : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
                                             }`}
-                                        placeholder={`Option ${index + 1}`}
                                     />
                                     {options.length > 2 && (
                                         <button

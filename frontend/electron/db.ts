@@ -105,6 +105,11 @@ export function initDB() {
                 db.exec("ALTER TABLE polls ADD COLUMN scheduledFor TEXT");
             }
 
+            if (!columns.includes('labels')) {
+                console.log('[SQLite DB] Migrating: Adding labels to polls table');
+                db.exec("ALTER TABLE polls ADD COLUMN labels TEXT");
+            }
+
             const respTableInfo = db.prepare("PRAGMA table_info(responses)").all();
             const respColumns = (respTableInfo as any[]).map(col => col.name);
             if (!respColumns.includes('syncStatus')) {
@@ -189,6 +194,7 @@ interface Poll {
     syncStatus?: 'synced' | 'pending' | 'error';
     isEdited?: boolean;
     updatedAt?: string;
+    labels?: string[];
 }
 
 interface Response {
@@ -250,10 +256,6 @@ export function createPoll(poll: Poll) {
                     WHERE publisherEmail = ? AND question = ? AND syncStatus = 'pending'
                 `).get(poll.publisherEmail, poll.question) as { localId: string } | undefined;
 
-                if (pendingMatch) {
-                    console.log(`[SQLite DB] Matching incoming signal ${poll.cloudSignalId} to pending local poll ${pendingMatch.localId} via content`);
-                    poll.id = pendingMatch.localId;
-                }
             }
         }
 
@@ -262,12 +264,12 @@ export function createPoll(poll: Poll) {
                 localId, question, options, publisherEmail, publisherName, 
                 status, deadline, anonymityMode, isPersistentFinalAlert, 
                 consumers, defaultResponse, showDefaultToConsumers, publishedAt,
-                cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor
+                cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor, labels
             ) VALUES (
                 @localId, @question, @options, @publisherEmail, @publisherName, 
                 @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
                 @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
-                @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor
+                @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor, @labels
             )
             ON CONFLICT(localId) DO UPDATE SET
                 question = excluded.question,
@@ -307,7 +309,8 @@ export function createPoll(poll: Poll) {
             syncStatus: poll.syncStatus || 'pending',
             isEdited: poll.isEdited ? 1 : 0,
             updatedAt: poll.updatedAt || new Date().toISOString(),
-            scheduledFor: poll.scheduledFor || null
+            scheduledFor: poll.scheduledFor || null,
+            labels: JSON.stringify(poll.labels || [])
         });
 
         return info;
@@ -342,7 +345,8 @@ export function getPolls(): Poll[] {
             syncStatus: (row.syncStatus as 'synced' | 'pending' | 'error') || 'pending',
             isEdited: !!row.isEdited,
             updatedAt: row.updatedAt,
-            scheduledFor: row.scheduledFor
+            scheduledFor: row.scheduledFor,
+            labels: JSON.parse(row.labels || '[]')
         }));
     } catch (error) {
         console.error('[SQLite DB] Error getting polls:', error);
@@ -363,13 +367,13 @@ export function updatePoll(pollId: string, updates: Partial<Poll>, republish: bo
         const fields = [
             'question', 'options', 'publisherEmail', 'publisherName', 'status',
             'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor'
+            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor', 'labels'
         ];
 
         fields.forEach(field => {
             if (updates[field as keyof Poll] !== undefined) {
                 sets.push(`${field} = @${field}`);
-                if (field === 'options' || field === 'consumers') {
+                if (field === 'options' || field === 'consumers' || field === 'labels') {
                     values[field] = JSON.stringify(updates[field as keyof Poll]);
                 } else if (field === 'isPersistentFinalAlert' || field === 'showDefaultToConsumers' || field === 'isEdited') {
                     values[field] = updates[field as keyof Poll] ? 1 : 0;

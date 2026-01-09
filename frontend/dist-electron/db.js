@@ -114,6 +114,10 @@ function initDB() {
                 console.log('[SQLite DB] Migrating: Adding scheduledFor to polls table');
                 db.exec("ALTER TABLE polls ADD COLUMN scheduledFor TEXT");
             }
+            if (!columns.includes('labels')) {
+                console.log('[SQLite DB] Migrating: Adding labels to polls table');
+                db.exec("ALTER TABLE polls ADD COLUMN labels TEXT");
+            }
             const respTableInfo = db.prepare("PRAGMA table_info(responses)").all();
             const respColumns = respTableInfo.map(col => col.name);
             if (!respColumns.includes('syncStatus')) {
@@ -221,10 +225,6 @@ function createPoll(poll) {
                     SELECT localId FROM polls 
                     WHERE publisherEmail = ? AND question = ? AND syncStatus = 'pending'
                 `).get(poll.publisherEmail, poll.question);
-                if (pendingMatch) {
-                    console.log(`[SQLite DB] Matching incoming signal ${poll.cloudSignalId} to pending local poll ${pendingMatch.localId} via content`);
-                    poll.id = pendingMatch.localId;
-                }
             }
         }
         const stmt = database.prepare(`
@@ -232,12 +232,12 @@ function createPoll(poll) {
                 localId, question, options, publisherEmail, publisherName, 
                 status, deadline, anonymityMode, isPersistentFinalAlert, 
                 consumers, defaultResponse, showDefaultToConsumers, publishedAt,
-                cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor
+                cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor, labels
             ) VALUES (
                 @localId, @question, @options, @publisherEmail, @publisherName, 
                 @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
                 @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
-                @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor
+                @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor, @labels
             )
             ON CONFLICT(localId) DO UPDATE SET
                 question = excluded.question,
@@ -276,7 +276,8 @@ function createPoll(poll) {
             syncStatus: poll.syncStatus || 'pending',
             isEdited: poll.isEdited ? 1 : 0,
             updatedAt: poll.updatedAt || new Date().toISOString(),
-            scheduledFor: poll.scheduledFor || null
+            scheduledFor: poll.scheduledFor || null,
+            labels: JSON.stringify(poll.labels || [])
         });
         return info;
     }
@@ -309,7 +310,8 @@ function getPolls() {
             syncStatus: row.syncStatus || 'pending',
             isEdited: !!row.isEdited,
             updatedAt: row.updatedAt,
-            scheduledFor: row.scheduledFor
+            scheduledFor: row.scheduledFor,
+            labels: JSON.parse(row.labels || '[]')
         }));
     }
     catch (error) {
@@ -328,12 +330,12 @@ function updatePoll(pollId, updates, republish = false) {
         const fields = [
             'question', 'options', 'publisherEmail', 'publisherName', 'status',
             'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor'
+            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor', 'labels'
         ];
         fields.forEach(field => {
             if (updates[field] !== undefined) {
                 sets.push(`${field} = @${field}`);
-                if (field === 'options' || field === 'consumers') {
+                if (field === 'options' || field === 'consumers' || field === 'labels') {
                     values[field] = JSON.stringify(updates[field]);
                 }
                 else if (field === 'isPersistentFinalAlert' || field === 'showDefaultToConsumers' || field === 'isEdited') {

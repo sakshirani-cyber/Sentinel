@@ -38,6 +38,7 @@ export interface Poll {
   updatedAt?: string;
   cloudSignalId?: number;
   syncStatus?: 'synced' | 'pending' | 'error';
+  labels?: string[];
 }
 
 import PersistentAlertSecondary from './components/PersistentAlertSecondary';
