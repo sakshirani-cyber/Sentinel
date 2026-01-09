@@ -101,7 +101,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
         </div>
 
         {/* Question */}
-        <h3 className="text-mono-text mb-3">
+        <h3 className="text-mono-text mb-3 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
           <LabelText text={poll.question} labels={labels} />
         </h3>
 
@@ -130,7 +130,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
           )}
 
           {poll.showDefaultToConsumers && !isCompleted && (
-            <div className="px-2 py-0.5 bg-mono-primary/10 text-mono-text/70 rounded text-xs">
+            <div className="px-2 py-0.5 bg-mono-primary/10 text-mono-text/70 rounded text-xs break-all max-w-full" style={{ wordBreak: 'break-all' }}>
               Default: {poll.defaultResponse}
             </div>
           )}

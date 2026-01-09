@@ -5,8 +5,22 @@ import * as XLSX from 'xlsx';
 import PollPreview from './PollPreview';
 import { cn } from './ui/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { parseLabelsFromText } from '../utils/labelUtils';
 import LabelInput from './LabelInput';
+import LabelText from './LabelText';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Label {
   id: string;
@@ -560,32 +574,47 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               </div>
 
               {useCustomDefault ? (
-                <input
-                  type="text"
+                <LabelInput
                   value={customDefault}
-                  onChange={(e) => setCustomDefault(e.target.value)}
+                  onChange={setCustomDefault}
+                  labels={labels}
+                  placeholder="e.g., I don't know, N/A, They are on leave tomorrow (Type # for labels)"
                   className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !customDefault.trim()
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-slate-300 focus:ring-blue-500'
                     }`}
-                  placeholder="e.g., I don't know, N/A, They are on leave tomorrow"
                 />
               ) : (
-                <select
+                <Select
                   value={defaultResponse}
-                  onChange={(e) => setDefaultResponse(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !defaultResponse
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-slate-300 focus:ring-blue-500'
-                    }`}
+                  onValueChange={setDefaultResponse}
                 >
-                  <option value="">Select from options</option>
-                  {options.filter(o => o.trim()).map((option, index) => (
-                    <option key={index} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className={cn(
+                    "w-full h-auto min-h-[42px] px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all bg-white",
+                    showErrors && !defaultResponse
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-slate-300 focus:ring-blue-500'
+                  )}>
+                    <SelectValue placeholder="Select from options" />
+                  </SelectTrigger>
+                  <SelectContent
+                    className="bg-white opacity-100 shadow-lg border border-slate-200"
+                    position="popper"
+                    sideOffset={4}
+                    style={{ width: 'var(--radix-select-trigger-width)' }}
+                  >
+                    {options.filter(o => o.trim()).map((option, index) => (
+                      <SelectItem
+                        key={index}
+                        value={option}
+                        className="py-3 px-4 whitespace-normal break-words cursor-pointer hover:bg-slate-50 focus:bg-slate-100 data-[state=checked]:bg-slate-100"
+                        hideIndicator
+                      >
+                        <LabelText text={option} labels={labels} className="inline-block w-full" />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
               {showErrors && !(useCustomDefault ? customDefault.trim() : defaultResponse) && (
                 <p className="text-red-500 text-xs mt-1">Default response is required</p>
@@ -655,6 +684,8 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                         const labelObj = labels.find(l => l.name === name);
                         const color = labelObj?.color || '#3b82f6';
                         const count = tLabels.filter(l => l === name).length;
+                        const isDerived = derived.has(name);
+                        const isExplicit = explicitLabels.includes(name);
 
                         return (
                           <span
@@ -671,14 +702,25 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                             }}
                           >
                             #{name}
-                            {count > 0 && (
+                            {isDerived ? (
                               <span
                                 className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
                                 style={{ backgroundColor: color }}
                               >
                                 {count}
                               </span>
-                            )}
+                            ) : isExplicit ? (
+                              <span
+                                className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-white shadow-sm ring-1 ring-white cursor-pointer hover:opacity-80 transition-opacity"
+                                style={{ backgroundColor: color }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExplicitLabels(prev => prev.filter(l => l !== name));
+                                }}
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </span>
+                            ) : null}
                           </span>
                         );
                       });
@@ -687,60 +729,57 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0 bg-white border border-slate-200 shadow-xl" align="start">
-                <div className="p-2 max-h-60 overflow-y-auto space-y-1">
-                  {labels.length === 0 ? (
-                    <p className="text-sm text-center text-slate-500 py-4">No labels available.</p>
-                  ) : (
-                    labels.map(label => {
-                      const tLabels = parseLabelsFromText(question);
-                      options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
-                      const derived = new Set(tLabels); // Re-calc for render safety
+              <PopoverContent
+                className="bg-white border border-slate-200 shadow-xl p-0"
+                align="start"
+                style={{ width: 'var(--radix-popover-trigger-width)' }}
+              >
+                <div className="p-3 max-h-60 overflow-y-auto flex flex-wrap gap-2">
+                  {(() => {
+                    const tLabels = parseLabelsFromText(question);
+                    options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
+                    const derived = new Set(tLabels);
+                    const combined = new Set([...Array.from(derived), ...explicitLabels]);
+                    const availableLabels = labels.filter(l => !combined.has(l.name));
 
-                      // Count usages
-                      const count = tLabels.filter(l => l === label.name).length;
+                    if (availableLabels.length === 0) {
+                      return <p className="text-sm text-center text-slate-500 py-4 w-full">All available labels are in use.</p>;
+                    }
 
-                      const isDerived = derived.has(label.name);
-                      const isExplicit = explicitLabels.includes(label.name);
-                      const isSelected = isDerived || isExplicit;
-
-                      return (
-                        <div
-                          key={label.id}
-                          className="flex items-center gap-2 p-2 hover:bg-slate-100 rounded-md cursor-pointer"
-                          onClick={() => {
-                            if (isDerived) return; // Cannot toggle derived
-                            if (isExplicit) {
-                              setExplicitLabels(prev => prev.filter(l => l !== label.name));
-                            } else {
-                              setExplicitLabels(prev => [...prev, label.name]);
-                            }
-                          }}
-                        >
-                          <div className={cn(
-                            "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                            isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300",
-                            isDerived ? "opacity-50" : ""
-                          )}>
-                            {isSelected && <Check className="w-3 h-3 text-white" />}
-                          </div>
-
-                          <span
-                            className="text-sm font-medium"
-                            style={{
-                              color: label.color
-                            }}
-                          >
-                            #{label.name}
-                          </span>
-
-                          {count > 0 && <span className="text-xs text-slate-400">({count})</span>}
-
-                          {isDerived && <span className="text-xs text-slate-400 ml-auto italic">In text</span>}
-                        </div>
-                      );
-                    })
-                  )}
+                    return (
+                      <TooltipProvider key="label-tooltips">
+                        {availableLabels.map(label => (
+                          <Tooltip key={label.id} delayDuration={300}>
+                            <TooltipTrigger asChild>
+                              <div
+                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm cursor-pointer transition-all hover:scale-105 active:scale-95"
+                                style={{
+                                  backgroundColor: `${label.color}15`,
+                                  borderColor: `${label.color}40`,
+                                  color: label.color
+                                }}
+                                onClick={() => setExplicitLabels(prev => [...prev, label.name])}
+                              >
+                                #{label.name}
+                              </div>
+                            </TooltipTrigger>
+                            {label.description && (
+                              <TooltipContent
+                                side="top"
+                                className="bg-white border border-slate-200 shadow-xl text-slate-700 px-3 py-2 rounded-lg max-w-[200px]"
+                                sideOffset={8}
+                              >
+                                <div className="space-y-1">
+                                  <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider opacity-70">Description</p>
+                                  <p className="text-xs leading-relaxed">{label.description}</p>
+                                </div>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        ))}
+                      </TooltipProvider>
+                    );
+                  })()}
                 </div>
               </PopoverContent>
             </Popover>

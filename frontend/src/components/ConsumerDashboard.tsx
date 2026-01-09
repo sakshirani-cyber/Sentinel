@@ -450,8 +450,8 @@ export default function ConsumerDashboard({
                       className="bg-mono-bg border border-mono-primary/10 rounded-xl shadow-sm hover:shadow-md transition-all p-5"
                     >
                       <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-mono-text text-lg font-medium mb-2">{poll.question}</h3>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-mono-text text-lg font-medium mb-2 break-all max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</h3>
                           <div className="flex flex-wrap gap-3 text-sm text-mono-text/60">
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />

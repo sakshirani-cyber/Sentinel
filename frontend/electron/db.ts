@@ -252,10 +252,14 @@ export function createPoll(poll: Poll) {
             } else if (!existing) {
                 // FALLBACK: If signalId is not in DB yet, try matching by question and publisher (helpful for publisher race condition)
                 const pendingMatch = database.prepare(`
-                    SELECT localId FROM polls 
-                    WHERE publisherEmail = ? AND question = ? AND syncStatus = 'pending'
-                `).get(poll.publisherEmail, poll.question) as { localId: string } | undefined;
+                SELECT localId FROM polls 
+                WHERE publisherEmail = ? AND question = ? AND syncStatus = 'pending'
+            `).get(poll.publisherEmail, poll.question.trim()) as { localId: string } | undefined;
 
+                if (pendingMatch) {
+                    console.log(`[SQLite DB] Found pending local poll matching incoming sync. Updating ${pendingMatch.localId}`);
+                    poll.id = pendingMatch.localId;
+                }
             }
         }
 

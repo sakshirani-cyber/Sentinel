@@ -213,7 +213,8 @@ export default function LabelInput({
         while ((match = regex.exec(value)) !== null) {
             // Text before match
             if (match.index > lastIndex) {
-                segments.push(value.substring(lastIndex, match.index));
+                const textBefore = value.substring(lastIndex, match.index);
+                segments.push(<span key={`text-${lastIndex}`} style={{ color: '#1a1a1a' }}>{textBefore}</span>);
             }
 
             // The Label
@@ -242,14 +243,15 @@ export default function LabelInput({
                     </span>
                 );
             } else {
-                segments.push(match[0]); // Keep raw if not found
+                segments.push(<span key={`raw-${match.index}`} style={{ color: '#1a1a1a' }}>{match[0]}</span>); // Keep raw if not found
             }
 
             lastIndex = regex.lastIndex;
         }
 
         if (lastIndex < value.length) {
-            segments.push(value.substring(lastIndex));
+            const textAfter = value.substring(lastIndex);
+            segments.push(<span key={`text-${lastIndex}`} style={{ color: '#1a1a1a' }}>{textAfter}</span>);
         }
 
         return segments;
@@ -260,20 +262,21 @@ export default function LabelInput({
     return (
         <div className={cn("relative group", containerClassName)}>
             {/* Highlight Overlay */}
+            {/* Highlight Overlay */}
             <div
                 ref={overlayRef}
                 aria-hidden="true"
                 className={cn(
                     className,
-                    "!bg-transparent !border-transparent !text-slate-900 absolute inset-0 pointer-events-none select-none",
+                    "!bg-transparent !border-transparent absolute inset-0 pointer-events-none select-none",
                     multiline ? "whitespace-pre-wrap break-words" : "whitespace-pre overflow-hidden"
                 )}
                 style={{
-                    // Ensure font matching defaults if not set in className
                     fontFamily: 'inherit',
                     fontSize: 'inherit',
                     lineHeight: 'inherit',
-                    padding: undefined // Allow className padding to apply
+                    padding: undefined, // Allow className padding to apply
+                    color: '#1e293b' // Force dark text color
                 }}
             >
                 {renderHighlight()}
@@ -290,11 +293,12 @@ export default function LabelInput({
                 placeholder={placeholder}
                 className={cn(
                     className,
-                    "!bg-transparent relative z-10 caret-slate-900",
-                    // We use style for transparency to be absolutely sure
+                    "relative z-10 caret-slate-900",
+                    // Input must be transparent to show the overlay behind it
                 )}
                 style={{
-                    color: value ? 'transparent' : 'inherit'
+                    color: value ? 'transparent' : 'inherit',
+                    backgroundColor: 'transparent' // Explicitly force transparency
                 }}
                 rows={multiline ? 3 : undefined}
                 autoComplete="off"

@@ -74,7 +74,7 @@ export default function ScheduledPolls({
                                             Scheduled
                                         </span>
                                     </div>
-                                    <h3 className="text-mono-text text-lg font-medium mb-2">{poll.question}</h3>
+                                    <h3 className="text-mono-text text-lg font-medium mb-2 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</h3>
                                     <div className="flex items-center gap-1.5 text-sm text-mono-text/60">
                                         <Calendar className="w-4 h-4" />
                                         Scheduled for: <span className="font-medium text-mono-text">{poll.scheduledFor ? formatDateTime(poll.scheduledFor) : 'N/A'}</span>

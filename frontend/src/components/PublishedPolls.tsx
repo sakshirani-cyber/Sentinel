@@ -177,7 +177,7 @@ export default function PublishedPolls({
             >
               <div className="p-5">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       {poll.isEdited && (
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-mono-accent/20 text-mono-primary text-xs rounded-full font-medium border border-mono-accent/30">
@@ -186,7 +186,7 @@ export default function PublishedPolls({
                         </span>
                       )}
                     </div>
-                    <h3 className="text-mono-text text-lg font-medium mb-2">{poll.question}</h3>
+                    <h3 className="text-mono-text text-lg font-medium mb-2 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</h3>
                     <div className="flex flex-wrap gap-3 text-sm text-mono-text/60">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-4 h-4" />
@@ -297,7 +297,7 @@ export default function PublishedPolls({
       {/* Details Modal */}
       {selectedPollForDetails && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-mono-primary/10 animate-in zoom-in-95 duration-200">
+          <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-x-hidden overflow-y-auto flex flex-col border border-mono-primary/10 animate-in zoom-in-95 duration-200">
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
               <h2 className="text-mono-text text-lg font-medium">Poll Details</h2>
               <button
@@ -342,7 +342,7 @@ export default function PublishedPolls({
 
               <div>
                 <p className="text-sm text-mono-text/60 mb-1 font-medium">Question</p>
-                <p className="text-mono-text text-lg">{selectedPollForDetails.question}</p>
+                <p className="text-mono-text text-lg break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{selectedPollForDetails.question}</p>
               </div>
               <div>
                 <p className="text-sm text-mono-text/60 mb-2 font-medium">Options</p>
@@ -350,14 +350,14 @@ export default function PublishedPolls({
                   {selectedPollForDetails.options.map((opt) => (
                     <li key={opt.id} className="flex items-center gap-3 text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
                       <span className="w-2 h-2 bg-mono-accent rounded-full ring-2 ring-mono-accent/30"></span>
-                      {opt.text}
+                      <span className="flex-1 min-w-0 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{opt.text}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
                 <p className="text-sm text-mono-text/60 mb-1 font-medium">Default Response</p>
-                <p className="text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10 inline-block">
+                <p className="text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10 inline-block break-all max-w-full" style={{ wordBreak: 'break-all' }}>
                   {selectedPollForDetails.defaultResponse}
                 </p>
               </div>
