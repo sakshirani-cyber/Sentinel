@@ -20,14 +20,14 @@ public class DataSyncController {
         long startTime = System.currentTimeMillis();
 
         log.info(
-                "[CONTROLLER] Manual data sync triggered | endpoint=/data/sync | userEmail={}",
+                "[CONTROLLER] Manual data sync triggered | userEmail={}",
                 userEmail
         );
 
         dataSyncService.syncAndPublish(userEmail);
 
         log.info(
-                "[CONTROLLER] Data sync trigger completed | userEmail={} | durationMs={}",
+                "[CONTROLLER] Manual Data sync completed | userEmail={} | durationMs={}",
                 userEmail,
                 System.currentTimeMillis() - startTime
         );

@@ -21,13 +21,6 @@ public class DataSyncService {
 
     public void syncAndPublish(String userEmail) {
 
-        long serviceStart = System.currentTimeMillis();
-
-        log.info(
-                "[SERVICE][DATA_SYNC] Sync triggered | userEmail={}",
-                userEmail
-        );
-
         long dbStart = System.currentTimeMillis();
         List<DataSyncDTO> result = dataSyncRepository.syncData(userEmail);
         long dbDuration = System.currentTimeMillis() - dbStart;
@@ -43,12 +36,6 @@ public class DataSyncService {
                 new String[]{userEmail},
                 DATA_SYNC,
                 result
-        );
-
-        log.info(
-                "[SERVICE][DATA_SYNC] Publish requested | userEmail={} | totalDurationMs={}",
-                userEmail,
-                System.currentTimeMillis() - serviceStart
         );
     }
 }
