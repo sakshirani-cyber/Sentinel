@@ -2752,3 +2752,7 @@ select:focus {
     cursor: pointer !important;
   }
 }
+/* Custom Toast Window Styles */
+.toast-window-bg {
+  background: transparent !important;
+}

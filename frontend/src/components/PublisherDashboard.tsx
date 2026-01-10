@@ -29,7 +29,8 @@ export default function PublisherDashboard({
   onUpdatePoll,
   onSwitchMode,
   onLogout,
-  onManageLabels
+  onManageLabels,
+  onPublishNow
 }: PublisherDashboardProps) {
   const [activeTab, setActiveTab] = useState<'create' | 'published' | 'scheduled'>('published');
   const [selectedFormType, setSelectedFormType] = useState<string | null>(null);
@@ -131,7 +132,7 @@ export default function PublisherDashboard({
                 setActiveTab('create');
                 setSelectedFormType(null);
               }}
-              className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'create'
+              className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'create'
                 ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
                 : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
                 }`}
@@ -141,7 +142,7 @@ export default function PublisherDashboard({
             </button>
             <button
               onClick={() => setActiveTab('scheduled')}
-              className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'scheduled'
+              className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'scheduled'
                 ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
                 : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
                 }`}
@@ -159,7 +160,7 @@ export default function PublisherDashboard({
             </button>
             <button
               onClick={() => setActiveTab('published')}
-              className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'published'
+              className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'published'
                 ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
                 : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
                 }`}
