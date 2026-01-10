@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { parseLabelsFromText } from '../utils/labelUtils';
+import { parseLabelsFromText, stripLabelMarkers, parseLabelName, formatLabelName } from '../utils/labelUtils';
 import LabelInput from './LabelInput';
 import LabelText from './LabelText';
 import {
@@ -211,7 +211,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
       const tLabels = parseLabelsFromText(question);
       options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
       const derived = new Set(tLabels);
-      const combinedLabels = Array.from(new Set([...Array.from(derived), ...explicitLabels]));
+      const combinedLabels = Array.from(new Set([...Array.from(derived), ...explicitLabels.map(stripLabelMarkers)]));
 
       const poll: Poll = {
         id: `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -233,7 +233,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         isPersistentAlert: false,
         alertBeforeMinutes: 15,
         scheduledFor: isScheduled ? new Date(scheduleTime).toISOString() : undefined,
-        labels: combinedLabels
+        labels: combinedLabels.map(formatLabelName)
       };
 
       console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] 📋 Poll data prepared:`, {
@@ -681,7 +681,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                       if (combined.length === 0) return <span className="text-slate-500">Select Labels...</span>;
 
                       return combined.map(name => {
-                        const labelObj = labels.find(l => l.name === name);
+                        const labelObj = labels.find(l => stripLabelMarkers(l.name) === name);
                         const color = labelObj?.color || '#3b82f6';
                         const count = tLabels.filter(l => l === name).length;
                         const isDerived = derived.has(name);
@@ -701,7 +701,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                               color: color
                             }}
                           >
-                            #{name}
+                            {parseLabelName(name)}
                             {isDerived ? (
                               <span
                                 className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
@@ -739,8 +739,8 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                     const tLabels = parseLabelsFromText(question);
                     options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
                     const derived = new Set(tLabels);
-                    const combined = new Set([...Array.from(derived), ...explicitLabels]);
-                    const availableLabels = labels.filter(l => !combined.has(l.name));
+                    const combined = new Set([...Array.from(derived), ...explicitLabels.map(stripLabelMarkers)]);
+                    const availableLabels = labels.filter(l => !combined.has(stripLabelMarkers(l.name)));
 
                     if (availableLabels.length === 0) {
                       return <p className="text-sm text-center text-slate-500 py-4 w-full">All available labels are in use.</p>;
@@ -758,9 +758,9 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                                   borderColor: `${label.color}40`,
                                   color: label.color
                                 }}
-                                onClick={() => setExplicitLabels(prev => [...prev, label.name])}
+                                onClick={() => setExplicitLabels(prev => [...prev, stripLabelMarkers(label.name)])}
                               >
-                                #{label.name}
+                                {parseLabelName(label.name)}
                               </div>
                             </TooltipTrigger>
                             {label.description && (

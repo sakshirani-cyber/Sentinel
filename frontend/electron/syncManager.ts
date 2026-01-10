@@ -1,8 +1,9 @@
 import { powerMonitor, net } from 'electron';
+import { randomUUID } from 'crypto';
 const EventSourceLib = require('eventsource');
 const EventSource = EventSourceLib.EventSource || EventSourceLib.default || EventSourceLib;
 import * as backendApi from './backendApi';
-import { getPolls, getResponses, createPoll, submitResponse, updatePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus } from './db';
+import { getPolls, getResponses, createPoll, submitResponse, updatePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus, createLabel, getLabels, updateLabel, updateLabelSyncStatus } from './db';
 
 export class SyncManager {
     private email: string | null = null;
@@ -117,7 +118,7 @@ export class SyncManager {
             return;
         }
 
-        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
 
         try {
@@ -130,15 +131,16 @@ export class SyncManager {
 
             sse.addEventListener('POLL_CREATED', async (event: any) => {
                 const time = new Date().toLocaleTimeString();
-                console.log(`[SyncManager] [${time}] 📥 SSE EVENT: POLL_CREATED`);
-                console.log(`[SyncManager] [${time}] 📝 RAW DATA:`, event.data);
+                console.log(`[📡 SSE] [${time}] 📥 EVENT RECEIVED: POLL_CREATED`);
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
-                    console.log(`[SyncManager] [${time}] 📦 PARSED PAYLOAD:`, JSON.stringify(payload, null, 2));
+                    console.log(`[📡 SSE] 📦 Payload Question: "${payload.question}"`);
+                    if (payload.labels) console.log(`[📡 SSE] 🏷️ Payload Labels:`, payload.labels);
+
                     await this.handleIncomingPoll(payload);
                 } catch (e) {
-                    console.error(`[SyncManager] [${time}] ❌ Error handling POLL_CREATED:`, e);
+                    console.error(`[📡 SSE] [${time}] ❌ Error handling POLL_CREATED:`, e);
                 }
             });
 
@@ -256,7 +258,8 @@ export class SyncManager {
             publishedAt: new Date().toISOString(),
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith && dto.sharedWith.length > 0 ? dto.sharedWith : (dto.consumers || []),
-            syncStatus: 'synced'
+            syncStatus: 'synced',
+            labels: dto.labels || []
         };
 
         try {
@@ -361,10 +364,9 @@ export class SyncManager {
                 }
             }
 
-            // 3. Fetch updates from cloud (Incremental Sync) - REMOVED per user request
-            // We now rely solely on SSE for updates.
-            // If we missed updates, the SSE connection logic (reconnect) will handle it
-            // or we could implement a different recovery mechanism if needed.
+            // 3. Sync Labels
+            await this.syncLabels();
+
             this.lastSyncTime = new Date().toISOString();
         } catch (error) {
             console.error('[SyncManager] Error during sync loop:', error);
@@ -374,6 +376,78 @@ export class SyncManager {
                 console.log('[SyncManager] Running queued sync');
                 this.performSync();
             }
+        }
+    }
+
+    private async syncLabels() {
+        if (!this.email || !this.isOnline) return;
+
+        try {
+            console.log('[🏷️ LABELS] 🔄 Starting Bidirectional Label Sync...');
+
+            // 1. PUSH: Sync locally created labels to backend
+            const localLabels = getLabels() as any[];
+            const pendingLabels = localLabels.filter(l => l.syncStatus === 'pending');
+
+            if (pendingLabels.length > 0) {
+                console.log(`[🏷️ LABELS] 📤 Found ${pendingLabels.length} pending local labels to push`);
+                for (const label of pendingLabels) {
+                    try {
+                        await backendApi.createLabel({
+                            name: label.name,
+                            color: label.color,
+                            description: label.description
+                        });
+                        await updateLabelSyncStatus(label.id, 'synced');
+                        console.log(`[🏷️ LABELS] ✅ Pushed local label to backend: "${label.name}"`);
+                    } catch (pushErr) {
+                        console.error(`[🏷️ LABELS] ❌ Failed to push label "${label.name}":`, pushErr);
+                    }
+                }
+            }
+
+            // 2. PULL: Fetch updates from backend
+            const backendLabels = await backendApi.getAllLabels();
+
+            let newCount = 0;
+            let updateCount = 0;
+
+            for (const bLabel of backendLabels) {
+                // Check if exists locally by NAME
+                const exists = localLabels.find((l: any) => l.name === bLabel.name);
+
+                if (!exists) {
+                    console.log(`[🏷️ LABELS] 📥 Found NEW label from backend: "${bLabel.name}" -> Creating locally`);
+                    createLabel({
+                        id: randomUUID(),
+                        name: bLabel.name,
+                        color: bLabel.color,
+                        description: bLabel.description,
+                        syncStatus: 'synced',
+                        createdAt: bLabel.createdAt || new Date().toISOString()
+                    });
+                    newCount++;
+                } else {
+                    // Update local if backend is different
+                    if (exists.color !== bLabel.color || exists.description !== bLabel.description || exists.syncStatus !== 'synced') {
+                        console.log(`[🏷️ LABELS] ♻️ Updating/Syncing label "${bLabel.name}" from backend`);
+                        updateLabel(exists.id, {
+                            color: bLabel.color,
+                            description: bLabel.description,
+                            // Ensure it's marked as synced if it exists on backend
+                        } as any);
+                        await updateLabelSyncStatus(exists.id, 'synced');
+                        updateCount++;
+                    }
+                }
+            }
+            if (newCount > 0 || updateCount > 0 || pendingLabels.length > 0) {
+                console.log(`[🏷️ LABELS] ✅ Sync Complete: ${pendingLabels.length} pushed, ${newCount} created locally, ${updateCount} updated.`);
+            } else {
+                console.log('[🏷️ LABELS] ✅ Sync Complete: No changes needed.');
+            }
+        } catch (e) {
+            console.error('[🏷️ LABELS] ❌ Sync failed:', e);
         }
     }
 
@@ -396,7 +470,8 @@ export class SyncManager {
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith || [],
             syncStatus: 'synced',
-            updatedAt: dto.lastEdited
+            updatedAt: dto.lastEdited,
+            labels: dto.labels || []
         };
 
         try {

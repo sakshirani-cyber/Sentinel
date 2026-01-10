@@ -1,9 +1,10 @@
 import axios, { AxiosInstance } from 'axios';
+console.log('>>> [Backend API] MODULE LOADED <<<');
 
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
 
-const API_BASE_URL = process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com';
+const API_BASE_URL = process.env.VITE_BACKEND_URL || 'http://localhost:8080';
 console.log(`[Backend API] Initialized with BASE_URL: ${API_BASE_URL}`);
 
 const apiClient: AxiosInstance = axios.create({
@@ -16,12 +17,13 @@ const apiClient: AxiosInstance = axios.create({
 
 // Add request interceptor for logging
 apiClient.interceptors.request.use(config => {
-    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🚀 OUTGOING REQUEST: ${config.method?.toUpperCase()} ${config.url}`);
-    if (config.params) console.log('[Backend API] Query Params:', JSON.stringify(config.params, null, 2));
-    if (config.data) console.log('[Backend API] Request Body:', JSON.stringify(config.data, null, 2));
+    console.log(`[🌐 API REQUEST] [${new Date().toLocaleTimeString()}] ${config.method?.toUpperCase()} ${config.url}`);
+    if (config.data) {
+        console.log('[🌐 API PAYLOAD] Full Body:', JSON.stringify(config.data, null, 2));
+    }
     return config;
 }, error => {
-    console.error(`[Backend API] [${new Date().toLocaleTimeString()}] ❌ REQUEST ERROR:`, error);
+    console.error(`[🌐 API ERROR] [${new Date().toLocaleTimeString()}] Request failed:`, error);
     return Promise.reject(error);
 });
 
@@ -59,6 +61,35 @@ interface PollCreateDTO {
     persistentAlert: boolean;
     question: string;
     options: string[];
+    labels?: string[];
+}
+
+export interface LabelCreateDTO {
+    name: string;
+    color: string;
+    description?: string;
+}
+
+export interface LabelResponseDTO {
+    id: number;
+    name: string;
+    color: string;
+    description: string;
+    createdAt: string;
+}
+
+export interface LabelCreateDTO {
+    name: string;
+    color: string;
+    description?: string;
+}
+
+export interface LabelResponseDTO {
+    id: number;
+    name: string;
+    color: string;
+    description: string;
+    createdAt: string;
 }
 
 interface CreatePollResponse {
@@ -123,6 +154,7 @@ export interface PollSyncDTO {
     defaultResponse: string;
     reason: string;
     timeOfSubmission: string;
+    labels?: string[];
 }
 
 // ============================================================================
@@ -145,6 +177,7 @@ function mapPollToDTO(poll: any): PollCreateDTO {
         persistentAlert: !!poll.isPersistentFinalAlert,
         question: poll.question,
         options: poll.options.map((o: any) => o.text),
+        labels: poll.labels || [],
     };
 
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);
@@ -153,6 +186,7 @@ function mapPollToDTO(poll: any): PollCreateDTO {
     console.log('  isPersistentFinalAlert:', poll.isPersistentFinalAlert, '→ persistentAlert:', dto.persistentAlert);
     console.log('  anonymityMode:', poll.anonymityMode, '→ anonymous:', dto.anonymous);
     console.log('  consumers.length:', poll.consumers?.length, '→ sharedWith.length:', dto.sharedWith?.length);
+    console.log('  labels:', poll.labels);
 
     return dto;
 }
@@ -225,7 +259,8 @@ export async function editPoll(
     poll: any,
     republish: boolean
 ): Promise<void> {
-    console.log('[Backend API] Editing poll:', { signalId, republish });
+    const time = new Date().toLocaleTimeString();
+    console.log(`[Backend API] [${time}] 📤 editPoll request | signalId=${signalId} | republish=${republish}`);
 
     const baseDTO = mapPollToDTO(poll);
 
@@ -237,13 +272,19 @@ export async function editPoll(
         lastEditedBy: poll.publisherEmail // or get from current user
     };
 
-    console.log('[Backend API] Edit DTO:', editDTO);
+    console.log(`[Backend API] [${time}] 📤 Payload question: "${editDTO.question}"`);
+    console.log(`[Backend API] [${time}] 📤 Payload labels:`, editDTO.labels || []);
 
-    await apiClient.put<ApiResponse<void>>(
-        '/api/signals/poll/edit',
-        editDTO
-    );
-    console.log('[Backend API] Poll edited successfully');
+    try {
+        await apiClient.put<ApiResponse<void>>(
+            '/api/signals/poll/edit',
+            editDTO
+        );
+        console.log(`[Backend API] [${time}] 📥 editPoll response | SUCCESS | signalId=${signalId}`);
+    } catch (error: any) {
+        console.error(`[Backend API] [${time}] ❌ editPoll error | FAILED | signalId=${signalId}:`, error.message);
+        throw error;
+    }
 }
 
 export async function deletePoll(signalId: number): Promise<void> {
@@ -263,6 +304,54 @@ export async function login(email: string, password: string): Promise<string> {
     );
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] ✅ Login result:`, JSON.stringify(response.data, null, 2));
     return response.data.data;
+}
+
+export async function createLabel(label: LabelCreateDTO): Promise<void> {
+    const time = new Date().toLocaleTimeString();
+    console.log(`[Backend API] [${time}] 📤 createLabel request | name="${label.name}"`);
+
+    // Transform to Backend DTO
+    // Note: Label is already formatted as ~#name~ by LabelManager before reaching here
+    const payload = {
+        label: label.name,
+        color: label.color,
+        description: label.description && label.description.trim() !== '' ? label.description : label.name
+    };
+
+    if (!payload.description.trim()) {
+        payload.description = "No Description"; // Fallback to avoid 400/500 if name is somehow empty/trim
+    }
+
+    console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
+
+    try {
+        await apiClient.post<ApiResponse<void>>('/create/label', payload);
+        console.log(`[Backend API] [${time}] 📥 createLabel response | SUCCESS | name="${label.name}"`);
+    } catch (error: any) {
+        console.error(`[Backend API] [${time}] ❌ createLabel error | FAILED | name="${label.name}":`, error.message);
+        throw error;
+    }
+}
+
+export async function getAllLabels(): Promise<LabelResponseDTO[]> {
+    console.log('[🌐 API] 📥 Fetching all labels from backend...');
+    const response = await apiClient.get<ApiResponse<any[]>>('/labels'); // Use any[] to handle raw backend DTO
+    console.log(`[🌐 API] ✅ Received ${response.data.data.length} labels from backend`);
+
+    // Map backend 'label' -> frontend 'name'
+    // Keep raw format (~#name~) for sync consistency. UI will handle unwrapping.
+    const labels: LabelResponseDTO[] = response.data.data.map((l: any) => ({
+        id: l.id,
+        name: l.label,
+        color: l.color,
+        description: l.description,
+        createdAt: l.createdAt
+    }));
+
+    if (labels.length > 0) {
+        console.log('[🌐 API] Labels:', labels.map(l => l.name).join(', '));
+    }
+    return labels;
 }
 
 

@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+console.log('>>> [SQLite DB] MODULE LOADED <<<');
 import path from 'path';
 import { app } from 'electron';
 
@@ -69,6 +70,7 @@ export function initDB() {
                     name TEXT NOT NULL UNIQUE,
                     color TEXT NOT NULL,
                     description TEXT,
+                    syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending'
                     createdAt TEXT DEFAULT CURRENT_TIMESTAMP
                 );
             `);
@@ -122,6 +124,13 @@ export function initDB() {
                 db.exec("ALTER TABLE responses ADD COLUMN syncStatus TEXT DEFAULT 'pending'");
             }
 
+            const labelTableInfo = db.prepare("PRAGMA table_info(labels)").all();
+            const labelColumns = (labelTableInfo as any[]).map(col => col.name);
+            if (!labelColumns.includes('syncStatus')) {
+                console.log('[SQLite DB] Migrating: Adding syncStatus to labels table');
+                db.exec("ALTER TABLE labels ADD COLUMN syncStatus TEXT DEFAULT 'pending'");
+            }
+
             console.log('[SQLite DB] Migrations check complete.');
         } catch (migrationError) {
             console.error('[SQLite DB] Error during migrations:', migrationError);
@@ -170,6 +179,38 @@ export function initDB() {
             }
         } catch (cleanupError) {
             console.error('[SQLite DB] Error during duplicate cleanup:', cleanupError);
+        }
+
+        // New Migration: Cleanup and Seed Labels
+        console.log('[SQLite DB] Cleaning and Seeding Labels...');
+        try {
+            const seedLabels = [
+                { name: '~#Satvik~', color: '#6659ff', description: 'Import tag' },
+                { name: '~#Food~', color: '#ffe400', description: 'Food Alert' },
+                { name: '~#Urgent~', color: '#d83013', description: 'Very Important' }
+            ];
+
+            // Delete all except seed labels
+            const deleteStmt = db.prepare(`
+                DELETE FROM labels 
+                WHERE name NOT IN (?, ?, ?)
+            `);
+            deleteStmt.run(seedLabels[0].name, seedLabels[1].name, seedLabels[2].name);
+
+            // Ensure seed labels exist with correct properties
+            for (const label of seedLabels) {
+                const existing = db.prepare('SELECT id FROM labels WHERE name = ?').get(label.name) as { id: string } | undefined;
+                if (existing) {
+                    db.prepare('UPDATE labels SET color = ?, description = ? WHERE name = ?').run(label.color, label.description, label.name);
+                } else {
+                    const id = require('crypto').randomUUID();
+                    db.prepare('INSERT INTO labels (id, name, color, description, syncStatus) VALUES (?, ?, ?, ?, ?)')
+                        .run(id, label.name, label.color, label.description, 'synced');
+                }
+            }
+            console.log('[SQLite DB] Label cleanup and seeding complete.');
+        } catch (seedError) {
+            console.error('[SQLite DB] Error seeding labels:', seedError);
         }
 
         console.log('[SQLite DB] Initialization complete.');
@@ -560,13 +601,16 @@ export function updateResponseSyncStatus(pollLocalId: string, userId: string, st
 }
 
 // Labels
-export function createLabel(label: { id: string, name: string, color: string, description?: string, createdAt: string }) {
+export function createLabel(label: { id: string, name: string, color: string, description?: string, syncStatus?: string, createdAt: string }) {
     try {
         const stmt = getDb().prepare(`
-            INSERT INTO labels (id, name, color, description, createdAt)
-            VALUES (@id, @name, @color, @description, @createdAt)
+            INSERT INTO labels (id, name, color, description, syncStatus, createdAt)
+            VALUES (@id, @name, @color, @description, @syncStatus, @createdAt)
         `);
-        return stmt.run(label);
+        return stmt.run({
+            ...label,
+            syncStatus: label.syncStatus || 'pending'
+        });
     } catch (error) {
         console.error('[SQLite DB] Error creating label:', error);
         throw error;
@@ -622,6 +666,17 @@ export function updateLabel(id: string, updates: { name?: string, color?: string
         return stmt.run(...values);
     } catch (error) {
         console.error('[SQLite DB] Error updating label:', error);
+        throw error;
+    }
+}
+
+export function updateLabelSyncStatus(id: string, status: 'synced' | 'pending') {
+    try {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE labels SET syncStatus = ? WHERE id = ?');
+        return stmt.run(status, id);
+    } catch (error) {
+        console.error('[SQLite DB] Error updating label sync status:', error);
         throw error;
     }
 }

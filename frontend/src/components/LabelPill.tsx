@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { parseLabelName } from '../utils/labelUtils';
 
 interface Label {
     id: string;
@@ -51,7 +52,7 @@ export default function LabelPill({ labels, className = '' }: LabelPillProps) {
                         }}
                         title={labelObj?.description || labelName}
                     >
-                        #{labelName}
+                        {parseLabelName(labelName)}
                     </span>
                 );
             })}

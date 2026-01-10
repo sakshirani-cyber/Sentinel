@@ -9,7 +9,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "./ui/tooltip";
-import { parseLabelsFromText } from '../utils/labelUtils';
+import { parseLabelsFromText, stripLabelMarkers, parseLabelName, formatLabelName } from '../utils/labelUtils';
 import LabelInput from './LabelInput';
 import LabelText from './LabelText';
 import { cn } from './ui/utils';
@@ -69,7 +69,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
     const [showErrors, setShowErrors] = useState(false);
-    const [explicitLabels, setExplicitLabels] = useState<string[]>(poll.labels || []);
+    const [explicitLabels, setExplicitLabels] = useState<string[]>((poll.labels || []).map(stripLabelMarkers));
 
     const [isSaving, setIsSaving] = useState(false);
     const [labels, setLabels] = useState<Label[]>([]);
@@ -233,7 +233,11 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                 deadline: new Date(deadline).toISOString(),
                 isPersistentFinalAlert,
                 consumers: selectedConsumers,
-                labels: Array.from(new Set([...parseLabelsFromText(question), ...options.flatMap(o => parseLabelsFromText(o)), ...explicitLabels])),
+                labels: Array.from(new Set([
+                    ...parseLabelsFromText(question),
+                    ...options.flatMap(o => parseLabelsFromText(o)),
+                    ...explicitLabels.map(stripLabelMarkers)
+                ])).map(formatLabelName),
                 isEdited: true
             };
 
@@ -551,7 +555,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                             if (combined.length === 0) return <span className="text-mono-text/50">Select Labels...</span>;
 
                                             return combined.map(name => {
-                                                const labelObj = labels.find(l => l.name === name);
+                                                const labelObj = labels.find(l => stripLabelMarkers(l.name) === name);
                                                 const color = labelObj?.color || '#3b82f6';
                                                 const count = tLabels.filter(l => l === name).length;
                                                 const isDerived = derived.has(name);
@@ -571,7 +575,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                                             color: color
                                                         }}
                                                     >
-                                                        #{name}
+                                                        {parseLabelName(name)}
                                                         {isDerived ? (
                                                             <span
                                                                 className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
@@ -609,8 +613,8 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                         const tLabels = parseLabelsFromText(question);
                                         options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
                                         const derived = new Set(tLabels);
-                                        const combined = new Set([...Array.from(derived), ...explicitLabels]);
-                                        const availableLabels = labels.filter(l => !combined.has(l.name));
+                                        const combined = new Set([...Array.from(derived), ...explicitLabels.map(stripLabelMarkers)]);
+                                        const availableLabels = labels.filter(l => !combined.has(stripLabelMarkers(l.name)));
 
                                         if (availableLabels.length === 0) {
                                             return <p className="text-sm text-center text-slate-500 py-4 w-full">All available labels are in use.</p>;
@@ -628,9 +632,9 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                                                     borderColor: `${label.color}40`,
                                                                     color: label.color
                                                                 }}
-                                                                onClick={() => setExplicitLabels(prev => [...prev, label.name])}
+                                                                onClick={() => setExplicitLabels(prev => [...prev, stripLabelMarkers(label.name)])}
                                                             >
-                                                                #{label.name}
+                                                                {parseLabelName(label.name)}
                                                             </div>
                                                         </TooltipTrigger>
                                                         {label.description && (

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { cn } from './ui/utils';
+import { parseLabelName, stripLabelMarkers } from '../utils/labelUtils';
 
 interface Label {
     id: string;
@@ -95,7 +96,7 @@ export default function LabelInput({
         const afterCursor = value.substring(inputRef.current?.selectionStart || 0);
 
         // Store label with ~#labelname~ format
-        const labelTag = `~#${label.name}~`;
+        const labelTag = label.name;
         const newValue = beforeHash + labelTag + afterCursor;
 
         onChange(newValue);
@@ -266,7 +267,7 @@ export default function LabelInput({
 
             // The Label
             const labelName = match[1];
-            const label = (Array.isArray(labels) ? labels : []).find(l => l.name.toLowerCase() === labelName.toLowerCase());
+            const label = (Array.isArray(labels) ? labels : []).find(l => stripLabelMarkers(l.name).toLowerCase() === labelName.toLowerCase());
 
             if (label) {
                 segments.push(
@@ -285,7 +286,7 @@ export default function LabelInput({
                         }}
                     >
                         <span className="opacity-0 select-none">~</span>
-                        #{label.name}
+                        {parseLabelName(label.name)}
                         <span className="opacity-0 select-none">~</span>
                     </span>
                 );
@@ -402,7 +403,7 @@ export default function LabelInput({
                                         color: label.color
                                     }}
                                 >
-                                    {label.name}
+                                    {parseLabelName(label.name)}
                                 </span>
                                 {label.description && (
                                     <div className="text-xs text-slate-500 truncate flex-1 ml-2">

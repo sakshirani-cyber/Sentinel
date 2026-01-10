@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { User, Poll, Response } from '../App';
 import SignalDetail from './SignalDetail';
 import PersistentAlert from './PersistentAlert';
+import { stripMarkersFromText } from '../utils/labelUtils';
 
 interface GlobalAlertManagerProps {
     user: User;
@@ -92,7 +93,7 @@ export default function GlobalAlertManager({
             });
 
             const notification = new Notification(`New Poll from ${poll.publisherName}`, {
-                body: poll.question,
+                body: stripMarkersFromText(poll.question),
                 silent: false,
                 icon: '/logo.png'
             });
@@ -129,7 +130,7 @@ export default function GlobalAlertManager({
                 });
 
                 const notification = new Notification(`Poll Updated: ${poll.publisherName}`, {
-                    body: `The poll "${poll.question}" has been updated. Please check the new details.`,
+                    body: `The poll "${stripMarkersFromText(poll.question)}" has been updated. Please check the new details.`,
                     silent: false,
                     icon: '/logo.png'
                 });
@@ -193,7 +194,7 @@ export default function GlobalAlertManager({
                         if (Notification.permission === 'granted') {
                             console.log(`[GlobalAlertManager] Sending ${threshold}-min alert`);
                             const notification = new Notification(`Sentinel Alert: ${poll.publisherName}`, {
-                                body: `${threshold} min left: ${poll.question}`,
+                                body: `${threshold} min left: ${stripMarkersFromText(poll.question)}`,
                                 silent: false,
                                 icon: '/logo.png'
                             });
