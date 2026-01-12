@@ -6,7 +6,6 @@ import logo from '../assets/logo.png';
 import SignalCard from './SignalCard';
 import SignalDetail from './SignalDetail';
 import AnalyticsView from './AnalyticsView';
-import LabelText from './LabelText';
 
 interface ConsumerDashboardProps {
   user: User;
@@ -452,9 +451,7 @@ export default function ConsumerDashboard({
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-mono-text text-lg font-medium mb-2 break-all max-w-full" style={{ wordBreak: 'break-all' }}>
-                            <LabelText text={poll.question} />
-                          </h3>
+                          <h3 className="text-mono-text text-lg font-medium mb-2 break-all max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</h3>
                           <div className="flex flex-wrap gap-3 text-sm text-mono-text/60">
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />

@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Poll, Response } from '../App';
 import { X, Send, AlertCircle, Clock, Shield, ArrowLeft, Loader, CheckCircle } from 'lucide-react';
 import LabelText from './LabelText';
-import LabelPill from './LabelPill';
 
 interface Label {
   id: string;
@@ -152,13 +151,6 @@ export default function SignalDetail({
               {getTimeRemaining()}
             </span>
           </div>
-
-          {/* Labels */}
-          {poll.labels && poll.labels.length > 0 && (
-            <div className="mt-3">
-              <LabelPill labels={poll.labels} />
-            </div>
-          )}
         </div>
 
         {/* Content - Scrollable */}
@@ -223,9 +215,7 @@ export default function SignalDetail({
                 <AlertCircle className="w-5 h-5 text-mono-primary/60 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-mono-text mb-1">
-                    <strong className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>Default Response:</strong> <span className="break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
-                      <LabelText text={poll.defaultResponse} labels={labels} />
-                    </span>
+                    <strong className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>Default Response:</strong> <span className="break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{poll.defaultResponse}</span>
                   </p>
                   <p className="text-xs text-mono-text/60">
                     This will be recorded if you don't submit a response before the deadline
@@ -286,11 +276,10 @@ export default function SignalDetail({
               <p className="text-mono-text/60">
                 Are you sure you want to submit this response?
               </p>
-              <div className="mt-4 p-4 bg-mono-primary/5 rounded-xl border border-mono-primary/10 text-center">
-                <p className="text-sm text-mono-text/60 mb-2 font-medium">Your response:</p>
-                <div className="text-mono-text text-lg">
-                  <LabelText text={selectedValue} labels={labels} />
-                </div>
+              <div className="mt-4 p-4 bg-mono-primary/5 rounded-xl border border-mono-primary/10">
+                <p className="text-sm text-mono-text">
+                  <strong>Your response:</strong> <span className="break-all max-w-full block" style={{ wordBreak: 'break-all' }}>{selectedValue}</span>
+                </p>
               </div>
               <p className="text-xs text-mono-text/40 mt-3">
                 This action cannot be undone

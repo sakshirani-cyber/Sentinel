@@ -1,7 +1,5 @@
 import { Poll } from '../App';
 import { X, Clock, User, Shield, AlertCircle } from 'lucide-react';
-import LabelPill from './LabelPill';
-import LabelText from './LabelText';
 
 interface PollPreviewProps {
   poll: Poll;
@@ -103,30 +101,16 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                     </div>
                   )}
                 </div>
-                {poll.labels && poll.labels.length > 0 && (
-                  <div className="px-5 pb-3">
-                    <LabelPill labels={poll.labels} />
-                  </div>
-                )}
               </div>
 
               {/* Poll Content */}
               <div className="p-5">
-                <h4 className="text-slate-900 mb-4 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
-                  <LabelText text={poll.question} />
-                </h4>
-                {poll.labels && poll.labels.length > 0 && (
-                  <div className="mb-4">
-                    <LabelPill labels={poll.labels} />
-                  </div>
-                )}
+                <h4 className="text-slate-900 mb-4 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</h4>
 
                 {poll.showDefaultToConsumers && poll.defaultResponse && (
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>Default Response:</strong> <span className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>
-                        <LabelText text={poll.defaultResponse || 'None'} />
-                      </span>
+                      <strong className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>Default Response:</strong> <span className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>{poll.defaultResponse}</span>
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
                       This will be recorded if you don't submit a response
@@ -146,9 +130,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                         className="w-4 h-4 text-blue-600"
                         disabled
                       />
-                      <span className="text-slate-700 break-all min-w-0 whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
-                        <LabelText text={option.text} />
-                      </span>
+                      <span className="text-slate-700 break-all min-w-0 whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{option.text}</span>
                     </label>
                   ))}
                 </div>

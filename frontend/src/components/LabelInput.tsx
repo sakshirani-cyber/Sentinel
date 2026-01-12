@@ -33,10 +33,8 @@ export default function LabelInput({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [hashPosition, setHashPosition] = useState(-1);
-    const [dropdownCoords, setDropdownCoords] = useState<{ x: number, y: number, placement: 'top' | 'bottom' } | null>(null);
     const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const markerRef = useRef<HTMLSpanElement>(null);
 
     // Filter labels based on search term
     const filteredLabels = (Array.isArray(labels) ? labels : []).filter(label =>
@@ -84,7 +82,6 @@ export default function LabelInput({
 
         setShowDropdown(false);
         setHashPosition(-1);
-        setDropdownCoords(null);
     };
 
     // Insert label at hash position
@@ -166,7 +163,6 @@ export default function LabelInput({
                 e.preventDefault();
                 setShowDropdown(false);
                 setHashPosition(-1);
-                setDropdownCoords(null);
                 break;
         }
     };
@@ -187,49 +183,6 @@ export default function LabelInput({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
-    // Calculate dropdown position based on marker
-    useEffect(() => {
-        if (showDropdown && markerRef.current && inputRef.current) {
-            const markerRect = markerRef.current.getBoundingClientRect();
-            const inputRect = inputRef.current.getBoundingClientRect();
-            const container = inputRef.current.closest('.overflow-y-auto') || document.documentElement;
-            const containerRect = container.getBoundingClientRect();
-
-            // Calculate position relative to the relative container (the group div)
-            // But since we are inside "relative group", top/left 0 is top/left of input area
-            // markerRect is relative to viewport.
-            // We need coords relative to the .group container.
-
-            const groupEl = inputRef.current.parentElement;
-            if (!groupEl) return;
-            const groupRect = groupEl.getBoundingClientRect();
-
-            let x = markerRect.left - groupRect.left;
-            let y = markerRect.bottom - groupRect.top;
-            let placement: 'top' | 'bottom' = 'bottom';
-
-            // Check viewport space
-            const dropdownHeight = 240; // Max height
-            const spaceBelow = window.innerHeight - markerRect.bottom;
-            const spaceAbove = markerRect.top;
-
-            if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-                placement = 'top';
-                y = markerRect.top - groupRect.top;
-            }
-
-            // Ensure x doesn't overflow right
-            const dropdownWidth = 256; // w-64
-            if (x + dropdownWidth > groupRect.width) {
-                x = Math.max(0, groupRect.width - dropdownWidth);
-            }
-
-            setDropdownCoords({ x, y, placement });
-        } else {
-            setDropdownCoords(null);
-        }
-    }, [showDropdown, searchTerm, value]);
 
     // Scroll selected item into view
     useEffect(() => {
@@ -298,22 +251,7 @@ export default function LabelInput({
 
         if (lastIndex < value.length) {
             const textAfter = value.substring(lastIndex);
-
-            // If dropdown is showing, we might need to insert the marker in the remaining text
-            if (showDropdown && hashPosition >= lastIndex && hashPosition < value.length) {
-                const markerOffset = hashPosition - lastIndex;
-                const beforeMarker = textAfter.substring(0, markerOffset);
-                const afterMarker = textAfter.substring(markerOffset);
-
-                segments.push(<span key={`text-final-before`} style={{ color: '#1a1a1a' }}>{beforeMarker}</span>);
-                segments.push(<span key="caret-marker" ref={markerRef} className="invisible w-0 h-0" aria-hidden="true" />);
-                segments.push(<span key={`text-final-after`} style={{ color: '#1a1a1a' }}>{afterMarker}</span>);
-            } else {
-                segments.push(<span key={`text-${lastIndex}`} style={{ color: '#1a1a1a' }}>{textAfter}</span>);
-            }
-        } else if (showDropdown && hashPosition === value.length) {
-            // Hash at the very end
-            segments.push(<span key="caret-marker" ref={markerRef} className="invisible w-0 h-0" aria-hidden="true" />);
+            segments.push(<span key={`text-${lastIndex}`} style={{ color: '#1a1a1a' }}>{textAfter}</span>);
         }
 
         return segments;
@@ -368,16 +306,13 @@ export default function LabelInput({
             />
 
 
-            {showDropdown && dropdownCoords && (
+            {showDropdown && (
                 <div
                     ref={dropdownRef}
-                    className={cn(
-                        "absolute z-50 w-64 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto",
-                        dropdownCoords.placement === 'top' ? "-translate-y-full mb-1" : "mt-1"
-                    )}
+                    className="absolute z-50 mt-1 w-64 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
                     style={{
-                        top: `${dropdownCoords.y}px`,
-                        left: `${dropdownCoords.x}px`
+                        top: multiline ? 'auto' : '100%',
+                        left: 0
                     }}
                 >
                     <div className="p-2 text-xs text-slate-500 border-b border-slate-200">
