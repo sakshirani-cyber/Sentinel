@@ -58,14 +58,15 @@ public class SseController {
 
     private void checkAndDeliver(String userEmail) {
 
+        if (pollSyncCache.isEmpty()) {
+            dbService.asyncReload(userEmail);
+            return;
+        }
+
         List<SseEvent<?>> events = pollSyncCache.consume(userEmail);
 
         if (events == null || events.isEmpty()) {
-            events = dbService.loadPending(userEmail);
-            if (events == null || events.isEmpty()) {
-                return;
-            }
-            pollSyncCache.put(userEmail, events);
+            return;
         }
 
         SseEmitter emitter = registry.get(userEmail);
@@ -82,12 +83,11 @@ public class SseController {
                                 .data(event)
                 );
             } catch (Exception ex) {
-                pollSyncCache.put(userEmail, events);
+                pollSyncCache.put(userEmail, event);
                 return;
             }
         }
 
-        pollSyncCache.consume(userEmail);
         dbService.asyncDelete(userEmail);
     }
 }

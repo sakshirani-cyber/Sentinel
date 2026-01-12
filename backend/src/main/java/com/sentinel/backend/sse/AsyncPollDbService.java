@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 public class AsyncPollDbService {
 
     private final ExecutorService asyncExecutor;
+    private final PollSyncCache pollSyncCache;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
@@ -83,28 +84,65 @@ public class AsyncPollDbService {
         });
     }
 
-    public List<SseEvent<?>> loadPending(String userEmail) {
-        return jdbcTemplate.query(
-                """
-                SELECT event_type, payload, created_at
-                FROM sse_pending_event
-                WHERE user_email = ?
-                ORDER BY id ASC
-                """,
-                rs -> {
-                    List<SseEvent<?>> list = new ArrayList<>();
-                    while (rs.next()) {
-                        try {
-                            String eventType = rs.getString("event_type");
-                            String payloadJson = rs.getString("payload");
-                            Instant createdAt = rs.getTimestamp("created_at").toInstant();
-                            Object payload = objectMapper.readValue(payloadJson, Object.class);
-                            list.add(new SseEvent<>(eventType, createdAt, payload));
-                        } catch (Exception ignored) {}
-                    }
-                    return list;
-                },
-                userEmail
-        );
+    public void asyncReload(String userEmail) {
+
+        asyncExecutor.submit(() -> {
+            try {
+                List<SseEvent<?>> events = jdbcTemplate.query(
+                        """
+                        SELECT event_type, payload, created_at
+                        FROM sse_pending_event
+                        WHERE user_email = ?
+                        ORDER BY id ASC
+                        """,
+                        rs -> {
+                            List<SseEvent<?>> list = new ArrayList<>();
+
+                            while (rs.next()) {
+                                try {
+                                    String eventType = rs.getString("event_type");
+                                    String payloadJson = rs.getString("payload");
+                                    Instant createdAt = rs.getTimestamp("created_at").toInstant();
+
+                                    Object payload = objectMapper.readValue(payloadJson, Object.class);
+
+                                    list.add(new SseEvent<>(eventType, createdAt, payload));
+
+                                } catch (Exception ex) {
+                                    log.error(
+                                            "[DB][ASYNC][RELOAD][SKIP] Corrupted payload skipped | reason={}",
+                                            ex.getMessage()
+                                    );
+                                }
+                            }
+                            return list;
+                        },
+                        userEmail
+                );
+
+                if (!events.isEmpty()) {
+                    pollSyncCache.put(userEmail, events);
+
+                    log.info(
+                            "[DB][ASYNC][RELOAD] success | userEmail={} | eventsLoaded={}",
+                            userEmail,
+                            events.size()
+                    );
+                } else {
+                    log.info(
+                            "[DB][ASYNC][RELOAD] no pending events | userEmail={}",
+                            userEmail
+                    );
+                }
+
+            } catch (Exception ex) {
+                log.error(
+                        "[DB][ASYNC][RELOAD][ERROR] userEmail={} | reason={}",
+                        userEmail,
+                        ex.getMessage(),
+                        ex
+                );
+            }
+        });
     }
 }
