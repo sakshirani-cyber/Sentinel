@@ -9,10 +9,12 @@ import com.sentinel.backend.dto.helper.UserVoteDTO;
 import com.sentinel.backend.entity.Poll;
 import com.sentinel.backend.entity.PollResult;
 import com.sentinel.backend.entity.PollResultId;
+import com.sentinel.backend.entity.ScheduledPoll;
 import com.sentinel.backend.entity.Signal;
 import com.sentinel.backend.exception.CustomException;
 import com.sentinel.backend.repository.PollRepository;
 import com.sentinel.backend.repository.PollResultRepository;
+import com.sentinel.backend.repository.ScheduledPollRepository;
 import com.sentinel.backend.repository.SignalRepository;
 import com.sentinel.backend.sse.PollSsePublisher;
 import com.sentinel.backend.sse.dto.PollSsePayload;
@@ -55,6 +57,8 @@ public class SignalServiceImpl implements SignalService {
     private final PollResultRepository pollResultRepository;
     private final JdbcTemplate jdbcTemplate;
     private final PollSsePublisher pollSsePublisher;
+    private final ScheduledPollRepository scheduledPollRepository;
+    private final PollSchedulerService pollSchedulerService;
 
     @Override
     public CreatePollResponse createPoll(PollCreateDTO dto) {
@@ -63,6 +67,10 @@ public class SignalServiceImpl implements SignalService {
         dto.normalizePoll();
         dto.validateCommon();
         dto.validatePoll();
+
+        if (dto.isScheduled()) {
+            return createScheduledPoll(dto);
+        }
 
         Signal signal = buildSignal(dto);
         signalRepository.save(signal);
@@ -126,6 +134,11 @@ public class SignalServiceImpl implements SignalService {
         dto.validateCommon();
         dto.validatePoll();
 
+        if (dto.isScheduled()) {
+            editScheduledPoll(dto);
+            return;
+        }
+
         Signal signal = getEditablePollSignal(dto.getSignalId());
         Poll poll = getPoll(dto.getSignalId());
 
@@ -152,6 +165,11 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     public void deleteSignal(Long signalId) {
+
+        if (scheduledPollRepository.existsById(signalId)) {
+            deleteScheduledPoll(signalId);
+            return;
+        }
 
         Signal signal = getPollSignal(signalId);
 
@@ -381,5 +399,78 @@ public class SignalServiceImpl implements SignalService {
                 .sharedWith(signal.getSharedWith())
                 .labels(signal.getLabels())
                 .build();
+    }
+
+    private CreatePollResponse createScheduledPoll(PollCreateDTO dto) {
+        ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
+        scheduledPollRepository.save(scheduledPoll);
+
+        pollSchedulerService.scheduleTask(scheduledPoll);
+
+        log.info("Created scheduled poll id: {} for time: {}",
+                scheduledPoll.getId(), scheduledPoll.getScheduledTime());
+
+        return new CreatePollResponse(scheduledPoll.getId(), dto.getLocalId());
+    }
+
+    private void editScheduledPoll(PollEditDTO dto) {
+        ScheduledPoll scheduledPoll = scheduledPollRepository
+                .findById(dto.getSignalId())
+                .orElseThrow(() -> new CustomException(
+                        "Scheduled poll not found",
+                        HttpStatus.NOT_FOUND
+                ));
+
+        Instant oldScheduledTime = scheduledPoll.getScheduledTime();
+
+        scheduledPoll.setQuestion(dto.getQuestion());
+        scheduledPoll.setOptions(dto.getOptions());
+        scheduledPoll.setAnonymous(dto.getAnonymous());
+        scheduledPoll.setSharedWith(dto.getSharedWith());
+        scheduledPoll.setDefaultFlag(dto.getDefaultFlag());
+        scheduledPoll.setDefaultOption(dto.getDefaultOption());
+        scheduledPoll.setScheduledTime(dto.getScheduledTime());
+        scheduledPoll.setEndTimestamp(dto.getEndTimestampUtc());
+        scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
+        scheduledPoll.setLabels(dto.getLabels());
+
+        scheduledPollRepository.save(scheduledPoll);
+
+        if (!oldScheduledTime.equals(dto.getScheduledTime())) {
+            pollSchedulerService.rescheduleTask(scheduledPoll);
+        }
+
+        log.info("Updated scheduled poll id: {}", scheduledPoll.getId());
+    }
+
+    private void deleteScheduledPoll(Long scheduledPollId) {
+        scheduledPollRepository
+                .findById(scheduledPollId)
+                .orElseThrow(() -> new CustomException(
+                        "Scheduled poll not found",
+                        HttpStatus.NOT_FOUND
+                ));
+
+        pollSchedulerService.cancelTask(scheduledPollId);
+        scheduledPollRepository.deleteById(scheduledPollId);
+
+        log.info("Deleted scheduled poll id: {}", scheduledPollId);
+    }
+
+    private ScheduledPoll buildScheduledPoll(PollCreateDTO dto) {
+
+        ScheduledPoll sp = new ScheduledPoll();
+        sp.setQuestion(dto.getQuestion());
+        sp.setOptions(dto.getOptions());
+        sp.setCreatedBy(dto.getCreatedBy());
+        sp.setAnonymous(dto.getAnonymous());
+        sp.setSharedWith(dto.getSharedWith());
+        sp.setDefaultFlag(dto.getDefaultFlag());
+        sp.setDefaultOption(dto.getDefaultOption());
+        sp.setScheduledTime(dto.getScheduledTime());
+        sp.setEndTimestamp(dto.getEndTimestampUtc());
+        sp.setPersistentAlert(dto.getPersistentAlert());
+        sp.setLabels(dto.getLabels());
+        return sp;
     }
 }
