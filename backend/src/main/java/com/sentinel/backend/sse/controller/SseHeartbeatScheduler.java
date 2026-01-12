@@ -9,7 +9,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import static com.sentinel.backend.constant.Constants.HEARTBEAT;
 import static com.sentinel.backend.constant.Constants.KEEP_ALIVE;
-import static com.sentinel.backend.constant.Constants.PING;
 
 @Component
 @RequiredArgsConstructor
@@ -26,7 +25,7 @@ public class SseHeartbeatScheduler {
                 emitter.send(
                         SseEmitter.event()
                                 .name(HEARTBEAT)
-                                .data(PING)
+                                .data("ping")
                                 .comment(KEEP_ALIVE)
                 );
             } catch (Exception ex) {
