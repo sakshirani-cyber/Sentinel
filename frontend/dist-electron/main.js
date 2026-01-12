@@ -43,7 +43,7 @@ const db_1 = require("./db");
 const backendApi = __importStar(require("./backendApi"));
 const electron_updater_1 = require("electron-updater");
 const syncManager_1 = require("./syncManager");
-// import { pollScheduler } from './pollScheduler';
+const pollScheduler_1 = require("./pollScheduler");
 // Auto-updater logging
 electron_updater_1.autoUpdater.logger = console;
 console.log('\n' + '#'.repeat(80));
@@ -247,13 +247,11 @@ electron_1.app.whenReady().then(async () => {
             await (0, db_1.createPoll)(poll);
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending`);
             // Check if this is a SCHEDULED poll
-            /* DISABLED
             if (poll.status === 'scheduled') {
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🕒 Poll is SCHEDULED for ${poll.scheduledFor}. Skipping cloud sync.`);
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🎉 Returning success to frontend (scheduled poll saved locally)`);
                 return { success: true };
             }
-            */
             // Try to sync to backend immediately but don't block
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ☁️ Step 2: Initiating cloud sync (non-blocking)...`);
             backendApi.createPoll(poll).then(async (result) => {
@@ -461,8 +459,8 @@ electron_1.app.whenReady().then(async () => {
     });
     setupAutoLaunch();
     // Start poll scheduler to automatically publish scheduled polls
-    console.log('[Main] Starting poll scheduler... (DISABLED)');
-    // pollScheduler.start();
+    console.log('[Main] Starting poll scheduler...');
+    pollScheduler_1.pollScheduler.start();
     createWindow();
     // Check for updates
     if (!electron_is_dev_1.default) {

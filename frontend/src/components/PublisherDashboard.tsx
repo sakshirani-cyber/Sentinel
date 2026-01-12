@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { User, Poll, Response } from '../App';
-import { PlusCircle, List, LogOut, Settings, Tag } from 'lucide-react';
+import { PlusCircle, List, LogOut, Settings, Tag, CalendarClock } from 'lucide-react';
 import logo from '../assets/logo.png';
 import CreatePoll from './CreatePoll';
 import PublishedPolls from './PublishedPolls';
-// import ScheduledPolls from './ScheduledPolls';
+import ScheduledPolls from './ScheduledPolls';
 import FormTypeSelector from './FormTypeSelector';
 
 interface PublisherDashboardProps {
@@ -17,6 +17,7 @@ interface PublisherDashboardProps {
   onSwitchMode: () => void;
   onLogout: () => void;
   onManageLabels: () => void;
+  onPublishNow?: (poll: Poll) => void;
 }
 
 export default function PublisherDashboard({
@@ -28,7 +29,8 @@ export default function PublisherDashboard({
   onUpdatePoll,
   onSwitchMode,
   onLogout,
-  onManageLabels
+  onManageLabels,
+  onPublishNow
 }: PublisherDashboardProps) {
   const [activeTab, setActiveTab] = useState<'create' | 'published' | 'scheduled'>('published');
   const [selectedFormType, setSelectedFormType] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export default function PublisherDashboard({
 
   const userPolls = polls.filter(p => p.publisherEmail === user.email);
   const activePolls = userPolls.filter(p => p.status !== 'scheduled');
-  // const scheduledPolls = userPolls.filter(p => p.status === 'scheduled');
+  const scheduledPolls = polls.filter(p => p.status === 'scheduled');
 
   const handleFormTypeSelect = (formType: string) => {
     setSelectedFormType(formType);
@@ -138,7 +140,6 @@ export default function PublisherDashboard({
               <PlusCircle className="w-5 h-5" />
               <span className="hidden sm:inline">Create</span>
             </button>
-            {/* Scheduled Tab - DISABLED
             <button
               onClick={() => setActiveTab('scheduled')}
               className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'scheduled'
@@ -157,7 +158,6 @@ export default function PublisherDashboard({
                 </span>
               )}
             </button>
-            */}
             <button
               onClick={() => setActiveTab('published')}
               className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'published'
@@ -217,7 +217,6 @@ export default function PublisherDashboard({
           />
         )}
 
-        {/* Scheduled Polls - DISABLED
         {activeTab === 'scheduled' && (
           <ScheduledPolls
             polls={scheduledPolls}
@@ -226,7 +225,6 @@ export default function PublisherDashboard({
             onPublishNow={(poll) => onPublishNow?.(poll)}
           />
         )}
-        */}
       </main>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Poll } from '../App';
-import { Plus, X, Eye, Check, Upload, Loader2 } from 'lucide-react';
+import { Plus, X, Eye, Check, Upload, Loader2, CalendarClock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PollPreview from './PollPreview';
 import { cn } from './ui/utils';
@@ -391,7 +391,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
 
 
           {/* Schedule Toggle Section */}
-          {/* Schedule Toggle Section - DISABLED
+          {/* Schedule Toggle Section */}
           <div
             onClick={() => setIsScheduled(!isScheduled)}
             className={cn(
@@ -481,7 +481,6 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               )}
             </div>
           </div>
-          */}
 
           {/* Question */}
           <div>
