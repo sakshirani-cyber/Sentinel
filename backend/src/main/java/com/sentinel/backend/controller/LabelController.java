@@ -1,6 +1,7 @@
 package com.sentinel.backend.controller;
 
 import com.sentinel.backend.dto.request.LabelCreateDTO;
+import com.sentinel.backend.dto.request.LabelEditDTO;
 import com.sentinel.backend.dto.response.ApiResponse;
 import com.sentinel.backend.dto.response.LabelResponseDTO;
 import com.sentinel.backend.service.LabelService;
@@ -63,5 +64,26 @@ public class LabelController {
         );
 
         return ResponseEntity.ok(ApiResponse.success(SUCCESS, labels));
+    }
+
+    @PostMapping("/edit/label")
+    public ResponseEntity<ApiResponse<Void>> editLabel(
+            @RequestBody @Valid LabelEditDTO req) {
+
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[LABEL][EDIT][REQUEST] id={}",
+                req.getId()
+        );
+
+        labelService.editLabel(req);
+
+        log.info(
+                "[LABEL][EDIT][SUCCESS] durationMs={}",
+                System.currentTimeMillis() - start
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(SUCCESS, null));
     }
 }

@@ -1,6 +1,7 @@
 package com.sentinel.backend.service;
 
 import com.sentinel.backend.dto.request.LabelCreateDTO;
+import com.sentinel.backend.dto.request.LabelEditDTO;
 import com.sentinel.backend.dto.response.LabelResponseDTO;
 import com.sentinel.backend.entity.LabelEntity;
 import com.sentinel.backend.exception.CustomException;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -44,18 +46,54 @@ public class LabelServiceImpl implements LabelService {
     @Transactional(readOnly = true)
     public List<LabelResponseDTO> getAllLabels() {
 
-        List<LabelResponseDTO> labels =
-                labelRepository.findAll()
+        return labelRepository.findAll()
                         .stream()
                         .map(label -> new LabelResponseDTO(
                                 label.getId(),
                                 label.getLabel(),
                                 label.getDescription(),
                                 label.getColor(),
-                                label.getCreatedAt()
+                                label.getCreatedAt(),
+                                label.getEditedAt()
                         ))
                         .toList();
+    }
 
-        return labels;
+    @Override
+    @Transactional
+    public void editLabel(LabelEditDTO dto) {
+
+        LabelEntity entity =
+                labelRepository.findById(dto.getId())
+                        .orElseThrow(() -> new CustomException(
+                                "Label not found",
+                                HttpStatus.NOT_FOUND
+                        ));
+
+        String newDescription = NormalizationUtils.trimToNull(dto.getDescription());
+        String newColor = dto.getColor().toUpperCase();
+
+        boolean changed = false;
+
+        if (!newDescription.equals(entity.getDescription())) {
+            entity.setDescription(newDescription);
+            changed = true;
+        }
+
+        if (!newColor.equals(entity.getColor())) {
+            entity.setColor(newColor);
+            changed = true;
+        }
+
+        if (!changed) {
+            throw new CustomException(
+                    "No changes detected",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        entity.setEditedAt(Instant.now());
+
+        labelRepository.save(entity);
     }
 }
