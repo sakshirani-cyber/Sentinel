@@ -22,19 +22,19 @@ public class AsyncPollDbService {
     private final ObjectMapper objectMapper;
 
     public void asyncInsert(String userEmail, SseEvent<?> event) {
+
         asyncExecutor.submit(() -> {
             try {
                 String payloadJson = objectMapper.writeValueAsString(event.getPayload());
 
                 jdbcTemplate.update(
                         """
-                        INSERT INTO sse_pending_event (user_email, event_type, payload, created_at)
-                        VALUES (?, ?, ?, ?)
+                        INSERT INTO sse_pending_event (user_email, event_type, payload)
+                        VALUES (?, ?, ?)
                         """,
                         userEmail,
                         event.getEventType(),
-                        payloadJson,
-                        java.sql.Timestamp.from(event.getEventTime())
+                        payloadJson
                 );
 
                 log.info(
@@ -55,6 +55,7 @@ public class AsyncPollDbService {
     }
 
     public void asyncDelete(String userEmail) {
+
         asyncExecutor.submit(() -> {
             try {
                 int deleted = jdbcTemplate.update(
@@ -83,34 +84,27 @@ public class AsyncPollDbService {
     }
 
     public List<SseEvent<?>> loadPending(String userEmail) {
-        try {
-            return jdbcTemplate.query(
-                    """
-                    SELECT event_type, payload, created_at
-                    FROM sse_pending_event
-                    WHERE user_email = ?
-                    ORDER BY id ASC
-                    """,
-                    rs -> {
-                        List<SseEvent<?>> list = new ArrayList<>();
-                        while (rs.next()) {
-                            try {
-                                String eventType = rs.getString("event_type");
-                                String payloadJson = rs.getString("payload");
-                                Instant createdAt = rs.getTimestamp("created_at").toInstant();
-                                Object payload = objectMapper.readValue(payloadJson, Object.class);
-                                list.add(new SseEvent<>(eventType, createdAt, payload));
-                            } catch (Exception ignored) {
-                                log.warn("[DB][LOAD] Failed to parse event for user={}", userEmail);
-                            }
-                        }
-                        return list;
-                    },
-                    userEmail
-            );
-        } catch (Exception ex) {
-            log.error("[DB][LOAD][ERROR] userEmail={} | reason={}", userEmail, ex.getMessage(), ex);
-            return new ArrayList<>();
-        }
+        return jdbcTemplate.query(
+                """
+                SELECT event_type, payload, created_at
+                FROM sse_pending_event
+                WHERE user_email = ?
+                ORDER BY id ASC
+                """,
+                rs -> {
+                    List<SseEvent<?>> list = new ArrayList<>();
+                    while (rs.next()) {
+                        try {
+                            String eventType = rs.getString("event_type");
+                            String payloadJson = rs.getString("payload");
+                            Instant createdAt = rs.getTimestamp("created_at").toInstant();
+                            Object payload = objectMapper.readValue(payloadJson, Object.class);
+                            list.add(new SseEvent<>(eventType, createdAt, payload));
+                        } catch (Exception ignored) {}
+                    }
+                    return list;
+                },
+                userEmail
+        );
     }
 }

@@ -21,8 +21,6 @@ public class SseHeartbeatScheduler {
     @Scheduled(fixedRate = 60000)
     public void sendHeartbeat() {
 
-        int activeConnections = registry.size();
-
         registry.forEach((userEmail, emitter) -> {
             try {
                 emitter.send(
@@ -40,7 +38,5 @@ public class SseHeartbeatScheduler {
                 );
             }
         });
-
-        log.debug("[SSE][HEARTBEAT] Sent to {} active connections", activeConnections);
     }
 }

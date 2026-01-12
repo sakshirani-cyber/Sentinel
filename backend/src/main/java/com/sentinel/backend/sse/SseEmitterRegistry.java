@@ -49,7 +49,7 @@ public class SseEmitterRegistry {
                     emitters.size()
             );
         } else {
-            log.debug(
+            log.error(
                     "[SSE][REGISTRY] Remove requested but emitter not found | userEmail={}",
                     userEmail
             );
@@ -57,14 +57,20 @@ public class SseEmitterRegistry {
     }
 
     public SseEmitter get(String userEmail) {
-        return emitters.get(userEmail);
+
+        SseEmitter emitter = emitters.get(userEmail);
+
+        if (emitter == null) {
+            log.error(
+                    "[SSE][REGISTRY] Emitter lookup miss | userEmail={}",
+                    userEmail
+            );
+        }
+
+        return emitter;
     }
 
     public void forEach(BiConsumer<String, SseEmitter> consumer) {
         emitters.forEach(consumer);
-    }
-
-    public int size() {
-        return emitters.size();
     }
 }
