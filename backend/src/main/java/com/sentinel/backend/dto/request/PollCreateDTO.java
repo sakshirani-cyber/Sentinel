@@ -15,21 +15,34 @@ public class PollCreateDTO extends SignalDTO {
     private String[] options;
 
     public void normalizePoll() {
-        question = NormalizationUtils.trimToNull(question);
-        options = NormalizationUtils.trimArray(options);
+        if (question != null) question = question.trim();
+
+        if (options != null) {
+            for (int i = 0; i < options.length; i++) {
+                if (options[i] != null) options[i] = options[i].trim();
+            }
+        }
     }
 
     public void validatePoll() {
-
-        if (options == null || options.length < 2) {
-            throw new IllegalArgumentException(
-                    "Options must contain at least 2 values"
-            );
+        if (question == null || question.trim().isEmpty()) {
+            throw new IllegalArgumentException("Question cannot be blank");
         }
 
-        NormalizationUtils.validateNoBlanks(options, "Options");
-        NormalizationUtils.validateUniqueIgnoreCase(options, "Options");
+        if (options == null || options.length < 2) {
+            throw new IllegalArgumentException("Options must contain at least 2 values");
+        }
 
-        options = NormalizationUtils.trimAndUniquePreserveOrder(options);
+        for (String o : options) {
+            if (o == null || o.trim().isEmpty()) {
+                throw new IllegalArgumentException("Options cannot contain empty or blank values");
+            }
+        }
+
+        if (NormalizationUtils.hasDuplicatesIgnoreCase(options)) {
+            throw new IllegalArgumentException("Options contain duplicate values (case-insensitive)");
+        }
+
+        this.options = NormalizationUtils.trimAndUnique(options);
     }
 }
