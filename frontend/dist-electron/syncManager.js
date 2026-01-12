@@ -139,7 +139,7 @@ class SyncManager {
             setTimeout(() => this.updateConnection(), 10000);
             return;
         }
-        const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
         try {
             const sse = new EventSource(url);
@@ -154,8 +154,7 @@ class SyncManager {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
                     console.log(`[📡 SSE] 📦 Payload Question: "${payload.question}"`);
-                    if (payload.labels)
-                        console.log(`[📡 SSE] 🏷️ Payload Labels:`, payload.labels);
+                    // if (payload.labels) console.log(`[📡 SSE] 🏷️ Payload Labels:`, payload.labels);
                     await this.handleIncomingPoll(payload);
                 }
                 catch (e) {
@@ -267,8 +266,8 @@ class SyncManager {
             publishedAt: new Date().toISOString(),
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith && dto.sharedWith.length > 0 ? dto.sharedWith : (dto.consumers || []),
-            syncStatus: 'synced',
-            labels: dto.labels || []
+            syncStatus: 'synced'
+            // labels: dto.labels || []
         };
         try {
             await (0, db_1.createPoll)(poll);
@@ -359,7 +358,7 @@ class SyncManager {
                 }
             }
             // 3. Sync Labels
-            await this.syncLabels();
+            // await this.syncLabels();
             this.lastSyncTime = new Date().toISOString();
         }
         catch (error) {
@@ -373,76 +372,12 @@ class SyncManager {
             }
         }
     }
-    async syncLabels() {
-        if (!this.email || !this.isOnline)
-            return;
-        try {
-            console.log('[🏷️ LABELS] 🔄 Starting Bidirectional Label Sync...');
-            // 1. PUSH: Sync locally created labels to backend
-            const localLabels = (0, db_1.getLabels)();
-            const pendingLabels = localLabels.filter(l => l.syncStatus === 'pending');
-            if (pendingLabels.length > 0) {
-                console.log(`[🏷️ LABELS] 📤 Found ${pendingLabels.length} pending local labels to push`);
-                for (const label of pendingLabels) {
-                    try {
-                        await backendApi.createLabel({
-                            name: label.name,
-                            color: label.color,
-                            description: label.description
-                        });
-                        await (0, db_1.updateLabelSyncStatus)(label.id, 'synced');
-                        console.log(`[🏷️ LABELS] ✅ Pushed local label to backend: "${label.name}"`);
-                    }
-                    catch (pushErr) {
-                        console.error(`[🏷️ LABELS] ❌ Failed to push label "${label.name}":`, pushErr);
-                    }
-                }
-            }
-            // 2. PULL: Fetch updates from backend
-            const backendLabels = await backendApi.getAllLabels();
-            let newCount = 0;
-            let updateCount = 0;
-            for (const bLabel of backendLabels) {
-                // Check if exists locally by NAME
-                const exists = localLabels.find((l) => l.name === bLabel.name);
-                if (!exists) {
-                    console.log(`[🏷️ LABELS] 📥 Found NEW label from backend: "${bLabel.name}" -> Creating locally`);
-                    (0, db_1.createLabel)({
-                        id: (Date.now() + Math.floor(Math.random() * 1000)).toString(),
-                        name: bLabel.name,
-                        color: bLabel.color,
-                        description: bLabel.description,
-                        syncStatus: 'synced',
-                        createdAt: bLabel.createdAt || new Date().toISOString(),
-                        cloudId: bLabel.id
-                    });
-                    newCount++;
-                }
-                else {
-                    // Update local if backend is different or cloudId is missing
-                    if (exists.color !== bLabel.color || exists.description !== bLabel.description || exists.syncStatus !== 'synced' || exists.cloudId !== bLabel.id) {
-                        console.log(`[🏷️ LABELS] ♻️ Updating/Syncing label "${bLabel.name}" from backend`);
-                        (0, db_1.updateLabel)(exists.id, {
-                            color: bLabel.color,
-                            description: bLabel.description,
-                            cloudId: bLabel.id,
-                            syncStatus: 'synced'
-                        });
-                        updateCount++;
-                    }
-                }
-            }
-            if (newCount > 0 || updateCount > 0 || pendingLabels.length > 0) {
-                console.log(`[🏷️ LABELS] ✅ Sync Complete: ${pendingLabels.length} pushed, ${newCount} created locally, ${updateCount} updated.`);
-            }
-            else {
-                console.log('[🏷️ LABELS] ✅ Sync Complete: No changes needed.');
-            }
-        }
-        catch (e) {
-            console.error('[🏷️ LABELS] ❌ Sync failed:', e);
-        }
+    /*
+    private async syncLabels() {
+        if (!this.email || !this.isOnline) return;
+...
     }
+    */
     async handleIncomingSync(dto) {
         // Transform Sync DTO to Local Poll Format
         // Note: PollSyncDTO fields slightly differ from PollCreateDTO/ActivePollDTO
@@ -462,8 +397,8 @@ class SyncManager {
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith || [],
             syncStatus: 'synced',
-            updatedAt: dto.lastEdited,
-            labels: dto.labels || []
+            updatedAt: dto.lastEdited
+            // labels: dto.labels || []
         };
         try {
             await (0, db_1.createPoll)(poll);

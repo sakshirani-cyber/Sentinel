@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState /*, useEffect */ } from 'react';
 import { Poll } from '../App';
 import { Plus, X, Check, Upload, AlertCircle, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+/*
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
     Tooltip,
@@ -9,9 +10,8 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "./ui/tooltip";
-import { parseLabelsFromText, stripLabelMarkers, parseLabelName, formatLabelName } from '../utils/labelUtils';
-import LabelInput from './LabelInput';
-import LabelText from './LabelText';
+*/
+// import { parseLabelsFromText, stripLabelMarkers, parseLabelName, formatLabelName } from '../utils/labelUtils';
 import { cn } from './ui/utils';
 import {
     Select,
@@ -21,12 +21,14 @@ import {
     SelectValue,
 } from "./ui/select";
 
+/*
 interface Label {
     id: string;
     name: string;
     color: string;
     description?: string;
 }
+*/
 
 interface EditPollModalProps {
     poll: Poll;
@@ -69,12 +71,13 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
     const [showErrors, setShowErrors] = useState(false);
-    const [explicitLabels, setExplicitLabels] = useState<string[]>((poll.labels || []).map(stripLabelMarkers));
-
+    // const [explicitLabels, setExplicitLabels] = useState<string[]>((poll.labels || []).map(stripLabelMarkers));
+    // const [success, setSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [labels, setLabels] = useState<Label[]>([]);
+    // const [labels, setLabels] = useState<Label[]>([]);
 
     // Fetch labels on mount
+    /*
     useEffect(() => {
         const fetchLabels = async () => {
             if ((window as any).electron?.db) {
@@ -88,6 +91,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         };
         fetchLabels();
     }, []);
+    */
 
     const availableConsumers = Array.from(new Set([
         ...poll.consumers,
@@ -189,67 +193,18 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         }
     };
 
+    /*
     const handleLabelClick = (labelName: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!explicitLabels.includes(labelName)) {
-            setExplicitLabels(prev => [...prev, labelName]);
-        }
+        // Label click handler
     };
+    */
 
     // Check for duplicate options (case-insensitive)
     const hasDuplicateOptions = () => {
         const validOptions = options.filter(o => o.trim()).map(o => o.trim().toLowerCase());
         const uniqueOptions = new Set(validOptions);
         return uniqueOptions.size !== validOptions.length;
-    };
-
-    const handleSave = async () => {
-        setShowErrors(true);
-        if (!isValid) {
-            // Small delay to allow showErrors to trigger re-render and display error messages
-            setTimeout(() => {
-                const firstError = document.querySelector('.text-red-500');
-                if (firstError) {
-                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 50);
-            return;
-        }
-
-        setIsSaving(true);
-        try {
-            const validOptions = options.filter(o => o.trim());
-            const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
-
-            const updates: Partial<Poll> = {
-                question,
-                options: validOptions.map((text, index) => ({
-                    id: `opt-${index}`,
-                    text
-                })),
-                defaultResponse: finalDefaultResponse,
-                showDefaultToConsumers,
-                anonymityMode,
-                deadline: new Date(deadline).toISOString(),
-                isPersistentFinalAlert,
-                consumers: selectedConsumers,
-                labels: Array.from(new Set([
-                    ...parseLabelsFromText(question),
-                    ...options.flatMap(o => parseLabelsFromText(o)),
-                    ...explicitLabels.map(stripLabelMarkers)
-                ])).map(formatLabelName),
-                isEdited: true
-            };
-
-            console.log('[EditPollModal] Saving updates:', { updates, republish });
-            // Republish flag is passed from state. Validation ensures it's correct.
-            await onUpdate(poll.id, updates, republish);
-            onClose();
-        } catch (error) {
-            console.error('Error saving poll:', error);
-        } finally {
-            setIsSaving(false);
-        }
     };
 
     const currentDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
@@ -285,10 +240,54 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         currentDefaultResponse &&
         isDateValid(deadline) &&
         selectedConsumers.length > 0 &&
-        selectedConsumers.length > 0 &&
         !isRepublishMissing &&
         !isBufferInsufficient &&
         hasChanges;
+
+    const handleSave = async () => {
+        setShowErrors(true);
+        if (!isValid) {
+            // Small delay to allow showErrors to trigger re-render and display error messages
+            setTimeout(() => {
+                const firstError = document.querySelector('.text-red-500');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50);
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const validOptions = options.filter(o => o.trim());
+            const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
+
+            const updates: Partial<Poll> = {
+                question,
+                options: validOptions.map((text, index) => ({
+                    id: `opt-${index}`,
+                    text
+                })),
+                defaultResponse: finalDefaultResponse,
+                showDefaultToConsumers,
+                anonymityMode,
+                deadline: new Date(deadline).toISOString(),
+                isPersistentFinalAlert,
+                consumers: selectedConsumers,
+                // labels: [],
+                isEdited: true
+            };
+
+            console.log('[EditPollModal] Saving updates:', { updates, republish });
+            // Republish flag is passed from state. Validation ensures it's correct.
+            await onUpdate(poll.id, updates, republish);
+            onClose();
+        } catch (error) {
+            console.error('Error saving poll:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -311,15 +310,14 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         <label className="block text-mono-text mb-2 font-medium">
                             Question <span className="text-red-500">*</span>
                         </label>
-                        <LabelInput
+                        <input
                             value={question}
-                            onChange={setQuestion}
-                            labels={labels}
-                            placeholder="Type # to add labels"
+                            onChange={(e) => setQuestion(e.target.value)}
                             className={`w-full px-4 py-3 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !question.trim()
                                 ? 'border-red-500 focus:ring-1 focus:ring-red-500'
                                 : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
                                 }`}
+                            placeholder="Question"
                         />
                         {showErrors && !question.trim() && (
                             <p className="text-red-500 text-xs mt-1">Question is required</p>
@@ -334,16 +332,14 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         <div className="space-y-3">
                             {options.map((option, index) => (
                                 <div key={index} className="flex gap-2">
-                                    <LabelInput
+                                    <input
                                         value={option}
-                                        onChange={(value) => handleOptionChange(index, value)}
-                                        labels={labels}
-                                        placeholder={`Option ${index + 1} (Type # to add labels)`}
-                                        containerClassName="flex-1 min-w-0"
+                                        onChange={(e) => handleOptionChange(index, e.target.value)}
                                         className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !option.trim()
                                             ? 'border-red-500 focus:ring-1 focus:ring-red-500'
                                             : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
                                             }`}
+                                        placeholder={`Option ${index + 1}`}
                                     />
                                     {options.length > 2 && (
                                         <button
@@ -393,15 +389,14 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                             </div>
 
                             {useCustomDefault ? (
-                                <LabelInput
+                                <input
                                     value={customDefault || ''}
-                                    onChange={setCustomDefault}
-                                    labels={labels}
-                                    placeholder="e.g., I don't know, N/A (Type # to add labels)"
+                                    onChange={(e) => setCustomDefault(e.target.value)}
                                     className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !(customDefault || '').trim()
                                         ? 'border-red-500 focus:ring-1 focus:ring-red-500'
                                         : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
                                         }`}
+                                    placeholder="e.g., I don't know, N/A"
                                 />
                             ) : (
                                 <Select
@@ -429,7 +424,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                                 className="py-3 px-4 whitespace-normal break-words cursor-pointer hover:bg-slate-50 focus:bg-slate-100 data-[state=checked]:bg-slate-100"
                                                 hideIndicator
                                             >
-                                                <LabelText text={option} labels={labels} className="inline-block w-full" />
+                                                {option}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -531,133 +526,12 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         </div>
                     </div>
 
-                    {/* Poll Labels */}
+                    {/* Poll Labels - Disabled for Demo */}
+                    {/*
                     <div className="pt-2">
-                        <label className="block text-mono-text mb-2 font-medium">
-                            Poll Labels
-                            <span className="text-sm text-mono-text/60 ml-2">
-                                (Tags from text are auto-selected)
-                            </span>
-                        </label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="w-full justify-between flex items-center px-4 py-2 rounded-xl border border-mono-primary/20 hover:bg-mono-primary/5 transition-all text-left bg-mono-bg"
-                                >
-                                    <div className="flex flex-wrap gap-2 items-center py-1">
-                                        {(() => {
-                                            const tLabels = parseLabelsFromText(question);
-                                            options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
-                                            const derived = new Set(tLabels);
-                                            const combined = Array.from(new Set([...Array.from(derived), ...explicitLabels]));
-
-                                            if (combined.length === 0) return <span className="text-mono-text/50">Select Labels...</span>;
-
-                                            return combined.map(name => {
-                                                const labelObj = labels.find(l => stripLabelMarkers(l.name) === name);
-                                                const color = labelObj?.color || '#3b82f6';
-                                                const count = tLabels.filter(l => l === name).length;
-                                                const isDerived = derived.has(name);
-                                                const isExplicit = explicitLabels.includes(name);
-
-                                                return (
-                                                    <span
-                                                        key={name}
-                                                        onClick={(e) => count > 0 && handleLabelClick(name, e)}
-                                                        className={cn(
-                                                            "relative inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm transition-opacity",
-                                                            count > 0 ? "cursor-pointer hover:opacity-80" : "cursor-default"
-                                                        )}
-                                                        style={{
-                                                            backgroundColor: `${color}20`,
-                                                            borderColor: `${color}50`,
-                                                            color: color
-                                                        }}
-                                                    >
-                                                        {parseLabelName(name)}
-                                                        {isDerived ? (
-                                                            <span
-                                                                className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
-                                                                style={{ backgroundColor: color }}
-                                                            >
-                                                                {count}
-                                                            </span>
-                                                        ) : isExplicit ? (
-                                                            <span
-                                                                className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-white shadow-sm ring-1 ring-white cursor-pointer hover:opacity-80 transition-opacity"
-                                                                style={{ backgroundColor: color }}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setExplicitLabels(prev => prev.filter(l => l !== name));
-                                                                }}
-                                                            >
-                                                                <X className="w-2.5 h-2.5" />
-                                                            </span>
-                                                        ) : null}
-                                                    </span>
-                                                );
-                                            });
-                                        })()}
-                                    </div>
-                                    <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                                className="bg-white border border-slate-200 shadow-xl p-0"
-                                align="start"
-                                style={{ width: 'var(--radix-popover-trigger-width)' }}
-                            >
-                                <div className="p-3 max-h-60 overflow-y-auto flex flex-wrap gap-2">
-                                    {(() => {
-                                        const tLabels = parseLabelsFromText(question);
-                                        options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
-                                        const derived = new Set(tLabels);
-                                        const combined = new Set([...Array.from(derived), ...explicitLabels.map(stripLabelMarkers)]);
-                                        const availableLabels = labels.filter(l => !combined.has(stripLabelMarkers(l.name)));
-
-                                        if (availableLabels.length === 0) {
-                                            return <p className="text-sm text-center text-slate-500 py-4 w-full">All available labels are in use.</p>;
-                                        }
-
-                                        return (
-                                            <TooltipProvider key="label-tooltips">
-                                                {availableLabels.map(label => (
-                                                    <Tooltip key={label.id} delayDuration={300}>
-                                                        <TooltipTrigger asChild>
-                                                            <div
-                                                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm cursor-pointer transition-all hover:scale-105 active:scale-95"
-                                                                style={{
-                                                                    backgroundColor: `${label.color}15`,
-                                                                    borderColor: `${label.color}40`,
-                                                                    color: label.color
-                                                                }}
-                                                                onClick={() => setExplicitLabels(prev => [...prev, stripLabelMarkers(label.name)])}
-                                                            >
-                                                                {parseLabelName(label.name)}
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        {label.description && (
-                                                            <TooltipContent
-                                                                side="top"
-                                                                className="bg-white border border-slate-200 shadow-xl text-slate-700 px-3 py-2 rounded-lg max-w-[200px]"
-                                                                sideOffset={8}
-                                                            >
-                                                                <div className="space-y-1">
-                                                                    <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider opacity-70">Description</p>
-                                                                    <p className="text-xs leading-relaxed">{label.description}</p>
-                                                                </div>
-                                                            </TooltipContent>
-                                                        )}
-                                                    </Tooltip>
-                                                ))}
-                                            </TooltipProvider>
-                                        );
-                                    })()}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        ...
                     </div>
+                    */}
 
                     {/* Anonymity Mode */}
                     <div>
@@ -798,8 +672,8 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={isSaving}
-                        className="flex items-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none font-medium min-w-[140px] justify-center"
+                        disabled={!isValid || isSaving}
+                        className="flex items-center gap-2 px-6 py-3 bg-mono-primary text-mono-bg rounded-xl hover:opacity-90 transition-all shadow-lg shadow-mono-primary/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none min-w-[120px] justify-center font-medium"
                     >
                         {isSaving ? (
                             <>
@@ -809,7 +683,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         ) : (
                             <>
                                 <Check className="w-4 h-4" />
-                                Save Changes
+                                {republish ? 'Republish' : 'Save Changes'}
                             </>
                         )}
                     </button>

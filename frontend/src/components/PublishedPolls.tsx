@@ -4,7 +4,7 @@ import { mapResultsToResponses } from '../services/pollService';
 import { Clock, Users, BarChart3, Trash2, Calendar, Edit, PenTool, X, Eye } from 'lucide-react';
 import AnalyticsView from './AnalyticsView';
 import EditPollModal from './EditPollModal';
-import LabelPill from './LabelPill';
+// import LabelPill from './LabelPill';
 import LabelText from './LabelText';
 
 interface PublishedPollsProps {
@@ -220,11 +220,13 @@ export default function PublishedPolls({
                   <div className="px-2 py-1 bg-mono-primary/5 text-mono-text/70 rounded text-xs capitalize border border-mono-primary/10">
                     {poll.anonymityMode}
                   </div>
+                  {/*
                   {poll.labels && poll.labels.length > 0 && (
                     <div className="flex-grow">
                       <LabelPill labels={poll.labels} />
                     </div>
                   )}
+                  */}
                 </div>
 
                 <div className="flex gap-2 pt-4 border-t border-mono-primary/5">
@@ -355,12 +357,14 @@ export default function PublishedPolls({
                   <LabelText text={selectedPollForDetails.question} />
                 </p>
               </div>
+              {/*
               {selectedPollForDetails.labels && selectedPollForDetails.labels.length > 0 && (
                 <div>
                   <p className="text-sm text-mono-text/60 mb-2 font-medium">Labels</p>
                   <LabelPill labels={selectedPollForDetails.labels} />
                 </div>
               )}
+              */}
               <div>
                 <p className="text-sm text-mono-text/60 mb-2 font-medium">Options</p>
                 <ul className="space-y-2">

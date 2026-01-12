@@ -3,7 +3,7 @@ import AuthPage from './components/AuthPage';
 import PublisherDashboard from './components/PublisherDashboard';
 import ConsumerDashboard from './components/ConsumerDashboard';
 import GlobalAlertManager from './components/GlobalAlertManager';
-import LabelManager from './components/LabelManager';
+// import LabelManager from './components/LabelManager';
 
 export interface User {
   name: string;
@@ -25,7 +25,7 @@ export interface Poll {
   publisherName: string;
   deadline: string;
   status: 'active' | 'completed' | 'scheduled';
-  scheduledFor?: string;
+  // scheduledFor?: string;
   consumers: string[];
   defaultResponse?: string;
   showDefaultToConsumers: boolean;
@@ -38,7 +38,7 @@ export interface Poll {
   updatedAt?: string;
   cloudSignalId?: number;
   syncStatus?: 'synced' | 'pending' | 'error';
-  labels?: string[];
+  // labels?: string[];
 }
 
 import PersistentAlertSecondary from './components/PersistentAlertSecondary';
@@ -65,7 +65,7 @@ function App() {
     return <PersistentAlertSecondary />;
   }
   // We need a view mode state to allow publishers to switch to consumer view
-  const [viewMode, setViewMode] = useState<'consumer' | 'publisher' | 'labels'>('consumer');
+  const [viewMode, setViewMode] = useState<'consumer' | 'publisher' /* | 'labels' */>('consumer');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [openPollId, setOpenPollId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -265,6 +265,7 @@ function App() {
     }
   };
 
+  /*
   const handlePublishNow = async (poll: Poll) => {
     try {
       console.log(`[App] 🚀 Publishing scheduled poll now: ${poll.id}`);
@@ -286,6 +287,7 @@ function App() {
       alert('Error publishing poll');
     }
   };
+  */
 
 
 
@@ -364,13 +366,14 @@ function App() {
           onUpdatePoll={handleUpdatePoll}
           onSwitchMode={() => setViewMode('consumer')}
           onLogout={handleLogout}
-          onManageLabels={() => setViewMode('labels')}
-          onPublishNow={handlePublishNow}
+        // onManageLabels={() => {/* setViewMode('labels') */ }}
+        // onPublishNow={handlePublishNow}
         />
       </>
     );
   }
 
+  /*
   if (viewMode === 'labels' && user.isPublisher) {
     return (
       <>
@@ -393,6 +396,7 @@ function App() {
       </>
     );
   }
+  */
 
   return (
     <>

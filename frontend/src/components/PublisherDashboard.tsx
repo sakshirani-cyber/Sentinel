@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { User, Poll, Response } from '../App';
-import { PlusCircle, List, LogOut, Settings, Tag, CalendarClock } from 'lucide-react';
+import { PlusCircle, List, LogOut, Settings } from 'lucide-react';
 import logo from '../assets/logo.png';
 import CreatePoll from './CreatePoll';
 import PublishedPolls from './PublishedPolls';
-import ScheduledPolls from './ScheduledPolls';
+// import ScheduledPolls from './ScheduledPolls';
 import FormTypeSelector from './FormTypeSelector';
 
 interface PublisherDashboardProps {
@@ -16,8 +16,8 @@ interface PublisherDashboardProps {
   onUpdatePoll: (pollId: string, updates: Partial<Poll>, republish: boolean) => void;
   onSwitchMode: () => void;
   onLogout: () => void;
-  onManageLabels: () => void;
-  onPublishNow?: (poll: Poll) => void;
+  // onManageLabels: () => void;
+  // onPublishNow?: (poll: Poll) => void;
 }
 
 export default function PublisherDashboard({
@@ -28,17 +28,17 @@ export default function PublisherDashboard({
   onDeletePoll,
   onUpdatePoll,
   onSwitchMode,
-  onLogout,
-  onManageLabels,
-  onPublishNow
+  onLogout
+  // onManageLabels
+  // onPublishNow
 }: PublisherDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'create' | 'published' | 'scheduled'>('published');
+  const [activeTab, setActiveTab] = useState<'create' | 'published' /* | 'scheduled' */>('published');
   const [selectedFormType, setSelectedFormType] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
   const userPolls = polls.filter(p => p.publisherEmail === user.email);
   const activePolls = userPolls.filter(p => p.status !== 'scheduled');
-  const scheduledPolls = polls.filter(p => p.status === 'scheduled');
+  // const scheduledPolls = polls.filter(p => p.status === 'scheduled');
 
   const handleFormTypeSelect = (formType: string) => {
     setSelectedFormType(formType);
@@ -93,6 +93,7 @@ export default function PublisherDashboard({
                       onClick={() => setShowSettings(false)}
                     />
                     <div className="absolute right-0 mt-2 w-48 bg-mono-primary rounded-xl shadow-xl border border-mono-bg/10 py-1 z-50 overflow-hidden">
+                      {/*
                       <button
                         onClick={() => {
                           setShowSettings(false);
@@ -101,9 +102,10 @@ export default function PublisherDashboard({
                         className="w-full text-left px-4 py-2.5 text-sm text-mono-bg hover:bg-mono-accent/10 flex items-center gap-2 transition-colors"
                       >
                         <Tag className="w-4 h-4" />
-                        Label
+                        Label (Disabled)
                       </button>
                       <div className="h-px bg-mono-bg/10 my-1" />
+                      */}
                       <button
                         onClick={() => {
                           onLogout();
@@ -140,6 +142,7 @@ export default function PublisherDashboard({
               <PlusCircle className="w-5 h-5" />
               <span className="hidden sm:inline">Create</span>
             </button>
+            {/* 
             <button
               onClick={() => setActiveTab('scheduled')}
               className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'scheduled'
@@ -158,6 +161,7 @@ export default function PublisherDashboard({
                 </span>
               )}
             </button>
+            */}
             <button
               onClick={() => setActiveTab('published')}
               className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'published'
@@ -198,7 +202,7 @@ export default function PublisherDashboard({
                   user={user}
                   onCreatePoll={async (poll) => {
                     await onCreatePoll(poll);
-                    setActiveTab(poll.status === 'scheduled' ? 'scheduled' : 'published');
+                    setActiveTab(/* poll.status === 'scheduled' ? 'scheduled' : */ 'published');
                   }}
                   existingPolls={polls}
                   formType={selectedFormType}
@@ -217,6 +221,7 @@ export default function PublisherDashboard({
           />
         )}
 
+        {/* 
         {activeTab === 'scheduled' && (
           <ScheduledPolls
             polls={scheduledPolls}
@@ -225,6 +230,7 @@ export default function PublisherDashboard({
             onPublishNow={(poll) => onPublishNow?.(poll)}
           />
         )}
+        */}
       </main>
     </div>
   );

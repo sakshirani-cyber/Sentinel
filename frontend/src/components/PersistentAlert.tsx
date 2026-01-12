@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Poll } from '../App';
 import { AlertTriangle, ArrowRight, SkipForward, Loader } from 'lucide-react';
 import LabelText from './LabelText';
-import LabelPill from './LabelPill';
+// import LabelPill from './LabelPill';
 
 interface PersistentAlertProps {
   poll: Poll;
@@ -62,11 +62,13 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
               <LabelText text={poll.question} />
             </h3>
 
-            {poll.labels && poll.labels.length > 0 && (
-              <div className="mb-4">
-                <LabelPill labels={poll.labels} />
-              </div>
-            )}
+            {/* 
+        {poll.labels && poll.labels.length > 0 && (
+          <div className="mb-4">
+            <LabelPill labels={poll.labels} />
+          </div>
+        )}
+        */}
 
             {poll.showDefaultToConsumers && (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">

@@ -43,7 +43,7 @@ const db_1 = require("./db");
 const backendApi = __importStar(require("./backendApi"));
 const electron_updater_1 = require("electron-updater");
 const syncManager_1 = require("./syncManager");
-const pollScheduler_1 = require("./pollScheduler");
+// import { pollScheduler } from './pollScheduler';
 // Auto-updater logging
 electron_updater_1.autoUpdater.logger = console;
 console.log('\n' + '#'.repeat(80));
@@ -246,12 +246,14 @@ electron_1.app.whenReady().then(async () => {
             poll.syncStatus = 'pending';
             await (0, db_1.createPoll)(poll);
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending`);
+            /*
             // Check if this is a SCHEDULED poll
             if (poll.status === 'scheduled') {
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🕒 Poll is SCHEDULED for ${poll.scheduledFor}. Skipping cloud sync.`);
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🎉 Returning success to frontend (scheduled poll saved locally)`);
                 return { success: true };
             }
+            */
             // Try to sync to backend immediately but don't block
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ☁️ Step 2: Initiating cloud sync (non-blocking)...`);
             backendApi.createPoll(poll).then(async (result) => {
@@ -459,8 +461,8 @@ electron_1.app.whenReady().then(async () => {
     });
     setupAutoLaunch();
     // Start poll scheduler to automatically publish scheduled polls
-    console.log('[Main] Starting poll scheduler...');
-    pollScheduler_1.pollScheduler.start();
+    // console.log('[Main] Starting poll scheduler...');
+    // pollScheduler.start();
     createWindow();
     // Check for updates
     if (!electron_is_dev_1.default) {
@@ -940,17 +942,21 @@ electron_1.ipcMain.handle('db-update-poll', async (_event, { pollId, updates, re
         return { success: false, error: error.message };
     }
 });
+/*
 // ------------------------------------
 // Labels (Experimental)
 // ------------------------------------
-electron_1.ipcMain.handle('db-create-label', async (event, label) => {
+
+ipcMain.handle('db-create-label', async (event, label) => {
     const time = new Date().toLocaleTimeString();
     console.log('\n' + '*'.repeat(80));
     console.log(`[IPC Handler] [${time}] 🏷️ db-create-label received: "${label.name}"`);
     console.log(`[IPC Handler] Label Data:`, label);
+
     try {
-        const result = (0, db_1.createLabel)(label);
+        const result = createLabel(label);
         console.log(`[IPC Handler] [${time}] ✅ Local label created: ${label.name} (id: ${label.id})`);
+
         // Sync to backend (Fire & Forget / Optimistic)
         console.log(`[IPC Handler] [${time}] ☁️ Syncing new label to cloud: "${label.name}"`);
         backendApi.createLabel({
@@ -962,87 +968,91 @@ electron_1.ipcMain.handle('db-create-label', async (event, label) => {
             console.log(`[IPC Handler] [${time}] ✅ Cloud sync SUCCESS for label: "${label.name}"`);
             try {
                 // Update with backend ID (cloudId) and sync status
-                (0, db_1.updateLabel)(label.id, {
+                updateLabel(label.id, {
                     cloudId: response.id,
                     syncStatus: 'synced'
                 });
                 console.log(`[IPC Handler] [${time}] 💾 Local label updated with cloudId: ${response.id}`);
-            }
-            catch (syncErr) {
+            } catch (syncErr: any) {
                 console.error(`[IPC Handler] [${time}] ❌ Failed to update local label with cloudId:`, syncErr.message);
             }
         }).catch(err => {
             console.error(`[IPC Handler] [${time}] ❌ Cloud sync FAILED for label "${label.name}":`, err.message);
         });
+
         console.log('*'.repeat(80) + '\n');
         return { success: true, data: result };
-    }
-    catch (error) {
+    } catch (error) {
         console.error(`[IPC Handler] [${time}] ❌ db-create-label FAILED:`, error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 });
-electron_1.ipcMain.handle('db-get-labels', async () => {
+
+ipcMain.handle('db-get-labels', async () => {
     console.log('[IPC Main] Handling db-get-labels request');
     try {
-        const labels = (0, db_1.getLabels)();
+        const labels = getLabels();
         return { success: true, data: labels };
-    }
-    catch (error) {
+    } catch (error) {
         console.error('[IPC Main] Error getting labels:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 });
-electron_1.ipcMain.handle('db-delete-label', async (event, id) => {
+
+ipcMain.handle('db-delete-label', async (event, id) => {
     console.log('[IPC Main] Handling db-delete-label request:', id);
     try {
-        const result = (0, db_1.deleteLabel)(id);
+        const result = deleteLabel(id);
         return { success: true, data: result };
-    }
-    catch (error) {
+    } catch (error) {
         console.error('[IPC Main] Error deleting label:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 });
-electron_1.ipcMain.handle('db-update-label', async (event, { id, updates }) => {
+
+ipcMain.handle('db-update-label', async (event, { id, updates }) => {
     const time = new Date().toLocaleTimeString();
     console.log('\n' + '+'.repeat(80));
     console.log(`[IPC Handler] [${time}] ✏️ db-update-label received`);
     console.log(`[IPC Handler] Label ID: ${id}`);
     console.log(`[IPC Handler] Updates:`, updates);
+
     try {
         // 1. Update Locally
-        const result = (0, db_1.updateLabel)(id, updates);
+        const result = updateLabel(id, updates);
         console.log(`[IPC Handler] [${time}] ✅ Local label update complete for ID: ${id}`);
+
         // 2. Sync to Cloud
         try {
             // Re-fetch label to get cloudId
-            const labels = (0, db_1.getLabels)(); // Explicit cast
-            const updatedLabel = labels.find((l) => l.id === id);
+            const labels = getLabels() as any[]; // Explicit cast
+            const updatedLabel = labels.find((l: any) => l.id === id);
+
             if (updatedLabel && updatedLabel.cloudId) {
                 console.log(`[IPC Handler] [${time}] ☁️ Syncing edit to cloud for label CloudID: ${updatedLabel.cloudId}`);
+
                 await backendApi.editLabel({
                     id: updatedLabel.cloudId,
                     description: updates.description,
                     color: updates.color
                 });
+
                 // Mark as synced again after successful cloud update
-                (0, db_1.updateLabelSyncStatus)(id, 'synced');
+                updateLabelSyncStatus(id, 'synced');
                 console.log(`[IPC Handler] [${time}] ✅ Cloud sync SUCCESS for label edit`);
-            }
-            else {
+            } else {
                 console.log(`[IPC Handler] [${time}] ℹ️ Skipping cloud sync: Label has no cloudId (not yet synced to cloud)`);
             }
-        }
-        catch (syncError) {
+        } catch (syncError: any) {
             console.error(`[IPC Handler] [${time}] ❌ Cloud sync FAILED for label edit:`, syncError.message);
         }
+
         console.log('+'.repeat(80) + '\n');
         return { success: true, data: result };
-    }
-    catch (error) {
+    } catch (error) {
         console.error(`[IPC Handler] [${time}] ❌ db-update-label FAILED:`, error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
     }
 });
+*/
 //# sourceMappingURL=main.js.map

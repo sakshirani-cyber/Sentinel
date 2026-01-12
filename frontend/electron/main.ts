@@ -1,11 +1,11 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen, globalShortcut, net } from 'electron';
 import * as path from 'path';
 import isDev from 'electron-is-dev';
-import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus, createLabel, getLabels, deleteLabel, updateLabel, updateLabelSyncStatus } from './db';
+import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll, deletePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus /*, createLabel, getLabels, deleteLabel, updateLabel, updateLabelSyncStatus */ } from './db';
 import * as backendApi from './backendApi';
 import { autoUpdater } from 'electron-updater';
 import { syncManager } from './syncManager';
-import { pollScheduler } from './pollScheduler';
+// import { pollScheduler } from './pollScheduler';
 
 // Auto-updater logging
 autoUpdater.logger = console;
@@ -238,12 +238,14 @@ app.whenReady().then(async () => {
             await createPoll(poll);
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending`);
 
+            /*
             // Check if this is a SCHEDULED poll
             if (poll.status === 'scheduled') {
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🕒 Poll is SCHEDULED for ${poll.scheduledFor}. Skipping cloud sync.`);
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🎉 Returning success to frontend (scheduled poll saved locally)`);
                 return { success: true };
             }
+            */
 
             // Try to sync to backend immediately but don't block
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ☁️ Step 2: Initiating cloud sync (non-blocking)...`);
@@ -464,8 +466,8 @@ app.whenReady().then(async () => {
     setupAutoLaunch();
 
     // Start poll scheduler to automatically publish scheduled polls
-    console.log('[Main] Starting poll scheduler...');
-    pollScheduler.start();
+    // console.log('[Main] Starting poll scheduler...');
+    // pollScheduler.start();
 
     createWindow();
 
@@ -1000,6 +1002,7 @@ ipcMain.handle('db-update-poll', async (_event, { pollId, updates, republish }) 
     }
 });
 
+/*
 // ------------------------------------
 // Labels (Experimental)
 // ------------------------------------
@@ -1111,3 +1114,4 @@ ipcMain.handle('db-update-label', async (event, { id, updates }) => {
         return { success: false, error: (error as Error).message };
     }
 });
+*/

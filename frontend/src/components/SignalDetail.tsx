@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Poll, Response } from '../App';
 import { X, Send, AlertCircle, Clock, Shield, ArrowLeft, Loader, CheckCircle } from 'lucide-react';
 import LabelText from './LabelText';
-import LabelPill from './LabelPill';
+// import LabelPill from './LabelPill';
 
 interface Label {
   id: string;
@@ -154,11 +154,13 @@ export default function SignalDetail({
           </div>
 
           {/* Labels */}
+          {/*
           {poll.labels && poll.labels.length > 0 && (
             <div className="mt-3">
               <LabelPill labels={poll.labels} />
             </div>
           )}
+          */}
         </div>
 
         {/* Content - Scrollable */}

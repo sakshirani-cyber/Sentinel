@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 const EventSourceLib = require('eventsource');
 const EventSource = EventSourceLib.EventSource || EventSourceLib.default || EventSourceLib;
 import * as backendApi from './backendApi';
-import { getPolls, getResponses, createPoll, submitResponse, updatePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus, createLabel, getLabels, updateLabel, updateLabelSyncStatus } from './db';
+import { getPolls, getResponses, createPoll, submitResponse, updatePoll, deletePollByCloudId, deleteResponsesForPoll, updateResponseSyncStatus /*, createLabel, getLabels, updateLabel, updateLabelSyncStatus */ } from './db';
 
 export class SyncManager {
     private email: string | null = null;
@@ -118,7 +118,7 @@ export class SyncManager {
             return;
         }
 
-        const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
 
         try {
@@ -136,7 +136,7 @@ export class SyncManager {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
                     console.log(`[📡 SSE] 📦 Payload Question: "${payload.question}"`);
-                    if (payload.labels) console.log(`[📡 SSE] 🏷️ Payload Labels:`, payload.labels);
+                    // if (payload.labels) console.log(`[📡 SSE] 🏷️ Payload Labels:`, payload.labels);
 
                     await this.handleIncomingPoll(payload);
                 } catch (e) {
@@ -258,8 +258,8 @@ export class SyncManager {
             publishedAt: new Date().toISOString(),
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith && dto.sharedWith.length > 0 ? dto.sharedWith : (dto.consumers || []),
-            syncStatus: 'synced',
-            labels: dto.labels || []
+            syncStatus: 'synced'
+            // labels: dto.labels || []
         };
 
         try {
@@ -365,7 +365,7 @@ export class SyncManager {
             }
 
             // 3. Sync Labels
-            await this.syncLabels();
+            // await this.syncLabels();
 
             this.lastSyncTime = new Date().toISOString();
         } catch (error) {
@@ -379,78 +379,12 @@ export class SyncManager {
         }
     }
 
+    /*
     private async syncLabels() {
         if (!this.email || !this.isOnline) return;
-
-        try {
-            console.log('[🏷️ LABELS] 🔄 Starting Bidirectional Label Sync...');
-
-            // 1. PUSH: Sync locally created labels to backend
-            const localLabels = getLabels() as any[];
-            const pendingLabels = localLabels.filter(l => l.syncStatus === 'pending');
-
-            if (pendingLabels.length > 0) {
-                console.log(`[🏷️ LABELS] 📤 Found ${pendingLabels.length} pending local labels to push`);
-                for (const label of pendingLabels) {
-                    try {
-                        await backendApi.createLabel({
-                            name: label.name,
-                            color: label.color,
-                            description: label.description
-                        });
-                        await updateLabelSyncStatus(label.id, 'synced');
-                        console.log(`[🏷️ LABELS] ✅ Pushed local label to backend: "${label.name}"`);
-                    } catch (pushErr) {
-                        console.error(`[🏷️ LABELS] ❌ Failed to push label "${label.name}":`, pushErr);
-                    }
-                }
-            }
-
-            // 2. PULL: Fetch updates from backend
-            const backendLabels = await backendApi.getAllLabels();
-
-            let newCount = 0;
-            let updateCount = 0;
-
-            for (const bLabel of backendLabels) {
-                // Check if exists locally by NAME
-                const exists = localLabels.find((l: any) => l.name === bLabel.name);
-
-                if (!exists) {
-                    console.log(`[🏷️ LABELS] 📥 Found NEW label from backend: "${bLabel.name}" -> Creating locally`);
-                    createLabel({
-                        id: (Date.now() + Math.floor(Math.random() * 1000)).toString(),
-                        name: bLabel.name,
-                        color: bLabel.color,
-                        description: bLabel.description,
-                        syncStatus: 'synced',
-                        createdAt: bLabel.createdAt || new Date().toISOString(),
-                        cloudId: bLabel.id
-                    });
-                    newCount++;
-                } else {
-                    // Update local if backend is different or cloudId is missing
-                    if (exists.color !== bLabel.color || exists.description !== bLabel.description || exists.syncStatus !== 'synced' || exists.cloudId !== bLabel.id) {
-                        console.log(`[🏷️ LABELS] ♻️ Updating/Syncing label "${bLabel.name}" from backend`);
-                        updateLabel(exists.id, {
-                            color: bLabel.color,
-                            description: bLabel.description,
-                            cloudId: bLabel.id,
-                            syncStatus: 'synced'
-                        } as any);
-                        updateCount++;
-                    }
-                }
-            }
-            if (newCount > 0 || updateCount > 0 || pendingLabels.length > 0) {
-                console.log(`[🏷️ LABELS] ✅ Sync Complete: ${pendingLabels.length} pushed, ${newCount} created locally, ${updateCount} updated.`);
-            } else {
-                console.log('[🏷️ LABELS] ✅ Sync Complete: No changes needed.');
-            }
-        } catch (e) {
-            console.error('[🏷️ LABELS] ❌ Sync failed:', e);
-        }
+...
     }
+    */
 
     private async handleIncomingSync(dto: backendApi.PollSyncDTO) {
         // Transform Sync DTO to Local Poll Format
@@ -471,8 +405,8 @@ export class SyncManager {
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith || [],
             syncStatus: 'synced',
-            updatedAt: dto.lastEdited,
-            labels: dto.labels || []
+            updatedAt: dto.lastEdited
+            // labels: dto.labels || []
         };
 
         try {
