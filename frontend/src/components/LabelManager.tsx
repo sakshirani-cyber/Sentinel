@@ -4,7 +4,6 @@ import logo from '../assets/logo.png';
 import { User } from '../App';
 import { HexColorPicker, HexColorInput } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatLabelName, parseLabelName } from '../utils/labelUtils';
 
 
 interface Label {
@@ -42,8 +41,6 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
         fetchLabels();
     }, []);
 
-
-
     const fetchLabels = async () => {
         setLoading(true);
         try {
@@ -66,7 +63,7 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
 
         const newLabel: Label = {
             id: crypto.randomUUID(),
-            name: formatLabelName(newLabelName), // Format: ~#name~
+            name: newLabelName,
             color: newLabelColor,
             description: newLabelDesc,
             createdAt: new Date().toISOString()
@@ -398,7 +395,7 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
                                                         color: editingId === label.id ? editColor : label.color
                                                     }}
                                                 >
-                                                    {parseLabelName(label.name)}
+                                                    #{label.name}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 align-middle">

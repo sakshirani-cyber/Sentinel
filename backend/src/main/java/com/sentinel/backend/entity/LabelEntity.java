@@ -35,7 +35,9 @@ public class LabelEntity {
 
     @Column(
             name = "created_at",
-            nullable = false
+            nullable = false,
+            updatable = false,
+            insertable = false
     )
     private Instant createdAt;
 }

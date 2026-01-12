@@ -202,12 +202,10 @@ function App() {
       if (!poll) throw new Error('Poll not found');
 
       console.log('[App] handleUpdatePoll (local-first) called:', { pollId, updates, republish });
-      console.log('[App] Calling IPC db-update-poll...');
 
       // Always update local DB
       if ((window as any).electron) {
         const result = await (window as any).electron.ipcRenderer.invoke('db-update-poll', { pollId, updates, republish });
-        console.log('[App] IPC db-update-poll response received:', result);
         if (result.success) {
           setPolls(prev => prev.map(p => p.id === pollId ? { ...p, ...updates } : p));
           // If republished, clear local responses for this poll

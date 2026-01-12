@@ -35,7 +35,6 @@ public class LabelServiceImpl implements LabelService {
         LabelEntity entity = new LabelEntity();
         entity.setLabel(normalizedLabel);
         entity.setDescription(NormalizationUtils.trimToNull(dto.getDescription()));
-        entity.setCreatedAt(java.time.Instant.now());
         entity.setColor(dto.getColor().toUpperCase());
 
         labelRepository.save(entity);

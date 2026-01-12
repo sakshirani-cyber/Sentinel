@@ -6,58 +6,10 @@ interface Label {
 }
 
 /**
- * Standardizes label name for storage: ensures ~#name~ format
- * Handles input like "test", "#test", or "~#test~"
- */
-export function formatLabelName(name: string): string {
-    if (!name) return "";
-    let clean = name.trim();
-    if (clean.startsWith('~') && clean.endsWith('~')) {
-        clean = clean.slice(1, -1);
-    }
-    if (clean.startsWith('#')) {
-        clean = clean.substring(1);
-    }
-    return `~#${clean}~`;
-}
-
-/**
- * Standardizes label name for UI display: ensures #name format
- * Handles input like "~#test~", "test", or "#test"
- */
-export function parseLabelName(name: string): string {
-    if (!name) return "";
-    let clean = name.trim();
-    if (clean.startsWith('~') && clean.endsWith('~')) {
-        clean = clean.slice(1, -1);
-    }
-    if (!clean.startsWith('#')) {
-        clean = `#${clean}`;
-    }
-    return clean;
-}
-
-/**
- * Strips all markers (# and ~) to get the raw identifier
- */
-export function stripLabelMarkers(name: string): string {
-    if (!name) return "";
-    let clean = name.trim();
-    if (clean.startsWith('~') && clean.endsWith('~')) {
-        clean = clean.slice(1, -1);
-    }
-    if (clean.startsWith('#')) {
-        clean = clean.substring(1);
-    }
-    return clean;
-}
-
-/**
  * Parse labels from text that are stored in ~#labelname~ format
- * Returns array of raw label names (WITHOUT markers)
+ * Returns array of label names found in the text
  */
 export function parseLabelsFromText(text: string): string[] {
-    if (!text) return [];
     const labelRegex = /~#([^~]+)~/g;
     const matches = text.matchAll(labelRegex);
     return Array.from(matches, match => match[1]);
@@ -65,25 +17,22 @@ export function parseLabelsFromText(text: string): string[] {
 
 /**
  * Convert text with ~#label~ format to display format with #label
+ * Used when displaying text to users
  */
 export function convertLabelsForDisplay(text: string): string {
-    if (!text) return "";
     return text.replace(/~#([^~]+)~/g, '#$1');
 }
 
 /**
- * Get label object from label name (case-insensitive)
- * name can be raw, with #, or with ~# wrappers
+ * Get label object from label name
  */
-export function getLabelByName(name: string, labels: Label[]): Label | undefined {
-    if (!name) return undefined;
-    const cleanToFind = stripLabelMarkers(name).toLowerCase();
-
-    return labels.find(l => stripLabelMarkers(l.name).toLowerCase() === cleanToFind);
+export function getLabelByName(labelName: string, labels: Label[]): Label | undefined {
+    return labels.find(l => l.name.toLowerCase() === labelName.toLowerCase());
 }
 
 /**
  * Split text into segments with labels and plain text
+ * Returns array of {type: 'text' | 'label', content: string, label?: Label}
  */
 export function parseTextSegments(
     text: string,
@@ -96,6 +45,7 @@ export function parseTextSegments(
     let match;
 
     while ((match = labelRegex.exec(text)) !== null) {
+        // Add text before the label
         if (match.index > lastIndex) {
             segments.push({
                 type: 'text',
@@ -103,6 +53,7 @@ export function parseTextSegments(
             });
         }
 
+        // Add the label
         const labelName = match[1];
         const label = getLabelByName(labelName, labels);
         segments.push({
@@ -114,6 +65,7 @@ export function parseTextSegments(
         lastIndex = match.index + match[0].length;
     }
 
+    // Add remaining text
     if (lastIndex < text.length) {
         segments.push({
             type: 'text',
@@ -124,15 +76,17 @@ export function parseTextSegments(
     return segments;
 }
 
-export function hasLabels(text: string): boolean {
-    return /~#([^~]+)~/.test(text);
+/**
+ * Remove label markers from text (convert ~#label~ to #label)
+ * Useful for editing
+ */
+export function stripLabelMarkers(text: string): string {
+    return text.replace(/~#([^~]+)~/g, '#$1');
 }
 
 /**
- * Strips markers from any occurrences of ~#labelName~ in a text string and replaces them with #labelName.
- * Useful for plain-text contexts like native notifications.
+ * Check if text contains any labels
  */
-export function stripMarkersFromText(text: string): string {
-    if (!text) return '';
-    return text.replace(/~#([^~]+)~/g, '#$1');
+export function hasLabels(text: string): boolean {
+    return /~#([^~]+)~/.test(text);
 }
