@@ -1,5 +1,6 @@
 import { Poll, Response } from '../App';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -53,58 +54,142 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
     });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    console.log('Starting Excel export...');
     try {
-      const wb = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Sentinel';
+      workbook.lastModifiedBy = 'Sentinel';
+      workbook.created = new Date();
+
+      // Define header style explicitly
+      const applyHeaderStyle = (cell: ExcelJS.Cell) => {
+        cell.font = { bold: true, color: { argb: 'FF000000' }, size: 12 };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' } // Solid Yellow
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      };
 
       // --- Sheet 1: Summary ---
-      const summaryData = [
-        { Metric: 'Poll Question', Value: poll.question },
-        { Metric: 'Total Consumers', Value: totalConsumers },
-        { Metric: 'Response Rate', Value: `${responseRate.toFixed(1)}%` },
-        { Metric: 'Submitted Responses', Value: submittedResponses.length },
-        { Metric: 'Default Responses', Value: defaultResponses.length },
-        { Metric: 'Skipped Responses', Value: skippedResponses.length },
-        { Metric: 'Generated At', Value: new Date().toLocaleString() }
+      const wsSummary = workbook.addWorksheet('Summary');
+      wsSummary.columns = [
+        { header: 'Metric', key: 'metric', width: 25 },
+        { header: 'Value', key: 'value', width: 60 }
       ];
-      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+      wsSummary.addRows([
+        { metric: 'Poll Question', value: poll.question },
+        { metric: 'Total Consumers', value: totalConsumers },
+        { metric: 'Response Rate', value: `${responseRate.toFixed(1)}%` },
+        { metric: 'Submitted Responses', value: submittedResponses.length },
+        { metric: 'Default Responses', value: defaultResponses.length },
+        { metric: 'Skipped Responses', value: skippedResponses.length },
+        { metric: 'Generated At', value: new Date().toLocaleString() }
+      ]);
+
+      // Apply styles to the first row (headers)
+      wsSummary.getRow(1).eachCell((cell) => {
+        applyHeaderStyle(cell);
+      });
 
       // --- Sheet 2: Distribution ---
-      const distributionData = Object.entries(responseCounts).map(([option, count]) => {
+      const wsDistribution = workbook.addWorksheet('Distribution');
+      wsDistribution.columns = [
+        { header: 'Option', key: 'option', width: 45 },
+        { header: 'Count', key: 'count', width: 15 },
+        { header: 'Percentage', key: 'percentage', width: 20 },
+        { header: 'Status', key: 'status', width: 25 },
+        { header: 'Visual Distribution', key: 'visual', width: 35 }
+      ];
+
+      const distributionRows = Object.entries(responseCounts).map(([option, count]) => {
         const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
         const isDefaultOption = option === poll.defaultResponse;
         const isRemoved = !currentOptionTexts.has(option) && !isDefaultOption;
 
         return {
-          'Option': option,
-          'Count': count,
-          'Percentage': `${percentage.toFixed(1)}%`,
-          'Status': isDefaultOption ? 'Default Option' : (isRemoved ? 'Removed Option' : 'Active')
+          option,
+          count,
+          percentage: percentage / 100,
+          status: isDefaultOption ? 'Default Option' : (isRemoved ? 'Removed Option' : 'Active'),
+          visual: percentage / 100
         };
       });
-      const wsDistribution = XLSX.utils.json_to_sheet(distributionData);
-      XLSX.utils.book_append_sheet(wb, wsDistribution, 'Distribution');
+
+      wsDistribution.addRows(distributionRows);
+
+      // Apply styles to headers
+      wsDistribution.getRow(1).eachCell((cell) => {
+        applyHeaderStyle(cell);
+      });
+
+      // Format Percentage columns
+      wsDistribution.getColumn('percentage').numFmt = '0.0%';
+      wsDistribution.getColumn('visual').numFmt = '0.0%';
+
+      // Add Data Bars
+      const distRowCount = distributionRows.length;
+      if (distRowCount > 0) {
+        wsDistribution.addConditionalFormatting({
+          ref: `E2:E${distRowCount + 1}`,
+          rules: [
+            {
+              type: 'dataBar',
+              cfvo: [
+                { type: 'min', value: 0 },
+                { type: 'max', value: 1 }
+              ],
+              color: { argb: 'FF6659FF' } // Mono-accent
+            } as any
+          ]
+        });
+      }
 
       // --- Sheet 3: Individual Responses ---
-      const responsesData = responses.map(r => ({
-        'Consumer Email': r.consumerEmail,
-        'Response': r.response,
-        'Status': r.isDefault ? 'Default' : (r.skipReason ? 'Skipped' : 'Submitted'),
-        'Submitted At': new Date(r.submittedAt).toLocaleString(),
-        'Skip Reason': r.skipReason || ''
-      }));
-      const wsResponses = XLSX.utils.json_to_sheet(responsesData);
-      XLSX.utils.book_append_sheet(wb, wsResponses, 'Responses');
+      const wsResponses = workbook.addWorksheet('Responses');
+      wsResponses.columns = [
+        { header: 'Consumer Email', key: 'email', width: 35 },
+        { header: 'Response', key: 'response', width: 45 },
+        { header: 'Status', key: 'status', width: 20 },
+        { header: 'Submitted At', key: 'time', width: 30 },
+        { header: 'Skip Reason', key: 'reason', width: 45 }
+      ];
 
-      // Generate file name
+      wsResponses.addRows(responses.map(r => ({
+        email: r.consumerEmail,
+        response: r.response,
+        status: r.isDefault ? 'Default' : (r.skipReason ? 'Skipped' : 'Submitted'),
+        time: new Date(r.submittedAt).toLocaleString(),
+        reason: r.skipReason || ''
+      })));
+
+      // Apply styles to headers
+      wsResponses.getRow(1).eachCell((cell) => {
+        applyHeaderStyle(cell);
+      });
+
+      // Generate file and download
+      console.log('Generating Excel buffer...');
+      const buffer = await workbook.xlsx.writeBuffer();
       const fileName = `poll_analytics_${poll.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
-      // Save file
-      XLSX.writeFile(wb, fileName);
+      console.log('Triggering download for:', fileName);
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, fileName);
+      console.log('Excel export complete.');
+
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Failed to export analytics');
+      alert('Failed to export analytics: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -124,7 +209,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                 className="flex items-center gap-2 px-3 py-1.5 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-accent hover:text-mono-primary transition-colors text-sm font-medium"
               >
                 <Download className="w-4 h-4" />
-                Export CSV
+                Export Excel
               </button>
             )}
             <button
