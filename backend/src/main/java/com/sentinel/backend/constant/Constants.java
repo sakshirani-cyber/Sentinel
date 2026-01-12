@@ -16,7 +16,6 @@ public class Constants {
     public static final String KEEP_ALIVE = "keep-alive";
     public static final String DATA_SYNC = "DATA_SYNC";
     public static final String PING = "ping";
-    public static final String STATUS_DELETED = "DELETED";
 
     private Constants() {
     }

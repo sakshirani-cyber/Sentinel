@@ -48,20 +48,4 @@ public class Queries {
         AND
             user_email IN (:userEmails)
         """;
-
-    public static final String UPDATE_SIGNAL_STATUS = """
-        UPDATE Signal s
-        SET s.status = :status
-        WHERE s.id = :signalId
-        """;
-
-    public static final String DELETE_POLL_BY_SIGNAL_ID = """
-        DELETE FROM Poll p
-        WHERE p.signal.id = :signalId
-        """;
-
-    public static final String DELETE_POLL_RESULTS_BY_SIGNAL_ID = """
-        DELETE FROM PollResult pr
-        WHERE pr.signal.id = :signalId
-        """;
 }

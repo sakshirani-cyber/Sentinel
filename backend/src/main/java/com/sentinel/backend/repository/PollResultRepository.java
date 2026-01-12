@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Set;
 
 import static com.sentinel.backend.constant.Queries.DELETE_BY_SIGNAL_ID_AND_USER_EMAILS;
-import static com.sentinel.backend.constant.Queries.DELETE_POLL_RESULTS_BY_SIGNAL_ID;
 
 public interface PollResultRepository extends JpaRepository<PollResult, PollResultId> {
 
@@ -28,9 +27,4 @@ public interface PollResultRepository extends JpaRepository<PollResult, PollResu
             @Param("signalId") Integer signalId,
             @Param("userEmails") Set<String> userEmails
     );
-
-    @Modifying
-    @Query(DELETE_POLL_RESULTS_BY_SIGNAL_ID)
-    int deleteBySignalId(@Param("signalId") Integer signalId);
-
 }
