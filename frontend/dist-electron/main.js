@@ -214,15 +214,6 @@ Comment=Sentinel Signal Enforcement
     }
 }
 electron_1.app.whenReady().then(async () => {
-    try {
-        console.log('[Main] Initializing local database...');
-        (0, db_1.initDB)();
-        console.log('[Main] Database initialization complete.');
-    }
-    catch (error) {
-        console.error('[Main] CRITICAL: Failed to initialize Database:', error);
-        // We might want to show a dialog and quit if DB fails
-    }
     // Register Backend API IPC Handlers (bypass CORS by making calls from main process)
     console.log('[Main] Registering Backend API IPC handlers...');
     electron_1.ipcMain.handle('backend-create-poll', async (_event, poll) => {
@@ -407,33 +398,26 @@ electron_1.app.whenReady().then(async () => {
         }
     });
     electron_1.ipcMain.handle('backend-edit-poll', async (_event, { signalId, poll, republish }) => {
-        const time = new Date().toLocaleTimeString();
-        console.log('\n' + '='.repeat(80));
-        console.log(`[IPC Handler] [${time}] 📝 backend-edit-poll received`);
-        console.log(`[IPC Handler] Signal ID: ${signalId}`);
-        console.log(`[IPC Handler] Republish: ${republish}`);
-        console.log(`[IPC Handler] Poll Data:`, JSON.stringify(poll, null, 2));
-        console.log('='.repeat(80) + '\n');
+        console.log(`[IPC Handler] backend-edit-poll called for signalId: ${signalId}`);
         try {
             await backendApi.editPoll(signalId, poll, republish);
             return { success: true };
         }
         catch (error) {
             const errorMessage = backendApi.extractBackendError(error);
-            console.error(`[IPC Handler] [${time}] ❌ backend-edit-poll error:`, errorMessage);
+            console.error('[IPC Handler] backend-edit-poll error:', errorMessage);
             return { success: false, error: errorMessage };
         }
     });
     electron_1.ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
-        const time = new Date().toLocaleTimeString();
-        console.log(`[IPC Handler] [${time}] 🗑️ backend-delete-poll called for signalId: ${signalId}`);
+        console.log(`[IPC Handler] backend-delete-poll called for signalId: ${signalId}`);
         try {
             await backendApi.deletePoll(signalId);
             return { success: true };
         }
         catch (error) {
             const errorMessage = backendApi.extractBackendError(error);
-            console.error(`[IPC Handler] [${time}] ❌ backend-delete-poll error:`, errorMessage);
+            console.error('[IPC Handler] backend-delete-poll error:', errorMessage);
             return { success: false, error: errorMessage };
         }
     });
@@ -452,6 +436,14 @@ electron_1.app.whenReady().then(async () => {
             return { success: false, error: errorMessage };
         }
     });
+    try {
+        console.log('[Main] Initializing local database...');
+        (0, db_1.initDB)();
+        console.log('[Main] Database initialization complete.');
+    }
+    catch (error) {
+        console.error('[Main] CRITICAL: Failed to initialize Database:', error);
+    }
     setupAutoLaunch();
     // Start poll scheduler to automatically publish scheduled polls
     console.log('[Main] Starting poll scheduler...');

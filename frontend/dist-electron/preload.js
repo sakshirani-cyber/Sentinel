@@ -4,12 +4,7 @@ const electron_1 = require("electron");
 electron_1.contextBridge.exposeInMainWorld('electron', {
     ipcRenderer: {
         send: (channel, data) => electron_1.ipcRenderer.send(channel, data),
-        on: (channel, func) => {
-            electron_1.ipcRenderer.on(channel, func);
-        },
-        removeListener: (channel, func) => {
-            electron_1.ipcRenderer.removeListener(channel, func);
-        },
+        on: (channel, func) => electron_1.ipcRenderer.on(channel, (event, ...args) => func(...args)),
         invoke: (channel, ...args) => electron_1.ipcRenderer.invoke(channel, ...args),
     },
     db: {

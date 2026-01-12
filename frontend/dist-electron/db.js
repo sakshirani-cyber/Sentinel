@@ -24,11 +24,6 @@ let db;
 let dbInitialized = false;
 function getDb() {
     if (!dbInitialized || !db) {
-        if (electron_1.app.isReady()) {
-            console.log('[SQLite DB] getDb() called before manual initDB(), but app is ready. Initializing now...');
-            initDB();
-            return db;
-        }
         throw new Error('Database not initialized. Please call initDB() after app is ready.');
     }
     return db;
