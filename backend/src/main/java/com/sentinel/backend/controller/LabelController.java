@@ -3,6 +3,7 @@ package com.sentinel.backend.controller;
 import com.sentinel.backend.dto.request.LabelCreateDTO;
 import com.sentinel.backend.dto.request.LabelEditDTO;
 import com.sentinel.backend.dto.response.ApiResponse;
+import com.sentinel.backend.dto.response.CreateLabelResponse;
 import com.sentinel.backend.dto.response.LabelResponseDTO;
 import com.sentinel.backend.service.LabelService;
 import jakarta.validation.Valid;
@@ -27,7 +28,7 @@ public class LabelController {
     private final LabelService labelService;
 
     @PostMapping("/create/label")
-    public ResponseEntity<ApiResponse<Void>> createLabel(
+    public ResponseEntity<ApiResponse<CreateLabelResponse>> createLabel(
             @RequestBody @Valid LabelCreateDTO req) {
 
         long start = System.currentTimeMillis();
@@ -38,14 +39,14 @@ public class LabelController {
                 req.getColor()
         );
 
-        labelService.createLabel(req);
+        CreateLabelResponse response = labelService.createLabel(req);
 
         log.info(
                 "[LABEL][CREATE][SUCCESS] durationMs={}",
                 System.currentTimeMillis() - start
         );
 
-        return ResponseEntity.ok(ApiResponse.success(CREATED, null));
+        return ResponseEntity.ok(ApiResponse.success(CREATED, response));
     }
 
     @GetMapping("/labels")

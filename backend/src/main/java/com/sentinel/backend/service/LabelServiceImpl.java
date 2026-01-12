@@ -2,6 +2,7 @@ package com.sentinel.backend.service;
 
 import com.sentinel.backend.dto.request.LabelCreateDTO;
 import com.sentinel.backend.dto.request.LabelEditDTO;
+import com.sentinel.backend.dto.response.CreateLabelResponse;
 import com.sentinel.backend.dto.response.LabelResponseDTO;
 import com.sentinel.backend.entity.LabelEntity;
 import com.sentinel.backend.exception.CustomException;
@@ -26,7 +27,7 @@ public class LabelServiceImpl implements LabelService {
 
     @Override
     @Transactional
-    public void createLabel(LabelCreateDTO dto) {
+    public CreateLabelResponse createLabel(LabelCreateDTO dto) {
 
         String normalizedLabel = NormalizationUtils.trimToNull(dto.getLabel());
 
@@ -41,6 +42,8 @@ public class LabelServiceImpl implements LabelService {
         entity.setColor(dto.getColor().toUpperCase());
 
         labelRepository.save(entity);
+
+        return new CreateLabelResponse(entity.getId(), dto.getLocalId());
     }
 
     @Override

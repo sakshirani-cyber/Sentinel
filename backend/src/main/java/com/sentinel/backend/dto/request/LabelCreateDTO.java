@@ -8,7 +8,12 @@ import lombok.Data;
 public class LabelCreateDTO {
 
     @NotBlank(message = "Label is required")
+    @Pattern(
+            regexp = "^~#[^~]+~$",
+            message = "Label must be in format ~#labelName~"
+    )
     private String label;
+
 
     @NotBlank(message = "Description is required")
     private String description;
@@ -19,4 +24,6 @@ public class LabelCreateDTO {
             message = "Color must be a valid hex value (e.g. #FF0000)"
     )
     private String color;
+
+    private Long localId;
 }

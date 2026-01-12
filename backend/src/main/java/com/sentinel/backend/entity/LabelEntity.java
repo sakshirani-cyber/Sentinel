@@ -24,10 +24,10 @@ public class LabelEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false)
     private String label;
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false)
     private String description;
 
     @Column(nullable = false, length = 7)
