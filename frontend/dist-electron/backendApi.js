@@ -10,6 +10,7 @@ exports.editPoll = editPoll;
 exports.deletePoll = deletePoll;
 exports.login = login;
 exports.createLabel = createLabel;
+exports.editLabel = editLabel;
 exports.getAllLabels = getAllLabels;
 exports.extractBackendError = extractBackendError;
 const axios_1 = __importDefault(require("axios"));
@@ -172,18 +173,47 @@ async function createLabel(label) {
     const payload = {
         label: label.name,
         color: label.color,
-        description: label.description && label.description.trim() !== '' ? label.description : label.name
+        description: label.description && label.description.trim() !== '' ? label.description : label.name,
+        localId: Number(label.localId) // Sent as a number (Long) to match backend expectation
     };
     if (!payload.description.trim()) {
         payload.description = "No Description"; // Fallback to avoid 400/500 if name is somehow empty/trim
     }
     console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
     try {
-        await apiClient.post('/create/label', payload);
+        // We use 'any' for the API response because the backend has swapped fields:
+        // backend.localId -> backend ID
+        // backend.labelId -> local ID we sent
+        const response = await apiClient.post('/create/label', payload);
+        const rawData = response.data.data;
         console.log(`[Backend API] [${time}] 📥 createLabel response | SUCCESS | name="${label.name}"`);
+        console.log(`[Backend API] Raw Response Data (Swapped):`, rawData);
+        // Map backend's swapped 'localId' field to our 'id' (backend ID)
+        return {
+            id: rawData.localId,
+            localId: label.localId?.toString() || ''
+        };
     }
     catch (error) {
         console.error(`[Backend API] [${time}] ❌ createLabel error | FAILED | name="${label.name}":`, error.message);
+        throw error;
+    }
+}
+async function editLabel(label) {
+    const time = new Date().toLocaleTimeString();
+    console.log(`[Backend API] [${time}] 📤 editLabel request | id="${label.id}"`);
+    const payload = {
+        id: label.id,
+        description: label.description,
+        color: label.color
+    };
+    console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
+    try {
+        await apiClient.post('/edit/label', payload);
+        console.log(`[Backend API] [${time}] 📥 editLabel response | SUCCESS | id="${label.id}"`);
+    }
+    catch (error) {
+        console.error(`[Backend API] [${time}] ❌ editLabel error | FAILED | id="${label.id}":`, error.message);
         throw error;
     }
 }
@@ -198,7 +228,8 @@ async function getAllLabels() {
         name: l.label,
         color: l.color,
         description: l.description,
-        createdAt: l.createdAt
+        createdAt: l.createdAt,
+        editedAt: l.editedAt // Added support for editedAt
     }));
     if (labels.length > 0) {
         console.log('[🌐 API] Labels:', labels.map(l => l.name).join(', '));

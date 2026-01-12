@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User, Poll, Response } from '../App';
-import { PlusCircle, List, LogOut, Settings, Tag, CalendarClock } from 'lucide-react';
+import { PlusCircle, List, LogOut, Settings, Tag } from 'lucide-react';
 import logo from '../assets/logo.png';
 import CreatePoll from './CreatePoll';
 import PublishedPolls from './PublishedPolls';
@@ -17,7 +17,6 @@ interface PublisherDashboardProps {
   onSwitchMode: () => void;
   onLogout: () => void;
   onManageLabels: () => void;
-  onPublishNow?: (poll: Poll) => void;
 }
 
 export default function PublisherDashboard({
@@ -29,8 +28,7 @@ export default function PublisherDashboard({
   onUpdatePoll,
   onSwitchMode,
   onLogout,
-  onManageLabels,
-  onPublishNow
+  onManageLabels
 }: PublisherDashboardProps) {
   const [activeTab, setActiveTab] = useState<'create' | 'published' | 'scheduled'>('published');
   const [selectedFormType, setSelectedFormType] = useState<string | null>(null);

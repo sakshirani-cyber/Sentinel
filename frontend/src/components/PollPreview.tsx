@@ -135,9 +135,9 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                 )}
 
                 <div className="space-y-2 mb-4">
-                  {poll.options.map((option) => (
+                  {poll.options.map((option, index) => (
                     <label
-                      key={option.id}
+                      key={option.id || index}
                       className="flex items-center gap-3 p-3 border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
                     >
                       <input

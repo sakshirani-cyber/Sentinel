@@ -71,7 +71,9 @@ export function initDB() {
                     color TEXT NOT NULL,
                     description TEXT,
                     syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending'
-                    createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+                    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+                    cloudId INTEGER, -- Backend ID
+                    editedAt TEXT -- ISO 8601 Timestamp
                 );
             `);
             console.log('[SQLite DB] Tables created/verified successfully.');
@@ -129,6 +131,14 @@ export function initDB() {
             if (!labelColumns.includes('syncStatus')) {
                 console.log('[SQLite DB] Migrating: Adding syncStatus to labels table');
                 db.exec("ALTER TABLE labels ADD COLUMN syncStatus TEXT DEFAULT 'pending'");
+            }
+            if (!labelColumns.includes('cloudId')) {
+                console.log('[SQLite DB] Migrating: Adding cloudId to labels table');
+                db.exec("ALTER TABLE labels ADD COLUMN cloudId INTEGER");
+            }
+            if (!labelColumns.includes('editedAt')) {
+                console.log('[SQLite DB] Migrating: Adding editedAt to labels table');
+                db.exec("ALTER TABLE labels ADD COLUMN editedAt TEXT");
             }
 
             console.log('[SQLite DB] Migrations check complete.');
@@ -203,7 +213,7 @@ export function initDB() {
                 if (existing) {
                     db.prepare('UPDATE labels SET color = ?, description = ? WHERE name = ?').run(label.color, label.description, label.name);
                 } else {
-                    const id = require('crypto').randomUUID();
+                    const id = (Date.now() + Math.floor(Math.random() * 1000)).toString();
                     db.prepare('INSERT INTO labels (id, name, color, description, syncStatus) VALUES (?, ?, ?, ?, ?)')
                         .run(id, label.name, label.color, label.description, 'synced');
                 }
@@ -601,15 +611,17 @@ export function updateResponseSyncStatus(pollLocalId: string, userId: string, st
 }
 
 // Labels
-export function createLabel(label: { id: string, name: string, color: string, description?: string, syncStatus?: string, createdAt: string }) {
+export function createLabel(label: { id: string, name: string, color: string, description?: string, syncStatus?: string, createdAt: string, cloudId?: number, editedAt?: string }) {
     try {
         const stmt = getDb().prepare(`
-            INSERT INTO labels (id, name, color, description, syncStatus, createdAt)
-            VALUES (@id, @name, @color, @description, @syncStatus, @createdAt)
+            INSERT INTO labels (id, name, color, description, syncStatus, createdAt, cloudId, editedAt)
+            VALUES (@id, @name, @color, @description, @syncStatus, @createdAt, @cloudId, @editedAt)
         `);
         return stmt.run({
             ...label,
-            syncStatus: label.syncStatus || 'pending'
+            syncStatus: label.syncStatus || 'pending',
+            cloudId: label.cloudId || null,
+            editedAt: label.editedAt || null
         });
     } catch (error) {
         console.error('[SQLite DB] Error creating label:', error);
@@ -637,7 +649,7 @@ export function deleteLabel(id: string) {
     }
 }
 
-export function updateLabel(id: string, updates: { name?: string, color?: string, description?: string }) {
+export function updateLabel(id: string, updates: { name?: string, color?: string, description?: string, cloudId?: number, syncStatus?: string, editedAt?: string }) {
     try {
         const fields: string[] = [];
         const values: any[] = [];
@@ -653,6 +665,18 @@ export function updateLabel(id: string, updates: { name?: string, color?: string
         if (updates.description !== undefined) {
             fields.push('description = ?');
             values.push(updates.description);
+        }
+        if (updates.cloudId !== undefined) {
+            fields.push('cloudId = ?');
+            values.push(updates.cloudId);
+        }
+        if (updates.syncStatus !== undefined) {
+            fields.push('syncStatus = ?');
+            values.push(updates.syncStatus);
+        }
+        if (updates.editedAt !== undefined) {
+            fields.push('editedAt = ?');
+            values.push(updates.editedAt);
         }
 
         if (fields.length === 0) {

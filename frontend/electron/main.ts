@@ -1021,14 +1021,19 @@ ipcMain.handle('db-create-label', async (event, label) => {
         backendApi.createLabel({
             name: label.name,
             color: label.color,
-            description: label.description
-        }).then(() => {
+            description: label.description,
+            localId: label.id
+        }).then((response) => {
             console.log(`[IPC Handler] [${time}] ✅ Cloud sync SUCCESS for label: "${label.name}"`);
             try {
-                updateLabelSyncStatus(label.id, 'synced');
-                console.log(`[IPC Handler] [${time}] 💾 Local sync status updated to 'synced' for: "${label.name}"`);
+                // Update with backend ID (cloudId) and sync status
+                updateLabel(label.id, {
+                    cloudId: response.id,
+                    syncStatus: 'synced'
+                });
+                console.log(`[IPC Handler] [${time}] 💾 Local label updated with cloudId: ${response.id}`);
             } catch (syncErr: any) {
-                console.error(`[IPC Handler] [${time}] ❌ Failed to update local sync status:`, syncErr.message);
+                console.error(`[IPC Handler] [${time}] ❌ Failed to update local label with cloudId:`, syncErr.message);
             }
         }).catch(err => {
             console.error(`[IPC Handler] [${time}] ❌ Cloud sync FAILED for label "${label.name}":`, err.message);
@@ -1072,12 +1077,34 @@ ipcMain.handle('db-update-label', async (event, { id, updates }) => {
     console.log(`[IPC Handler] Updates:`, updates);
 
     try {
+        // 1. Update Locally
         const result = updateLabel(id, updates);
         console.log(`[IPC Handler] [${time}] ✅ Local label update complete for ID: ${id}`);
 
-        // Note: Currently we don't sync label UPDATES to backend, only creation.
-        // If we add label update sync, it should be triggered here.
-        console.log(`[IPC Handler] [${time}] ℹ️ No cloud sync triggered (Sync for label updates not yet implemented)`);
+        // 2. Sync to Cloud
+        try {
+            // Re-fetch label to get cloudId
+            const labels = getLabels() as any[]; // Explicit cast
+            const updatedLabel = labels.find((l: any) => l.id === id);
+
+            if (updatedLabel && updatedLabel.cloudId) {
+                console.log(`[IPC Handler] [${time}] ☁️ Syncing edit to cloud for label CloudID: ${updatedLabel.cloudId}`);
+
+                await backendApi.editLabel({
+                    id: updatedLabel.cloudId,
+                    description: updates.description,
+                    color: updates.color
+                });
+
+                // Mark as synced again after successful cloud update
+                updateLabelSyncStatus(id, 'synced');
+                console.log(`[IPC Handler] [${time}] ✅ Cloud sync SUCCESS for label edit`);
+            } else {
+                console.log(`[IPC Handler] [${time}] ℹ️ Skipping cloud sync: Label has no cloudId (not yet synced to cloud)`);
+            }
+        } catch (syncError: any) {
+            console.error(`[IPC Handler] [${time}] ❌ Cloud sync FAILED for label edit:`, syncError.message);
+        }
 
         console.log('+'.repeat(80) + '\n');
         return { success: true, data: result };

@@ -364,8 +364,8 @@ export default function PublishedPolls({
               <div>
                 <p className="text-sm text-mono-text/60 mb-2 font-medium">Options</p>
                 <ul className="space-y-2">
-                  {selectedPollForDetails.options.map((opt) => (
-                    <li key={opt.id} className="flex items-center gap-3 text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
+                  {selectedPollForDetails.options.map((opt, index) => (
+                    <li key={opt.id || index} className="flex items-center gap-3 text-mono-text p-3 bg-mono-primary/5 rounded-lg border border-mono-primary/10">
                       <span className="w-2 h-2 bg-mono-accent rounded-full ring-2 ring-mono-accent/30"></span>
                       <span className="flex-1 min-w-0 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
                         <LabelText text={opt.text} />

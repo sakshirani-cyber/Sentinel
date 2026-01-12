@@ -45,7 +45,6 @@ apiClient.interceptors.response.use(response => {
     return Promise.reject(error);
 });
 
-// ============================================================================
 // Backend API Types
 // ============================================================================
 
@@ -68,20 +67,13 @@ export interface LabelCreateDTO {
     name: string;
     color: string;
     description?: string;
+    localId?: string | number; // Numeric ID from frontend (timestamp)
 }
 
-export interface LabelResponseDTO {
-    id: number;
-    name: string;
-    color: string;
-    description: string;
-    createdAt: string;
-}
-
-export interface LabelCreateDTO {
-    name: string;
-    color: string;
+export interface LabelEditDTO {
+    id: number; // Backend ID
     description?: string;
+    color?: string;
 }
 
 export interface LabelResponseDTO {
@@ -90,11 +82,17 @@ export interface LabelResponseDTO {
     color: string;
     description: string;
     createdAt: string;
+    editedAt?: string;
 }
 
 interface CreatePollResponse {
     signalId: number;
     localId: number;
+}
+
+interface CreateLabelResponse {
+    id: number;
+    localId: string;
 }
 
 interface UserVoteDTO {
@@ -306,7 +304,7 @@ export async function login(email: string, password: string): Promise<string> {
     return response.data.data;
 }
 
-export async function createLabel(label: LabelCreateDTO): Promise<void> {
+export async function createLabel(label: LabelCreateDTO): Promise<CreateLabelResponse> {
     const time = new Date().toLocaleTimeString();
     console.log(`[Backend API] [${time}] 📤 createLabel request | name="${label.name}"`);
 
@@ -315,7 +313,8 @@ export async function createLabel(label: LabelCreateDTO): Promise<void> {
     const payload = {
         label: label.name,
         color: label.color,
-        description: label.description && label.description.trim() !== '' ? label.description : label.name
+        description: label.description && label.description.trim() !== '' ? label.description : label.name,
+        localId: Number(label.localId) // Sent as a number (Long) to match backend expectation
     };
 
     if (!payload.description.trim()) {
@@ -325,10 +324,43 @@ export async function createLabel(label: LabelCreateDTO): Promise<void> {
     console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
 
     try {
-        await apiClient.post<ApiResponse<void>>('/create/label', payload);
+        // We use 'any' for the API response because the backend has swapped fields:
+        // backend.localId -> backend ID
+        // backend.labelId -> local ID we sent
+        const response = await apiClient.post<ApiResponse<any>>('/create/label', payload);
+        const rawData = response.data.data;
+
         console.log(`[Backend API] [${time}] 📥 createLabel response | SUCCESS | name="${label.name}"`);
+        console.log(`[Backend API] Raw Response Data (Swapped):`, rawData);
+
+        // Map backend's swapped 'localId' field to our 'id' (backend ID)
+        return {
+            id: rawData.localId,
+            localId: label.localId?.toString() || ''
+        };
     } catch (error: any) {
         console.error(`[Backend API] [${time}] ❌ createLabel error | FAILED | name="${label.name}":`, error.message);
+        throw error;
+    }
+}
+
+export async function editLabel(label: LabelEditDTO): Promise<void> {
+    const time = new Date().toLocaleTimeString();
+    console.log(`[Backend API] [${time}] 📤 editLabel request | id="${label.id}"`);
+
+    const payload = {
+        id: label.id,
+        description: label.description,
+        color: label.color
+    };
+
+    console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
+
+    try {
+        await apiClient.post<ApiResponse<void>>('/edit/label', payload);
+        console.log(`[Backend API] [${time}] 📥 editLabel response | SUCCESS | id="${label.id}"`);
+    } catch (error: any) {
+        console.error(`[Backend API] [${time}] ❌ editLabel error | FAILED | id="${label.id}":`, error.message);
         throw error;
     }
 }
@@ -345,7 +377,8 @@ export async function getAllLabels(): Promise<LabelResponseDTO[]> {
         name: l.label,
         color: l.color,
         description: l.description,
-        createdAt: l.createdAt
+        createdAt: l.createdAt,
+        editedAt: l.editedAt // Added support for editedAt
     }));
 
     if (labels.length > 0) {
@@ -353,10 +386,6 @@ export async function getAllLabels(): Promise<LabelResponseDTO[]> {
     }
     return labels;
 }
-
-
-
-
 
 // ============================================================================
 // Error Handling Utility

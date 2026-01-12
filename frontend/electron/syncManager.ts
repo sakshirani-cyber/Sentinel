@@ -246,7 +246,7 @@ export class SyncManager {
             // Priority: signalId-based ID for consistent mapping, fallback to localId (if provided), then temp ID
             id: dto.signalId ? `poll-${dto.signalId}` : (dto.localId ? `poll-${dto.localId}` : `temp-${Date.now()}`),
             question: dto.question,
-            options: (dto.options || []).map((text: string) => ({ text })),
+            options: (dto.options || []).map((text: string) => ({ id: randomUUID(), text })),
             publisherEmail: dto.publisherEmail || dto.createdBy,
             publisherName: dto.publisherName || dto.createdBy,
             deadline: dto.endTimestamp,
@@ -419,24 +419,25 @@ export class SyncManager {
                 if (!exists) {
                     console.log(`[🏷️ LABELS] 📥 Found NEW label from backend: "${bLabel.name}" -> Creating locally`);
                     createLabel({
-                        id: randomUUID(),
+                        id: (Date.now() + Math.floor(Math.random() * 1000)).toString(),
                         name: bLabel.name,
                         color: bLabel.color,
                         description: bLabel.description,
                         syncStatus: 'synced',
-                        createdAt: bLabel.createdAt || new Date().toISOString()
+                        createdAt: bLabel.createdAt || new Date().toISOString(),
+                        cloudId: bLabel.id
                     });
                     newCount++;
                 } else {
-                    // Update local if backend is different
-                    if (exists.color !== bLabel.color || exists.description !== bLabel.description || exists.syncStatus !== 'synced') {
+                    // Update local if backend is different or cloudId is missing
+                    if (exists.color !== bLabel.color || exists.description !== bLabel.description || exists.syncStatus !== 'synced' || exists.cloudId !== bLabel.id) {
                         console.log(`[🏷️ LABELS] ♻️ Updating/Syncing label "${bLabel.name}" from backend`);
                         updateLabel(exists.id, {
                             color: bLabel.color,
                             description: bLabel.description,
-                            // Ensure it's marked as synced if it exists on backend
+                            cloudId: bLabel.id,
+                            syncStatus: 'synced'
                         } as any);
-                        await updateLabelSyncStatus(exists.id, 'synced');
                         updateCount++;
                     }
                 }
@@ -457,7 +458,7 @@ export class SyncManager {
         const poll = {
             id: dto.signalId ? `poll-${dto.signalId}` : `temp-${Date.now()}`, // Consistent with handleIncomingPoll
             question: dto.question,
-            options: dto.options ? dto.options.map((text: string) => ({ text })) : [],
+            options: dto.options ? dto.options.map((text: string) => ({ id: randomUUID(), text })) : [],
             publisherEmail: dto.publisher,
             publisherName: dto.publisher, // sync DTO doesn't have separate name
             deadline: dto.endTimestamp,

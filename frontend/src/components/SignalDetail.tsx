@@ -167,11 +167,11 @@ export default function SignalDetail({
           {/* Poll Options */}
           <div className="space-y-3 mb-6">
             <p className="text-sm font-medium text-mono-text/60 mb-2">Options</p>
-            {poll.options.map((option) => {
+            {poll.options.map((option, index) => {
               const isSelected = userResponse ? userResponse.response === option.text : selectedValue === option.text;
               return (
                 <label
-                  key={option.id}
+                  key={option.id || index}
                   className={`group flex items-center gap-4 p-4 border-2 rounded-xl transition-all duration-200 overflow-hidden ${isSelected
                     ? 'border-mono-accent bg-mono-accent/10 shadow-sm'
                     : 'border-mono-primary/10'

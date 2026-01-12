@@ -13,6 +13,8 @@ interface Label {
     color: string;
     description: string;
     createdAt: string;
+    editedAt?: string;
+    cloudId?: number;
 }
 
 interface LabelManagerProps {
@@ -48,8 +50,10 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
         setLoading(true);
         try {
             if ((window as any).electron?.backend) {
+                console.log('[LabelManager] Fetching labels...');
                 const result = await (window as any).electron.ipcRenderer.invoke('db-get-labels');
                 if (result.success) {
+                    console.log(`[LabelManager] Fetched ${result.data.length} labels.`);
                     setLabels(result.data);
                 }
             }
@@ -64,8 +68,18 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
         e.preventDefault();
         setCreateError(null);
 
+        if (!newLabelName.trim()) {
+            setCreateError('Label name is required');
+            return;
+        }
+
+        if (newLabelName.includes(' ')) {
+            setCreateError('Label name cannot contain spaces');
+            return;
+        }
+
         const newLabel: Label = {
-            id: crypto.randomUUID(),
+            id: Date.now().toString(),
             name: formatLabelName(newLabelName), // Format: ~#name~
             color: newLabelColor,
             description: newLabelDesc,
@@ -74,7 +88,10 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
 
         try {
             if ((window as any).electron?.backend) {
+                console.log('[LabelManager] Creating label (IPC db-create-label)...', newLabel);
                 const result = await (window as any).electron.ipcRenderer.invoke('db-create-label', newLabel);
+                console.log('[LabelManager] db-create-label result:', result);
+
                 if (result.success) {
                     setIsCreating(false);
                     setNewLabelName('');
@@ -109,10 +126,13 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
             };
 
             if ((window as any).electron?.backend) {
+                console.log(`[LabelManager] Updating label ${labelId} (IPC db-update-label)...`, updates);
                 const result = await (window as any).electron.ipcRenderer.invoke('db-update-label', {
                     id: labelId,
                     updates
                 });
+                console.log('[LabelManager] db-update-label result:', result);
+
                 if (result.success) {
                     fetchLabels();
                     cancelEdit();
@@ -292,7 +312,15 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
                                                 <input
                                                     type="text"
                                                     value={newLabelName}
-                                                    onChange={e => setNewLabelName(e.target.value)}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        setNewLabelName(val);
+                                                        if (val.includes(' ')) {
+                                                            setCreateError('Label name cannot contain spaces');
+                                                        } else if (createError === 'Label name cannot contain spaces') {
+                                                            setCreateError(null);
+                                                        }
+                                                    }}
                                                     placeholder="Label name..."
                                                     autoFocus
                                                     className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border shadow-sm focus:outline-none focus:ring-2 focus:ring-mono-accent/50 transition-all placeholder-mono-text/30"

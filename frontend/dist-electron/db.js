@@ -87,7 +87,9 @@ function initDB() {
                     color TEXT NOT NULL,
                     description TEXT,
                     syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending'
-                    createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+                    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+                    cloudId INTEGER, -- Backend ID
+                    editedAt TEXT -- ISO 8601 Timestamp
                 );
             `);
             console.log('[SQLite DB] Tables created/verified successfully.');
@@ -137,6 +139,14 @@ function initDB() {
             if (!labelColumns.includes('syncStatus')) {
                 console.log('[SQLite DB] Migrating: Adding syncStatus to labels table');
                 db.exec("ALTER TABLE labels ADD COLUMN syncStatus TEXT DEFAULT 'pending'");
+            }
+            if (!labelColumns.includes('cloudId')) {
+                console.log('[SQLite DB] Migrating: Adding cloudId to labels table');
+                db.exec("ALTER TABLE labels ADD COLUMN cloudId INTEGER");
+            }
+            if (!labelColumns.includes('editedAt')) {
+                console.log('[SQLite DB] Migrating: Adding editedAt to labels table');
+                db.exec("ALTER TABLE labels ADD COLUMN editedAt TEXT");
             }
             console.log('[SQLite DB] Migrations check complete.');
         }
@@ -207,7 +217,7 @@ function initDB() {
                     db.prepare('UPDATE labels SET color = ?, description = ? WHERE name = ?').run(label.color, label.description, label.name);
                 }
                 else {
-                    const id = require('crypto').randomUUID();
+                    const id = (Date.now() + Math.floor(Math.random() * 1000)).toString();
                     db.prepare('INSERT INTO labels (id, name, color, description, syncStatus) VALUES (?, ?, ?, ?, ?)')
                         .run(id, label.name, label.color, label.description, 'synced');
                 }
@@ -555,12 +565,14 @@ function updateResponseSyncStatus(pollLocalId, userId, status) {
 function createLabel(label) {
     try {
         const stmt = getDb().prepare(`
-            INSERT INTO labels (id, name, color, description, syncStatus, createdAt)
-            VALUES (@id, @name, @color, @description, @syncStatus, @createdAt)
+            INSERT INTO labels (id, name, color, description, syncStatus, createdAt, cloudId, editedAt)
+            VALUES (@id, @name, @color, @description, @syncStatus, @createdAt, @cloudId, @editedAt)
         `);
         return stmt.run({
             ...label,
-            syncStatus: label.syncStatus || 'pending'
+            syncStatus: label.syncStatus || 'pending',
+            cloudId: label.cloudId || null,
+            editedAt: label.editedAt || null
         });
     }
     catch (error) {
@@ -603,6 +615,18 @@ function updateLabel(id, updates) {
         if (updates.description !== undefined) {
             fields.push('description = ?');
             values.push(updates.description);
+        }
+        if (updates.cloudId !== undefined) {
+            fields.push('cloudId = ?');
+            values.push(updates.cloudId);
+        }
+        if (updates.syncStatus !== undefined) {
+            fields.push('syncStatus = ?');
+            values.push(updates.syncStatus);
+        }
+        if (updates.editedAt !== undefined) {
+            fields.push('editedAt = ?');
+            values.push(updates.editedAt);
         }
         if (fields.length === 0) {
             throw new Error('No valid fields to update');
