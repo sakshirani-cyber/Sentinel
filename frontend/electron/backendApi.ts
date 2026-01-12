@@ -16,29 +16,24 @@ const apiClient: AxiosInstance = axios.create({
 
 // Add request interceptor for logging
 apiClient.interceptors.request.use(config => {
-    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🚀 OUTGOING REQUEST: ${config.method?.toUpperCase()} ${config.url}`);
-    if (config.params) console.log('[Backend API] Query Params:', JSON.stringify(config.params, null, 2));
-    if (config.data) console.log('[Backend API] Request Body:', JSON.stringify(config.data, null, 2));
+    console.log(`[Backend API] Request: ${config.method?.toUpperCase()} ${config.url}`, config.params || '');
     return config;
 }, error => {
-    console.error(`[Backend API] [${new Date().toLocaleTimeString()}] ❌ REQUEST ERROR:`, error);
+    console.error('[Backend API] Request Error:', error);
     return Promise.reject(error);
 });
 
 // Add response interceptor for logging
 apiClient.interceptors.response.use(response => {
-    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] ✅ INCOMING RESPONSE: ${response.status} from ${response.config.url}`);
-    if (response.data) console.log('[Backend API] Response Data:', JSON.stringify(response.data, null, 2));
+    console.log(`[Backend API] Response: ${response.status} from ${response.config.url}`);
     return response;
 }, error => {
-    const time = new Date().toLocaleTimeString();
     if (error.response) {
-        console.error(`[Backend API] [${time}] ❌ RESPONSE ERROR: ${error.response.status} from ${error.config.url}`);
-        console.error('[Backend API] Error Data:', JSON.stringify(error.response.data, null, 2));
+        console.error(`[Backend API] Response Error: ${error.response.status} from ${error.config.url}`, error.response.data);
     } else if (error.request) {
-        console.error(`[Backend API] [${time}] ❌ CONNECTION ERROR: No response received from ${error.config.url}`);
+        console.error(`[Backend API] Connection Error: No response received from ${error.config.url}. Is the backend running?`);
     } else {
-        console.error(`[Backend API] [${time}] ❌ ERROR:`, error.message);
+        console.error('[Backend API] Error:', error.message);
     }
     return Promise.reject(error);
 });
@@ -199,10 +194,10 @@ export async function submitVote(
     if (defaultResponse !== undefined) request.defaultResponse = defaultResponse;
     if (reason !== undefined) request.reason = reason;
 
-    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🗳️ Submitting vote for signal ${signalId}...`);
-    console.log('[Backend API] Full payload:', JSON.stringify(request, null, 2));
-    const response = await apiClient.post<ApiResponse<void>>('/api/signals/poll/response', request);
-    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] ✅ Vote submission response:`, JSON.stringify(response.data, null, 2));
+    console.log('[Backend API] Request object:', request);
+    await apiClient.post<ApiResponse<void>>('/api/signals/poll/response', request);
+
+    console.log('[Backend API] Vote submitted successfully');
 }
 
 export async function getPollResults(signalId: number): Promise<PollResultDTO> {
@@ -255,13 +250,15 @@ export async function deletePoll(signalId: number): Promise<void> {
 }
 
 export async function login(email: string, password: string): Promise<string> {
-    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔐 Attempting login for: ${email}`);
+    console.log('[Backend API] Logging in:', email);
+
     const response = await apiClient.post<ApiResponse<string>>(
         '/api/signals/login',
         null,
         { params: { userEmail: email, password } }
     );
-    console.log(`[Backend API] [${new Date().toLocaleTimeString()}] ✅ Login result:`, JSON.stringify(response.data, null, 2));
+
+    console.log('[Backend API] Login success, role:', response.data.data);
     return response.data.data;
 }
 

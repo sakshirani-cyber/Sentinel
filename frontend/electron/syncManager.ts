@@ -96,13 +96,11 @@ export class SyncManager {
 
         if (shouldBeConnected) {
             if (!this.sse) {
-                console.log(`[SyncManager] [${new Date().toLocaleTimeString()}] 🟢 Device is ONLINE. Re-establishing connections...`);
+                console.log('[SyncManager] Re-establishing connections (Activation/Online)');
                 this.connectSSE();
-                console.log(`[SyncManager] [${new Date().toLocaleTimeString()}] 🔄 Initiating catch-up sync (performSync)...`);
-                this.performSync();
+                this.performSync(); // One-shot sync when we become active/online
             }
         } else if (this.sse) {
-            console.log(`[SyncManager] [${new Date().toLocaleTimeString()}] 🔴 Device is OFFLINE. Disconnecting...`);
             this.disconnectSSE();
         }
     }
@@ -129,32 +127,28 @@ export class SyncManager {
             });
 
             sse.addEventListener('POLL_CREATED', async (event: any) => {
-                const time = new Date().toLocaleTimeString();
-                console.log(`[SyncManager] [${time}] 📥 SSE EVENT: POLL_CREATED`);
-                console.log(`[SyncManager] [${time}] 📝 RAW DATA:`, event.data);
+                console.log('[SyncManager] SSE: POLL_CREATED:', event.data);
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
-                    console.log(`[SyncManager] [${time}] 📦 PARSED PAYLOAD:`, JSON.stringify(payload, null, 2));
                     await this.handleIncomingPoll(payload);
                 } catch (e) {
-                    console.error(`[SyncManager] [${time}] ❌ Error handling POLL_CREATED:`, e);
+                    console.error('[SyncManager] Error handling POLL_CREATED:', e);
                 }
             });
 
             sse.addEventListener('POLL_EDITED', async (event: any) => {
-                const time = new Date().toLocaleTimeString();
-                console.log(`[SyncManager] [${time}] 📝 SSE EVENT: POLL_EDITED`);
-                console.log(`[SyncManager] [${time}] 📝 RAW DATA:`, event.data);
+                console.log('[SyncManager] SSE: POLL_EDITED received');
                 this.resetPingWatchdog(); // Activity counts as ping
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
 
-                    console.log(`[SyncManager] [${time}] 📦 PARSED PAYLOAD:`, JSON.stringify(payload, null, 2));
-                    console.log(`[SyncManager] [${time}] 🔄 Republish flag: ${payload.republish}`);
+                    console.log(`[SyncManager] POLL_EDITED Payload keys: ${Object.keys(payload).join(', ')}`);
+                    console.log(`[SyncManager] POLL_EDITED Republish flag: ${payload.republish} (Type: ${typeof payload.republish})`);
 
                     // Check if this is a republish event - if so, delete local responses
+                    // Handle various truthy values (boolean true, string "true", number 1)
                     const isRepublish = payload.republish === true ||
                         String(payload.republish).toLowerCase() === 'true' ||
                         payload.republished === true ||
@@ -163,14 +157,18 @@ export class SyncManager {
                     if (isRepublish) {
                         const pollId = payload.signalId ? `poll-${payload.signalId}` : (payload.localId ? `poll-${payload.localId}` : null);
                         if (pollId) {
-                            console.log(`[SyncManager] [${time}] �️ Republish detected for poll ${pollId}, deleting local responses`);
+                            console.log(`[SyncManager] 🔄 Republish detected for poll ${pollId}, deleting local responses`);
                             deleteResponsesForPoll(pollId);
+                        } else {
+                            console.warn('[SyncManager] Republish detected but could not determine pollId');
                         }
+                    } else {
+                        console.log('[SyncManager] Normal edit (not republish), keeping responses');
                     }
 
-                    await this.handleIncomingPoll(payload);
+                    await this.handleIncomingPoll(payload); // handleIncomingPoll uses INSERT OR REPLACE
                 } catch (e) {
-                    console.error(`[SyncManager] [${time}] ❌ Error handling POLL_EDITED:`, e);
+                    console.error('[SyncManager] Error handling POLL_EDITED:', e);
                 }
             });
 
@@ -182,18 +180,16 @@ export class SyncManager {
             });
 
             sse.addEventListener('POLL_DELETED', async (event: any) => {
-                const time = new Date().toLocaleTimeString();
-                console.log(`[SyncManager] [${time}] 🗑️ SSE EVENT: POLL_DELETED`);
-                console.log(`[SyncManager] [${time}] 📝 RAW DATA:`, event.data);
+                console.log('[SyncManager] SSE: POLL_DELETED:', event.data);
                 try {
                     const data = JSON.parse(event.data);
                     const signalId = data.payload || data;
                     if (signalId) {
-                        console.log(`[SyncManager] [${time}] 🔄 Deleting poll by cloudSignalId: ${signalId}`);
                         deletePollByCloudId(Number(signalId));
+                        console.log(`[SyncManager] Successfully handled deletion for signalId: ${signalId}`);
                     }
                 } catch (e) {
-                    console.error(`[SyncManager] [${time}] ❌ Error handling POLL_DELETED:`, e);
+                    console.error('[SyncManager] Error handling POLL_DELETED:', e);
                 }
             });
 
@@ -282,9 +278,7 @@ export class SyncManager {
 
         this.isSyncing = true;
         this.syncPending = false;
-        console.log(`[SyncManager] [${new Date().toLocaleTimeString()}] 📥 Starting background sync loop...`);
-        console.log(`[SyncManager]   - Online: ${this.isOnline}`);
-        console.log(`[SyncManager]   - User: ${this.email}`);
+        console.log('[SyncManager] Performing background sync...');
 
         try {
             // 1. Fetch unsynced polls created locally (though mostly publishers write to cloud first currently)
