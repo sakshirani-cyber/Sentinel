@@ -18,7 +18,7 @@ import java.time.Instant;
 )
 @Getter
 @Setter
-public class LabelEntity {
+public class Label {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
