@@ -13,10 +13,6 @@ contextBridge.exposeInMainWorld('electron', {
         submitResponse: (response: any) => ipcRenderer.invoke('db-submit-response', response),
         getResponses: () => ipcRenderer.invoke('db-get-responses'),
         deletePoll: (pollId: string) => ipcRenderer.invoke('db-delete-poll', pollId),
-        createLabel: (label: any) => ipcRenderer.invoke('db-create-label', label),
-        getLabels: () => ipcRenderer.invoke('db-get-labels'),
-        updateLabel: (id: string, updates: any) => ipcRenderer.invoke('db-update-label', { id, updates }),
-        deleteLabel: (id: string) => ipcRenderer.invoke('db-delete-label', id),
     },
     backend: {
         createPoll: (poll: any) => ipcRenderer.invoke('backend-create-poll', poll),

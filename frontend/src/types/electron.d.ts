@@ -13,10 +13,6 @@ declare global {
                 getPolls: () => Promise<any[]>;
                 submitResponse: (response: any) => Promise<{ success: boolean; error?: string }>;
                 getResponses: () => Promise<any[]>;
-                createLabel: (label: any) => Promise<any>;
-                getLabels: () => Promise<any[]>;
-                updateLabel: (id: string, updates: any) => Promise<any>;
-                deleteLabel: (id: string) => Promise<any>;
             };
             getDeviceStatus: () => Promise<string>;
         };

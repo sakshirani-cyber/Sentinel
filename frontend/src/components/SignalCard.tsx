@@ -1,14 +1,5 @@
 import { Poll, Response } from '../App';
 import { Clock, User, Shield, AlertCircle, CheckCircle, XCircle, Edit } from 'lucide-react';
-import LabelText from './LabelText';
-import { useState, useEffect } from 'react';
-
-interface Label {
-  id: string;
-  name: string;
-  color: string;
-  description?: string;
-}
 
 interface SignalCardProps {
   poll: Poll;
@@ -19,23 +10,6 @@ interface SignalCardProps {
 }
 
 export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, onClick }: SignalCardProps) {
-  const [labels, setLabels] = useState<Label[]>([]);
-
-  // Fetch labels on mount
-  useEffect(() => {
-    const fetchLabels = async () => {
-      if ((window as any).electron?.db) {
-        try {
-          const result = await (window as any).electron.db.getLabels();
-          setLabels(result.success ? result.data : []);
-        } catch (error) {
-          console.error('Failed to fetch labels:', error);
-        }
-      }
-    };
-    fetchLabels();
-  }, []);
-
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -101,9 +75,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
         </div>
 
         {/* Question */}
-        <h3 className="text-mono-text mb-3">
-          <LabelText text={poll.question} labels={labels} />
-        </h3>
+        <h3 className="text-mono-text mb-3">{poll.question}</h3>
 
         {/* Metadata */}
         <div className="flex flex-wrap gap-2 mb-3 text-sm">
@@ -174,7 +146,7 @@ export default function SignalCard({ poll, hasDraft, isCompleted, userResponse, 
                 <p className={`text-sm ${userResponse.isDefault ? 'text-red-700' :
                   userResponse.skipReason ? 'text-yellow-700' : 'text-mono-primary'
                   }`}>
-                  <LabelText text={userResponse.response} labels={labels} />
+                  {userResponse.response}
                 </p>
                 {userResponse.skipReason && (
                   <p className="text-xs text-yellow-600 mt-1 italic">
