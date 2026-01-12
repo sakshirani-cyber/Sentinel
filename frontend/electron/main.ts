@@ -203,15 +203,6 @@ Comment=Sentinel Signal Enforcement
 }
 
 app.whenReady().then(async () => {
-    try {
-        console.log('[Main] Initializing local database...');
-        initDB();
-        console.log('[Main] Database initialization complete.');
-    } catch (error) {
-        console.error('[Main] CRITICAL: Failed to initialize Database:', error);
-        // We might want to show a dialog and quit if DB fails
-    }
-
     // Register Backend API IPC Handlers (bypass CORS by making calls from main process)
     console.log('[Main] Registering Backend API IPC handlers...');
 
@@ -448,6 +439,14 @@ app.whenReady().then(async () => {
     });
 
 
+
+    try {
+        console.log('[Main] Initializing local database...');
+        initDB();
+        console.log('[Main] Database initialization complete.');
+    } catch (error) {
+        console.error('[Main] CRITICAL: Failed to initialize Database:', error);
+    }
 
     setupAutoLaunch();
 
