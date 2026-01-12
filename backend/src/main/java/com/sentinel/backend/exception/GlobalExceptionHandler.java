@@ -17,7 +17,7 @@ public class GlobalExceptionHandler {
 
         String message = ex.getBindingResult().getFieldError().getDefaultMessage();
 
-        log.error(
+        log.warn(
                 "[EXCEPTION] Validation failed | field={} | message={}",
                 ex.getBindingResult().getFieldError().getField(),
                 message
@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<?>> handleIllegalArguementException(IllegalArgumentException ex) {
 
-        log.error(
+        log.warn(
                 "[EXCEPTION] Illegal argument | message={}",
                 ex.getMessage()
         );
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<?>> handleCustomException(CustomException ex) {
 
-        log.error(
+        log.warn(
                 "[EXCEPTION] Business exception | status={} | message={}",
                 ex.getStatus(),
                 ex.getMessage()

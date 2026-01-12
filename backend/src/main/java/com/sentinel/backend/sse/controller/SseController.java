@@ -33,6 +33,7 @@ public class SseController {
         SseEmitter emitter = new SseEmitter(0L);
 
         registry.add(userEmail, emitter);
+        log.info("[SSE] Connection registered | userEmail={}", userEmail);
 
         try {
             emitter.send(
@@ -60,7 +61,7 @@ public class SseController {
 
         emitter.onCompletion(() -> {
             registry.remove(userEmail);
-            log.warn("[SSE] Connection completed | userEmail={}", userEmail);
+            log.info("[SSE] Connection completed | userEmail={}", userEmail);
         });
 
         emitter.onTimeout(() -> {

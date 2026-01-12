@@ -59,6 +59,9 @@ public class SignalServiceImpl implements SignalService {
     @Override
     public CreatePollResponse createPoll(PollCreateDTO dto) {
 
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Create poll started | createdBy={}", dto.getCreatedBy());
+
         dto.normalizeCommon();
         dto.normalizePoll();
         dto.validateCommon();
@@ -75,11 +78,18 @@ public class SignalServiceImpl implements SignalService {
 
         publish(signal, poll, POLL_CREATED, false);
 
+        log.info("[SERVICE] Create poll completed | signalId={} | durationMs={}",
+                signal.getId(), System.currentTimeMillis() - start);
+
         return new CreatePollResponse(signal.getId(), dto.getLocalId());
     }
 
     @Override
     public void submitOrUpdateVote(PollSubmitDTO dto) {
+
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Submit poll response | signalId={} | user={}",
+                dto.getSignalId(), dto.getUserEmail());
 
         dto.normalize();
 
@@ -102,11 +112,16 @@ public class SignalServiceImpl implements SignalService {
 
         pollResultRepository.save(result);
 
+        log.info("[SERVICE] Submit poll response completed | signalId={} | durationMs={}",
+                dto.getSignalId(), System.currentTimeMillis() - start);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PollResultDTO getPollResults(Integer signalId) {
+
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Fetch poll results | signalId={}", signalId);
 
         Signal signal = getPollSignal(signalId);
         Poll poll = getPoll(signalId);
@@ -116,11 +131,17 @@ public class SignalServiceImpl implements SignalService {
 
         PollResultDTO dto = buildPollResults(signal, poll, results);
 
+        log.info("[SERVICE] Fetch poll results completed | durationMs={}",
+                System.currentTimeMillis() - start);
+
         return dto;
     }
 
     @Override
     public void editSignal(PollEditDTO dto) {
+
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Edit poll | signalId={}", dto.getSignalId());
 
         dto.normalizeCommon();
         dto.normalizePoll();
@@ -149,10 +170,16 @@ public class SignalServiceImpl implements SignalService {
         signalRepository.save(signal);
 
         publish(signal, poll, POLL_EDITED, dto.getRepublish());
+
+        log.info("[SERVICE] Edit poll completed | durationMs={}",
+                System.currentTimeMillis() - start);
     }
 
     @Override
     public void deleteSignal(Integer signalId) {
+
+        long start = System.currentTimeMillis();
+        log.info("[SERVICE] Delete poll | signalId={}", signalId);
 
         Signal signal = getPollSignal(signalId);
 
@@ -165,6 +192,9 @@ public class SignalServiceImpl implements SignalService {
                 POLL_DELETED,
                 signalId
         );
+
+        log.info("[SERVICE] Delete poll completed | durationMs={}",
+                System.currentTimeMillis() - start);
     }
 
     @Override

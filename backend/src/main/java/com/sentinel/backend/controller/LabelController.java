@@ -57,8 +57,7 @@ public class LabelController {
         List<LabelResponseDTO> labels = labelService.getAllLabels();
 
         log.info(
-                "[LABEL][GET_ALL][SUCCESS] | size={} | durationMs={}",
-                labels.size(),
+                "[LABEL][GET_ALL][SUCCESS] durationMs={}",
                 System.currentTimeMillis() - start
         );
 
