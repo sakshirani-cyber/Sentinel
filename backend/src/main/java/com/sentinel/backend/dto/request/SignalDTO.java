@@ -42,6 +42,12 @@ public abstract class SignalDTO {
 
     private String[] labels;
 
+    private Instant scheduledTime;
+
+    public boolean isScheduled() {
+        return scheduledTime != null;
+    }
+
     private Instant parsedEndUtc;
 
     public void normalizeCommon() {
@@ -60,6 +66,7 @@ public abstract class SignalDTO {
         validateEndTimestamp();
         validateSharedWith();
         validateLabels();
+        validateScheduleTime();
     }
 
     private void validateEndTimestamp() {
@@ -112,6 +119,17 @@ public abstract class SignalDTO {
                     "Invalid type. Allowed values: " +
                             Arrays.toString(SignalType.values())
             );
+        }
+    }
+
+    public void validateScheduleTime(){
+        if (scheduledTime != null) {
+            if (scheduledTime.isBefore(Instant.now())) {
+                throw new IllegalArgumentException("scheduledTime must be in future");
+            }
+            if (getEndTimestampUtc() != null && getEndTimestampUtc().isBefore(scheduledTime)) {
+                throw new IllegalArgumentException("endTimestamp must be after scheduledTime");
+            }
         }
     }
 }
