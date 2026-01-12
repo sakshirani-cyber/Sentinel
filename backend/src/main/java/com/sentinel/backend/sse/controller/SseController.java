@@ -1,9 +1,8 @@
 package com.sentinel.backend.sse.controller;
 
-import com.sentinel.backend.sse.AsyncPollDbService;
+import com.sentinel.backend.sse.DeliveryStateStore;
 import com.sentinel.backend.sse.PollSyncCache;
 import com.sentinel.backend.sse.SseEmitterRegistry;
-import com.sentinel.backend.sse.dto.SseEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -12,7 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
+import java.io.IOException;
+import java.time.Instant;
 
 import static com.sentinel.backend.constant.Constants.CONNECTED;
 
@@ -23,71 +23,103 @@ public class SseController {
 
     private final SseEmitterRegistry registry;
     private final PollSyncCache pollSyncCache;
-    private final AsyncPollDbService dbService;
+    private final DeliveryStateStore deliveryStateStore;
 
     @GetMapping(value = "/sse/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@RequestParam String userEmail) {
 
-        long start = System.currentTimeMillis();
         log.info("[SSE] Connection request received | userEmail={}", userEmail);
 
         SseEmitter emitter = new SseEmitter(0L);
+
         registry.add(userEmail, emitter);
 
         try {
             emitter.send(
                     SseEmitter.event()
                             .name(CONNECTED)
+                            .reconnectTime(3000)
                             .data("SSE connected")
             );
 
-            checkAndDeliver(userEmail);
+            log.info("[SSE] Initial handshake event sent | userEmail={}", userEmail);
 
-        } catch (Exception ex) {
+            checkAndReplayMissedData(userEmail);
+
+        } catch (IOException e) {
             registry.remove(userEmail);
+            log.error(
+                    "[SSE][ERROR] Failed during handshake | userEmail={} | exception={} | message={}",
+                    userEmail,
+                    e.getClass().getSimpleName(),
+                    e.getMessage(),
+                    e
+            );
+            return emitter;
         }
 
-        emitter.onCompletion(() -> registry.remove(userEmail));
-        emitter.onTimeout(() -> registry.remove(userEmail));
-        emitter.onError(e -> registry.remove(userEmail));
+        emitter.onCompletion(() -> {
+            registry.remove(userEmail);
+            log.warn("[SSE] Connection completed | userEmail={}", userEmail);
+        });
 
-        log.info("[SSE] Connection request completed | userEmail={} | durationMs={}", userEmail, System.currentTimeMillis()  - start);
+        emitter.onTimeout(() -> {
+            registry.remove(userEmail);
+            log.warn("[SSE] Connection timed out | userEmail={}", userEmail);
+        });
+
+        emitter.onError(ex -> {
+            registry.remove(userEmail);
+            log.warn(
+                    "[SSE][ERROR] Connection error | userEmail={} | exception={} | message={}",
+                    userEmail,
+                    ex.getClass().getSimpleName(),
+                    ex.getMessage()
+            );
+        });
 
         return emitter;
     }
 
-    private void checkAndDeliver(String userEmail) {
+    private void checkAndReplayMissedData(String userEmail) {
 
-        if (pollSyncCache.isEmpty()) {
-            dbService.asyncReload(userEmail);
-            return;
-        }
+        Instant lastDelivered = deliveryStateStore.getLastDelivered(userEmail);
 
-        List<SseEvent<?>> events = pollSyncCache.consume(userEmail);
+        var missedEvents = pollSyncCache.getAfter(userEmail, lastDelivered);
 
-        if (events == null || events.isEmpty()) {
+        if (missedEvents.isEmpty()) {
             return;
         }
 
         SseEmitter emitter = registry.get(userEmail);
         if (emitter == null) {
-            pollSyncCache.put(userEmail, events);
             return;
         }
 
-        for (SseEvent<?> event : events) {
+        for (var event : missedEvents) {
             try {
                 emitter.send(
                         SseEmitter.event()
                                 .name(event.getEventType())
                                 .data(event)
                 );
+
+                deliveryStateStore.updateLastDelivered(
+                        userEmail,
+                        event.getEventTime()
+                );
+
             } catch (Exception ex) {
-                pollSyncCache.put(userEmail, event);
+                log.warn(
+                        "[SSE][SYNC] Replay failed | userEmail={} | reason={}",
+                        userEmail,
+                        ex.getMessage()
+                );
                 return;
             }
         }
 
-        dbService.asyncDelete(userEmail);
+        pollSyncCache.clear(userEmail);
+        log.info("[SSE][SYNC] Replay completed | userEmail={}", userEmail);
     }
 }

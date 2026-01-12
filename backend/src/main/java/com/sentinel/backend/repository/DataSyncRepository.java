@@ -20,7 +20,7 @@ public class DataSyncRepository {
         return jdbcTemplate.query(
                 DATA_SYNC_SQL,
                 (rs, rowNum) -> new DataSyncDTO(
-                        rs.getLong("signal_id"),
+                        rs.getInt("signal_id"),
                         rs.getString("question"),
                         (String[]) rs.getArray("options").getArray(),
                         rs.getString("status"),

@@ -14,8 +14,8 @@ import java.time.Instant;
 public class PollSsePublisher {
 
     private final SseEmitterRegistry registry;
+    private final DeliveryStateStore deliveryStateStore;
     private final PollSyncCache pollSyncCache;
-    private final AsyncPollDbService dbService;
 
     public <T> void publish(String[] recipients, String eventType, T payload) {
 
@@ -26,7 +26,17 @@ public class PollSsePublisher {
         int offline = 0;
         int failed = 0;
 
-        SseEvent<T> event = new SseEvent<>(eventType, Instant.now(), payload);
+        log.info(
+                "[SSE][PUBLISH] Event publish started | eventType={} | totalRecipients={}",
+                eventType,
+                totalRecipients
+        );
+
+        SseEvent<T> event = new SseEvent<>(
+                eventType,
+                Instant.now(),
+                payload
+        );
 
         for (String userEmail : recipients) {
 
@@ -35,7 +45,6 @@ public class PollSsePublisher {
             if (emitter == null) {
                 offline++;
                 pollSyncCache.put(userEmail, event);
-                dbService.asyncInsert(userEmail, event);
                 continue;
             }
 
@@ -45,24 +54,30 @@ public class PollSsePublisher {
                                 .name(eventType)
                                 .data(event)
                 );
+
                 delivered++;
+
+                deliveryStateStore.updateLastDelivered(userEmail, event.getEventTime());
+
             } catch (Exception ex) {
+
                 failed++;
                 registry.remove(userEmail);
+
                 pollSyncCache.put(userEmail, event);
+
                 log.warn(
                         "[SSE][PUBLISH][ERROR] Delivery failed | eventType={} | userEmail={} | exception={}",
                         eventType,
                         userEmail,
                         ex.getMessage()
                 );
-                dbService.asyncInsert(userEmail, event);
             }
         }
+
         log.info(
-                "[SSE][PUBLISH] Event publish completed | eventType={} | totalRecipients={} | delivered={} | offline={} | failed={} | durationMs={}",
+                "[SSE][PUBLISH] Event publish completed | eventType={} | delivered={} | offline={} | failed={} | durationMs={}",
                 eventType,
-                totalRecipients,
                 delivered,
                 offline,
                 failed,
