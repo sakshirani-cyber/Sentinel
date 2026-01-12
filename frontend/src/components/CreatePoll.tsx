@@ -391,6 +391,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
 
 
           {/* Schedule Toggle Section */}
+          {/* Schedule Toggle Section - DISABLED
           <div
             onClick={() => setIsScheduled(!isScheduled)}
             className={cn(
@@ -480,6 +481,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               )}
             </div>
           </div>
+          */}
 
           {/* Question */}
           <div>

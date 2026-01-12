@@ -5,7 +5,7 @@ import { initDB, createPoll, getPolls, submitResponse, getResponses, updatePoll,
 import * as backendApi from './backendApi';
 import { autoUpdater } from 'electron-updater';
 import { syncManager } from './syncManager';
-import { pollScheduler } from './pollScheduler';
+// import { pollScheduler } from './pollScheduler';
 
 // Auto-updater logging
 autoUpdater.logger = console;
@@ -239,11 +239,13 @@ app.whenReady().then(async () => {
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending`);
 
             // Check if this is a SCHEDULED poll
+            /* DISABLED
             if (poll.status === 'scheduled') {
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🕒 Poll is SCHEDULED for ${poll.scheduledFor}. Skipping cloud sync.`);
                 console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🎉 Returning success to frontend (scheduled poll saved locally)`);
                 return { success: true };
             }
+            */
 
             // Try to sync to backend immediately but don't block
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ☁️ Step 2: Initiating cloud sync (non-blocking)...`);
@@ -464,8 +466,8 @@ app.whenReady().then(async () => {
     setupAutoLaunch();
 
     // Start poll scheduler to automatically publish scheduled polls
-    console.log('[Main] Starting poll scheduler...');
-    pollScheduler.start();
+    console.log('[Main] Starting poll scheduler... (DISABLED)');
+    // pollScheduler.start();
 
     createWindow();
 
@@ -796,6 +798,27 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
                     if (isLinux) {
                         win.setSkipTaskbar(true);
                         win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+                        // [Linux Specific] Aggressively re-assert Kiosk / Fullscreen state
+                        // This counteracts Wayland/WM attempts to un-set them
+                        try {
+                            if (!win.isKiosk()) win.setKiosk(true);
+                            if (!win.isFullScreen()) win.setFullScreen(true);
+
+                            // Force bounds reset in case of resize attempts
+                            const bounds = screen.getPrimaryDisplay().bounds;
+                            const current = win.getBounds();
+                            if (current.width !== bounds.width || current.height !== bounds.height) {
+                                win.setBounds(bounds);
+                            }
+
+                            // Aggressively claim focus
+                            win.moveTop();
+                            win.focus();
+                            win.show();
+                        } catch (err) {
+                            // Ignore errors if window is destroyed
+                        }
                     }
                     if (win.isMinimized()) win.restore();
                     win.moveTop();
