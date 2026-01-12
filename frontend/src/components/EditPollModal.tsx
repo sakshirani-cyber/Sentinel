@@ -2,24 +2,7 @@ import { useState, useEffect } from 'react';
 import { Poll } from '../App';
 import { Plus, X, Check, Upload, AlertCircle, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "./ui/tooltip";
-import { parseLabelsFromText } from '../utils/labelUtils';
 import LabelInput from './LabelInput';
-import LabelText from './LabelText';
-import { cn } from './ui/utils';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "./ui/select";
 
 interface Label {
     id: string;
@@ -69,7 +52,6 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStats, setUploadStats] = useState<{ total: number; new: number } | null>(null);
     const [showErrors, setShowErrors] = useState(false);
-    const [explicitLabels, setExplicitLabels] = useState<string[]>(poll.labels || []);
 
     const [isSaving, setIsSaving] = useState(false);
     const [labels, setLabels] = useState<Label[]>([]);
@@ -133,9 +115,9 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
 
     const handleToggleConsumer = (email: string) => {
         if (selectedConsumers.includes(email)) {
-            setSelectedConsumers(prev => prev.filter(e => e !== email));
+            setSelectedConsumers(selectedConsumers.filter(e => e !== email));
         } else {
-            setSelectedConsumers(prev => [...prev, email]);
+            setSelectedConsumers([...selectedConsumers, email]);
         }
     };
 
@@ -189,13 +171,6 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         }
     };
 
-    const handleLabelClick = (labelName: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!explicitLabels.includes(labelName)) {
-            setExplicitLabels(prev => [...prev, labelName]);
-        }
-    };
-
     // Check for duplicate options (case-insensitive)
     const hasDuplicateOptions = () => {
         const validOptions = options.filter(o => o.trim()).map(o => o.trim().toLowerCase());
@@ -233,7 +208,6 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                 deadline: new Date(deadline).toISOString(),
                 isPersistentFinalAlert,
                 consumers: selectedConsumers,
-                labels: Array.from(new Set([...parseLabelsFromText(question), ...options.flatMap(o => parseLabelsFromText(o)), ...explicitLabels])),
                 isEdited: true
             };
 
@@ -335,8 +309,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                         onChange={(value) => handleOptionChange(index, value)}
                                         labels={labels}
                                         placeholder={`Option ${index + 1} (Type # to add labels)`}
-                                        containerClassName="flex-1 min-w-0"
-                                        className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !option.trim()
+                                        className={`flex-1 px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !option.trim()
                                             ? 'border-red-500 focus:ring-1 focus:ring-red-500'
                                             : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
                                             }`}
@@ -389,47 +362,32 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                             </div>
 
                             {useCustomDefault ? (
-                                <LabelInput
-                                    value={customDefault || ''}
-                                    onChange={setCustomDefault}
-                                    labels={labels}
-                                    placeholder="e.g., I don't know, N/A (Type # to add labels)"
+                                <input
+                                    type="text"
+                                    value={customDefault}
+                                    onChange={(e) => setCustomDefault(e.target.value)}
                                     className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !(customDefault || '').trim()
                                         ? 'border-red-500 focus:ring-1 focus:ring-red-500'
                                         : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
                                         }`}
+                                    placeholder="e.g., I don't know, N/A"
                                 />
                             ) : (
-                                <Select
+                                <select
                                     value={defaultResponse}
-                                    onValueChange={setDefaultResponse}
+                                    onChange={(e) => setDefaultResponse(e.target.value)}
+                                    className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all ${showErrors && !defaultResponse
+                                        ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+                                        : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
+                                        }`}
                                 >
-                                    <SelectTrigger className={cn(
-                                        "w-full h-auto min-h-[42px] px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none transition-all",
-                                        showErrors && !defaultResponse
-                                            ? 'border-red-500 focus:ring-1 focus:ring-red-500'
-                                            : 'border-mono-primary/20 focus:border-mono-primary focus:ring-1 focus:ring-mono-primary'
-                                    )}>
-                                        <SelectValue placeholder="Select from options" />
-                                    </SelectTrigger>
-                                    <SelectContent
-                                        className="bg-white opacity-100 shadow-lg border border-slate-200"
-                                        position="popper"
-                                        sideOffset={4}
-                                        style={{ width: 'var(--radix-select-trigger-width)' }}
-                                    >
-                                        {options.filter(o => o.trim()).map((option, index) => (
-                                            <SelectItem
-                                                key={index}
-                                                value={option}
-                                                className="py-3 px-4 whitespace-normal break-words cursor-pointer hover:bg-slate-50 focus:bg-slate-100 data-[state=checked]:bg-slate-100"
-                                                hideIndicator
-                                            >
-                                                <LabelText text={option} labels={labels} className="inline-block w-full" />
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    <option value="">Select from options</option>
+                                    {options.filter(o => o.trim()).map((option, index) => (
+                                        <option key={index} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
                             )}
                             {showErrors && !currentDefaultResponse && (
                                 <p className="text-red-500 text-xs mt-1">Default response is required</p>
@@ -525,134 +483,6 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                 </p>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Poll Labels */}
-                    <div className="pt-2">
-                        <label className="block text-mono-text mb-2 font-medium">
-                            Poll Labels
-                            <span className="text-sm text-mono-text/60 ml-2">
-                                (Tags from text are auto-selected)
-                            </span>
-                        </label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="w-full justify-between flex items-center px-4 py-2 rounded-xl border border-mono-primary/20 hover:bg-mono-primary/5 transition-all text-left bg-mono-bg"
-                                >
-                                    <div className="flex flex-wrap gap-2 items-center py-1">
-                                        {(() => {
-                                            const tLabels = parseLabelsFromText(question);
-                                            options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
-                                            const derived = new Set(tLabels);
-                                            const combined = Array.from(new Set([...Array.from(derived), ...explicitLabels]));
-
-                                            if (combined.length === 0) return <span className="text-mono-text/50">Select Labels...</span>;
-
-                                            return combined.map(name => {
-                                                const labelObj = labels.find(l => l.name === name);
-                                                const color = labelObj?.color || '#3b82f6';
-                                                const count = tLabels.filter(l => l === name).length;
-                                                const isDerived = derived.has(name);
-                                                const isExplicit = explicitLabels.includes(name);
-
-                                                return (
-                                                    <span
-                                                        key={name}
-                                                        onClick={(e) => count > 0 && handleLabelClick(name, e)}
-                                                        className={cn(
-                                                            "relative inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm transition-opacity",
-                                                            count > 0 ? "cursor-pointer hover:opacity-80" : "cursor-default"
-                                                        )}
-                                                        style={{
-                                                            backgroundColor: `${color}20`,
-                                                            borderColor: `${color}50`,
-                                                            color: color
-                                                        }}
-                                                    >
-                                                        #{name}
-                                                        {isDerived ? (
-                                                            <span
-                                                                className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
-                                                                style={{ backgroundColor: color }}
-                                                            >
-                                                                {count}
-                                                            </span>
-                                                        ) : isExplicit ? (
-                                                            <span
-                                                                className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-white shadow-sm ring-1 ring-white cursor-pointer hover:opacity-80 transition-opacity"
-                                                                style={{ backgroundColor: color }}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setExplicitLabels(prev => prev.filter(l => l !== name));
-                                                                }}
-                                                            >
-                                                                <X className="w-2.5 h-2.5" />
-                                                            </span>
-                                                        ) : null}
-                                                    </span>
-                                                );
-                                            });
-                                        })()}
-                                    </div>
-                                    <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                                className="bg-white border border-slate-200 shadow-xl p-0"
-                                align="start"
-                                style={{ width: 'var(--radix-popover-trigger-width)' }}
-                            >
-                                <div className="p-3 max-h-60 overflow-y-auto flex flex-wrap gap-2">
-                                    {(() => {
-                                        const tLabels = parseLabelsFromText(question);
-                                        options.forEach(o => tLabels.push(...parseLabelsFromText(o)));
-                                        const derived = new Set(tLabels);
-                                        const combined = new Set([...Array.from(derived), ...explicitLabels]);
-                                        const availableLabels = labels.filter(l => !combined.has(l.name));
-
-                                        if (availableLabels.length === 0) {
-                                            return <p className="text-sm text-center text-slate-500 py-4 w-full">All available labels are in use.</p>;
-                                        }
-
-                                        return (
-                                            <TooltipProvider key="label-tooltips">
-                                                {availableLabels.map(label => (
-                                                    <Tooltip key={label.id} delayDuration={300}>
-                                                        <TooltipTrigger asChild>
-                                                            <div
-                                                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm cursor-pointer transition-all hover:scale-105 active:scale-95"
-                                                                style={{
-                                                                    backgroundColor: `${label.color}15`,
-                                                                    borderColor: `${label.color}40`,
-                                                                    color: label.color
-                                                                }}
-                                                                onClick={() => setExplicitLabels(prev => [...prev, label.name])}
-                                                            >
-                                                                #{label.name}
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        {label.description && (
-                                                            <TooltipContent
-                                                                side="top"
-                                                                className="bg-white border border-slate-200 shadow-xl text-slate-700 px-3 py-2 rounded-lg max-w-[200px]"
-                                                                sideOffset={8}
-                                                            >
-                                                                <div className="space-y-1">
-                                                                    <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider opacity-70">Description</p>
-                                                                    <p className="text-xs leading-relaxed">{label.description}</p>
-                                                                </div>
-                                                            </TooltipContent>
-                                                        )}
-                                                    </Tooltip>
-                                                ))}
-                                            </TooltipProvider>
-                                        );
-                                    })()}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
                     </div>
 
                     {/* Anonymity Mode */}

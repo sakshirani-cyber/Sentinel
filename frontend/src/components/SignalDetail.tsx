@@ -107,15 +107,15 @@ export default function SignalDetail({
 
   return (
     <div className={`fixed inset-0 ${isPersistentContext ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'} flex items-center justify-center p-4 z-50 animate-in fade-in duration-200`}>
-      <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-x-hidden overflow-y-auto flex flex-col border border-mono-primary/10 animate-in zoom-in-95 duration-200">
+      <div className="bg-mono-bg rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-mono-primary/10 animate-in zoom-in-95 duration-200">
         {/* Header - Pinned */}
-        <div className="flex-shrink-0 bg-mono-primary/5 border-b border-mono-primary/10 p-6 overflow-hidden">
+        <div className="flex-shrink-0 bg-mono-primary/5 border-b border-mono-primary/10 p-6">
           <div className="flex items-start justify-between mb-4">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm text-mono-text/60">From: {poll.publisherName}</span>
               </div>
-              <h2 className="text-mono-text text-xl font-medium mb-2 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
+              <h2 className="text-mono-text text-xl font-medium mb-2">
                 <LabelText text={poll.question} labels={labels} />
               </h2>
             </div>
@@ -164,7 +164,7 @@ export default function SignalDetail({
               return (
                 <label
                   key={option.id}
-                  className={`group flex items-center gap-4 p-4 border-2 rounded-xl transition-all duration-200 overflow-hidden ${isSelected
+                  className={`group flex items-center gap-4 p-4 border-2 rounded-xl transition-all duration-200 ${isSelected
                     ? 'border-mono-accent bg-mono-accent/10 shadow-sm'
                     : 'border-mono-primary/10'
                     } ${!userResponse ? 'cursor-pointer hover:border-mono-accent/50 hover:bg-mono-bg' : 'cursor-default'}`}
@@ -187,7 +187,7 @@ export default function SignalDetail({
                       className="hidden"
                     />
                   )}
-                  <span className={`font-medium transition-colors break-all min-w-0 whitespace-pre-wrap max-w-full ${isSelected ? 'text-mono-primary' : 'text-mono-text'}`} style={{ wordBreak: 'break-all' }}>
+                  <span className={`font-medium transition-colors ${isSelected ? 'text-mono-primary' : 'text-mono-text'}`}>
                     <LabelText text={option.text} labels={labels} />
                   </span>
                 </label>
@@ -200,7 +200,7 @@ export default function SignalDetail({
             <div className="mb-6 p-4 bg-mono-accent/5 border border-mono-accent/20 rounded-xl">
               <h4 className="text-sm font-medium text-mono-primary mb-2">Your Response Details</h4>
               <div className="space-y-2 text-sm">
-                <p className="text-mono-text break-all"><span className="opacity-60">Selected:</span> <LabelText text={userResponse.response} labels={labels} /></p>
+                <p className="text-mono-text"><span className="opacity-60">Selected:</span> <LabelText text={userResponse.response} labels={labels} /></p>
                 {userResponse.skipReason && <p className="text-mono-text"><span className="opacity-60">Reason for skipping:</span> {userResponse.skipReason}</p>}
                 <p className="text-mono-text"><span className="opacity-60">Submitted:</span> {formatDateTime(userResponse.submittedAt)}</p>
                 {userResponse.isDefault && <p className="text-amber-600 font-medium italic">This was recorded as a default response.</p>}
@@ -215,7 +215,7 @@ export default function SignalDetail({
                 <AlertCircle className="w-5 h-5 text-mono-primary/60 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-mono-text mb-1">
-                    <strong className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>Default Response:</strong> <span className="break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{poll.defaultResponse}</span>
+                    <strong>Default Response:</strong> {poll.defaultResponse}
                   </p>
                   <p className="text-xs text-mono-text/60">
                     This will be recorded if you don't submit a response before the deadline
@@ -278,7 +278,7 @@ export default function SignalDetail({
               </p>
               <div className="mt-4 p-4 bg-mono-primary/5 rounded-xl border border-mono-primary/10">
                 <p className="text-sm text-mono-text">
-                  <strong>Your response:</strong> <span className="break-all max-w-full block" style={{ wordBreak: 'break-all' }}>{selectedValue}</span>
+                  <strong>Your response:</strong> {selectedValue}
                 </p>
               </div>
               <p className="text-xs text-mono-text/40 mt-3">

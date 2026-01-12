@@ -36,7 +36,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-x-hidden overflow-y-auto flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50">
           <div>
@@ -66,10 +66,10 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
               {/* Signal Card */}
               <div className="p-5 border-b border-slate-200">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm text-slate-600">From:</span>
-                      <span className="text-sm text-slate-900 break-all max-w-full" style={{ wordBreak: 'break-all' }}>{poll.publisherName}</span>
+                      <span className="text-sm text-slate-900">{poll.publisherName}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <Clock className="w-4 h-4" />
@@ -105,12 +105,12 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
 
               {/* Poll Content */}
               <div className="p-5">
-                <h4 className="text-slate-900 mb-4 break-all whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</h4>
+                <h4 className="text-slate-900 mb-4">{poll.question}</h4>
 
                 {poll.showDefaultToConsumers && poll.defaultResponse && (
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>Default Response:</strong> <span className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>{poll.defaultResponse}</span>
+                      <strong>Default Response:</strong> {poll.defaultResponse}
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
                       This will be recorded if you don't submit a response
@@ -130,7 +130,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                         className="w-4 h-4 text-blue-600"
                         disabled
                       />
-                      <span className="text-slate-700 break-all min-w-0 whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>{option.text}</span>
+                      <span className="text-slate-700">{option.text}</span>
                     </label>
                   ))}
                 </div>

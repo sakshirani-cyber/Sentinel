@@ -141,7 +141,9 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
           <div>
             <h2 className="text-mono-text mb-1 text-lg font-medium">Poll Analytics</h2>
-            <p className="text-mono-text/70 text-sm mt-1 break-all max-w-full" style={{ wordBreak: 'break-all' }}>{poll.question}</p>
+            <p className="text-sm text-mono-text/60">
+              <LabelText text={poll.question} labels={labels} />
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {canExport && (
@@ -210,7 +212,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                 return (
                   <div key={option} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-700 flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-slate-700 flex items-center gap-2">
                         <LabelText text={option} labels={labels} />
                         {isDefaultOption && (
                           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
