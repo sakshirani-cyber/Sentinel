@@ -86,7 +86,7 @@ public class SignalController {
 
     @GetMapping("/{signalId}/poll/results")
     public ResponseEntity<ApiResponse<PollResultDTO>> results(
-            @PathVariable Long signalId) {
+            @PathVariable Integer signalId) {
 
         long start = System.currentTimeMillis();
 
@@ -131,7 +131,7 @@ public class SignalController {
 
     @DeleteMapping("/{signalId}")
     public ResponseEntity<ApiResponse<Void>> delete(
-            @PathVariable Long signalId) {
+            @PathVariable Integer signalId) {
 
         long start = System.currentTimeMillis();
 

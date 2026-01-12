@@ -8,9 +8,9 @@ import org.springframework.data.repository.query.Param;
 
 import static com.sentinel.backend.constant.Queries.DELETE_POLL_BY_SIGNAL_ID;
 
-public interface PollRepository extends JpaRepository<Poll, Long> {
+public interface PollRepository extends JpaRepository<Poll, Integer> {
 
     @Modifying
     @Query(DELETE_POLL_BY_SIGNAL_ID)
-    int deleteBySignalId(@Param("signalId") Long signalId);
+    int deleteBySignalId(@Param("signalId") Integer signalId);
 }

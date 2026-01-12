@@ -12,7 +12,7 @@ import java.util.Map;
 @NoArgsConstructor
 public class PollResultDTO {
 
-    private Long signalId;
+    private Integer signalId;
     private Integer totalAssigned;
     private Integer totalResponded;
 

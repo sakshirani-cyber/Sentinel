@@ -18,5 +18,5 @@ public class PollEditDTO extends PollCreateDTO{
     private Boolean republish;
 
     @NotNull(message = "Signal Id is required")
-    private Long signalId;
+    private Integer signalId;
 }

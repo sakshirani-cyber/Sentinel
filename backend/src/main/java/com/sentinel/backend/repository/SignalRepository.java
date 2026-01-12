@@ -8,12 +8,12 @@ import org.springframework.data.repository.query.Param;
 
 import static com.sentinel.backend.constant.Queries.UPDATE_SIGNAL_STATUS;
 
-public interface SignalRepository extends JpaRepository<Signal, Long> {
+public interface SignalRepository extends JpaRepository<Signal, Integer> {
 
     @Modifying
     @Query(UPDATE_SIGNAL_STATUS)
     int updateSignalStatus(
-            @Param("signalId") Long signalId,
+            @Param("signalId") Integer signalId,
             @Param("status") String status
     );
 }

@@ -9,8 +9,8 @@ import com.sentinel.backend.dto.request.PollSubmitDTO;
 public interface SignalService {
     CreatePollResponse createPoll(PollCreateDTO dto);
     void submitOrUpdateVote(PollSubmitDTO req);
-    PollResultDTO getPollResults(Long signalId);
+    PollResultDTO getPollResults(Integer signalId);
     void editSignal(PollEditDTO dto);
-    void deleteSignal(Long signalId);
+    void deleteSignal(Integer signalId);
     String login(String userEmail, String password);
 }
