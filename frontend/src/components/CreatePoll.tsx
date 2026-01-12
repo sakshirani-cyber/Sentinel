@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { User, Poll } from '../App';
-import { Plus, X, Eye, Check, Upload, Loader2, CalendarClock } from 'lucide-react';
+import { Plus, X, Eye, Check, Upload, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PollPreview from './PollPreview';
-import { cn } from './ui/utils';
 
 interface CreatePollProps {
   user: User;
@@ -21,8 +20,6 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   const [showDefaultToConsumers, setShowDefaultToConsumers] = useState(false);
   const [anonymityMode, setAnonymityMode] = useState<'anonymous' | 'record'>('record');
   const [deadline, setDeadline] = useState('');
-  const [isScheduled, setIsScheduled] = useState(false);
-  const [scheduleTime, setScheduleTime] = useState('');
   const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(false);
   const [selectedConsumers, setSelectedConsumers] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
@@ -183,10 +180,9 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         isPersistentFinalAlert,
         consumers: selectedConsumers,
         publishedAt: new Date().toISOString(),
-        status: isScheduled ? 'scheduled' : 'active',
+        status: 'active',
         isPersistentAlert: false,
-        alertBeforeMinutes: 15,
-        scheduledFor: isScheduled ? new Date(scheduleTime).toISOString() : undefined
+        alertBeforeMinutes: 15
       };
 
       console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] 📋 Poll data prepared:`, {
@@ -212,8 +208,6 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
       setShowDefaultToConsumers(false);
       setAnonymityMode('record');
       setDeadline('');
-      setIsScheduled(false);
-      setScheduleTime('');
       setIsPersistentFinalAlert(false);
       setSelectedConsumers([]);
       setShowPreview(false);
@@ -232,38 +226,19 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
     return date > new Date();
   };
 
-  const isScheduleTimeValid = (scheduleStr: string, deadlineStr: string) => {
-    if (!scheduleStr) return false;
-    const scheduleDate = new Date(scheduleStr);
-    const now = new Date();
-
-    // Must be in the future
-    if (scheduleDate <= now) return false;
-
-    // Must be before deadline if deadline is set
-    if (deadlineStr) {
-      const deadlineDate = new Date(deadlineStr);
-      if (scheduleDate >= deadlineDate) return false;
-    }
-
-    return true;
-  };
-
   const isValid =
     question.trim() &&
     options.filter(o => o.trim()).length >= 2 &&
     !hasDuplicateOptions() &&
     (useCustomDefault ? customDefault.trim() : defaultResponse) &&
     isDateValid(deadline) &&
-    (!isScheduled || (scheduleTime && isScheduleTimeValid(scheduleTime, deadline))) &&
     selectedConsumers.length > 0;
 
   const canPreview =
     question.trim() &&
     options.filter(o => o.trim()).length >= 2 &&
     (useCustomDefault ? customDefault.trim() : defaultResponse) &&
-    deadline &&
-    (!isScheduled || scheduleTime);
+    deadline;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -271,99 +246,6 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         <h2 className="text-slate-900 mb-6">Create New Poll</h2>
 
         <div className="space-y-6">
-
-
-          {/* Schedule Toggle Section */}
-          <div
-            onClick={() => setIsScheduled(!isScheduled)}
-            className={cn(
-              "bg-white rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden group",
-              isScheduled
-                ? "border-blue-100 shadow-[0_8px_30px_rgb(37,99,235,0.08)] bg-blue-50/10"
-                : "border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-            )}
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300",
-                    isScheduled ? "bg-blue-600 text-white scale-110 shadow-lg shadow-blue-200" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600"
-                  )}>
-                    <CalendarClock className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Schedule for Later</h3>
-                    <p className="text-sm text-slate-500 font-medium">Automatically publish at a future date and time</p>
-                  </div>
-                </div>
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsScheduled(!isScheduled);
-                  }}
-                  className="flex items-center"
-                >
-                  <div className={cn(
-                    "relative w-11 h-6 rounded-full transition-all duration-300 ease-in-out shadow-inner border",
-                    isScheduled
-                      ? "bg-blue-600 border-blue-500"
-                      : "bg-slate-200 border-slate-300"
-                  )}>
-                    <div
-                      className="absolute top-1/2 bg-white w-4 h-4 rounded-full shadow-sm transition-all duration-300 ease-in-out"
-                      style={{
-                        left: '4px',
-                        transform: isScheduled ? 'translate(20px, -50%)' : 'translate(0, -50%)'
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {isScheduled && (
-                <div
-                  className="mt-6 pt-6 border-t border-blue-100/50 animate-in fade-in slide-in-from-top-4 duration-500 ease-out"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="grid sm:grid-cols-2 gap-6 items-end">
-                    <div className="space-y-2.5">
-                      <label className="text-sm font-bold text-slate-700 ml-1 flex items-center gap-1.5 uppercase tracking-wider">
-                        Select Start Time
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative group">
-                        <input
-                          type="datetime-local"
-                          value={scheduleTime}
-                          onChange={(e) => setScheduleTime(e.target.value)}
-                          className={cn(
-                            "w-full px-4 py-3 rounded-xl border bg-white text-slate-900 focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm",
-                            showErrors && (!scheduleTime || !isScheduleTimeValid(scheduleTime, deadline))
-                              ? "border-red-200 ring-red-500/10 focus:ring-red-500/20"
-                              : "border-slate-200 focus:border-blue-500/50 ring-blue-500/10 focus:ring-blue-500/20"
-                          )}
-                          min={new Date().toISOString().slice(0, 16)}
-                          max={deadline ? new Date(deadline).toISOString().slice(0, 16) : undefined}
-                        />
-                      </div>
-                      {showErrors && !scheduleTime && (
-                        <p className="text-red-500 text-xs mt-1">Schedule time is required</p>
-                      )}
-                      {showErrors && scheduleTime && !isScheduleTimeValid(scheduleTime, deadline) && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {new Date(scheduleTime) <= new Date()
-                            ? "Schedule time must be in the future"
-                            : "Schedule time must be before the deadline"}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Question */}
           <div>
             <label className="block text-slate-700 mb-2">
@@ -691,7 +573,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  {isScheduled ? 'Schedule Poll' : 'Publish Poll'}
+                  Publish Poll
                 </>
               )}
             </button>

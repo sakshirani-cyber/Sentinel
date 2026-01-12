@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { User, Poll, Response } from '../App';
-import { PlusCircle, List, LogOut, Settings, Tag, CalendarClock } from 'lucide-react';
+import { PlusCircle, List, LogOut } from 'lucide-react';
 import logo from '../assets/logo.png';
 import CreatePoll from './CreatePoll';
 import PublishedPolls from './PublishedPolls';
-import ScheduledPolls from './ScheduledPolls';
 import FormTypeSelector from './FormTypeSelector';
 
 interface PublisherDashboardProps {
@@ -16,8 +15,6 @@ interface PublisherDashboardProps {
   onUpdatePoll: (pollId: string, updates: Partial<Poll>, republish: boolean) => void;
   onSwitchMode: () => void;
   onLogout: () => void;
-  onManageLabels: () => void;
-  onPublishNow?: (poll: Poll) => void;
 }
 
 export default function PublisherDashboard({
@@ -28,16 +25,12 @@ export default function PublisherDashboard({
   onDeletePoll,
   onUpdatePoll,
   onSwitchMode,
-  onLogout,
-  onManageLabels
+  onLogout
 }: PublisherDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'create' | 'published' | 'scheduled'>('published');
+  const [activeTab, setActiveTab] = useState<'create' | 'published'>('create');
   const [selectedFormType, setSelectedFormType] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
 
   const userPolls = polls.filter(p => p.publisherEmail === user.email);
-  const activePolls = userPolls.filter(p => p.status !== 'scheduled');
-  const scheduledPolls = userPolls.filter(p => p.status === 'scheduled');
 
   const handleFormTypeSelect = (formType: string) => {
     setSelectedFormType(formType);
@@ -76,47 +69,13 @@ export default function PublisherDashboard({
                 <span className="hidden sm:inline">Switch to Consumer</span>
               </button>
 
-              <div className="relative">
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className="p-2.5 text-mono-bg/70 hover:text-mono-bg hover:bg-mono-bg/10 rounded-xl transition-colors"
-                  title="Settings"
-                >
-                  <Settings className="w-5 h-5" />
-                </button>
-
-                {showSettings && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowSettings(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-48 bg-mono-primary rounded-xl shadow-xl border border-mono-bg/10 py-1 z-50 overflow-hidden">
-                      <button
-                        onClick={() => {
-                          setShowSettings(false);
-                          onManageLabels();
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-mono-bg hover:bg-mono-accent/10 flex items-center gap-2 transition-colors"
-                      >
-                        <Tag className="w-4 h-4" />
-                        Label
-                      </button>
-                      <div className="h-px bg-mono-bg/10 my-1" />
-                      <button
-                        onClick={() => {
-                          onLogout();
-                          setShowSettings(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-mono-bg hover:bg-mono-accent/10 flex items-center gap-2 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Logout
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              <button
+                onClick={onLogout}
+                className="p-2.5 text-mono-bg/70 hover:text-mono-bg hover:bg-mono-bg/10 rounded-xl transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -140,24 +99,6 @@ export default function PublisherDashboard({
               <span className="hidden sm:inline">Create</span>
             </button>
             <button
-              onClick={() => setActiveTab('scheduled')}
-              className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'scheduled'
-                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
-                }`}
-            >
-              <CalendarClock className="w-5 h-5" />
-              <span className="hidden sm:inline">Scheduled</span>
-              {scheduledPolls.length > 0 && (
-                <span className={`px-2.5 py-0.5 rounded-full text-xs ${activeTab === 'scheduled'
-                  ? 'bg-mono-accent/30 text-mono-primary'
-                  : 'bg-mono-primary/20 text-mono-primary'
-                  }`}>
-                  {scheduledPolls.length}
-                </span>
-              )}
-            </button>
-            <button
               onClick={() => setActiveTab('published')}
               className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'published'
                 ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
@@ -166,12 +107,12 @@ export default function PublisherDashboard({
             >
               <List className="w-5 h-5" />
               <span className="hidden sm:inline">Published</span>
-              {activePolls.length > 0 && (
+              {userPolls.length > 0 && (
                 <span className={`px-2.5 py-0.5 rounded-full text-xs ${activeTab === 'published'
                   ? 'bg-mono-accent/30 text-mono-primary'
                   : 'bg-mono-primary/20 text-mono-primary'
                   }`}>
-                  {activePolls.length}
+                  {userPolls.length}
                 </span>
               )}
             </button>
@@ -195,10 +136,7 @@ export default function PublisherDashboard({
                 </button>
                 <CreatePoll
                   user={user}
-                  onCreatePoll={async (poll) => {
-                    await onCreatePoll(poll);
-                    setActiveTab(poll.status === 'scheduled' ? 'scheduled' : 'published');
-                  }}
+                  onCreatePoll={onCreatePoll}
                   existingPolls={polls}
                   formType={selectedFormType}
                 />
@@ -209,19 +147,10 @@ export default function PublisherDashboard({
 
         {activeTab === 'published' && (
           <PublishedPolls
-            polls={activePolls}
+            polls={userPolls}
             responses={responses}
             onDeletePoll={onDeletePoll}
             onUpdatePoll={onUpdatePoll}
-          />
-        )}
-
-        {activeTab === 'scheduled' && (
-          <ScheduledPolls
-            polls={scheduledPolls}
-            onDeletePoll={onDeletePoll}
-            onUpdatePoll={onUpdatePoll}
-            onPublishNow={(poll) => onPublishNow?.(poll)}
           />
         )}
       </main>
