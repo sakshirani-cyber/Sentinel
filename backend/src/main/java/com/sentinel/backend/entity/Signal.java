@@ -56,7 +56,4 @@ public class Signal {
 
     @Column(name = "persistent_alert", nullable = false)
     private Boolean persistentAlert = false;
-
-    @Column(name = "labels", columnDefinition = "text[]")
-    private String[] labels;
 }

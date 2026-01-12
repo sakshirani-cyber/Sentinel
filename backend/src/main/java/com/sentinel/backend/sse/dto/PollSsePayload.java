@@ -25,6 +25,4 @@ public class PollSsePayload {
     private String[] sharedWith;
 
     private boolean republish;
-
-    private String[] labels;
 }
