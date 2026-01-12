@@ -40,4 +40,7 @@ public class LabelEntity {
             insertable = false
     )
     private Instant createdAt;
+
+    @Column(name = "edited_at")
+    private Instant editedAt;
 }

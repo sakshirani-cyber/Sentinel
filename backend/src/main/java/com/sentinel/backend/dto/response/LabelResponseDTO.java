@@ -14,4 +14,5 @@ public class LabelResponseDTO {
     private String description;
     private String color;
     private Instant createdAt;
+    private Instant editedAt;
 }
