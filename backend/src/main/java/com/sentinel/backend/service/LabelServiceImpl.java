@@ -4,7 +4,7 @@ import com.sentinel.backend.dto.request.LabelCreateDTO;
 import com.sentinel.backend.dto.request.LabelEditDTO;
 import com.sentinel.backend.dto.response.CreateLabelResponse;
 import com.sentinel.backend.dto.response.LabelResponseDTO;
-import com.sentinel.backend.entity.LabelEntity;
+import com.sentinel.backend.entity.Label;
 import com.sentinel.backend.exception.CustomException;
 import com.sentinel.backend.repository.LabelRepository;
 import com.sentinel.backend.util.NormalizationUtils;
@@ -35,7 +35,7 @@ public class LabelServiceImpl implements LabelService {
             throw new CustomException("Label already exists", HttpStatus.BAD_REQUEST);
         }
 
-        LabelEntity entity = new LabelEntity();
+        Label entity = new Label();
         entity.setLabel(normalizedLabel);
         entity.setDescription(NormalizationUtils.trimToNull(dto.getDescription()));
         entity.setColor(dto.getColor().toUpperCase());
@@ -66,7 +66,7 @@ public class LabelServiceImpl implements LabelService {
     @Transactional
     public void editLabel(LabelEditDTO dto) {
 
-        LabelEntity entity =
+        Label entity =
                 labelRepository.findById(dto.getId())
                         .orElseThrow(() -> new CustomException(
                                 "Label not found",
