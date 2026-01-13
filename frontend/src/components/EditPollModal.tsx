@@ -63,6 +63,8 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const [showDefaultToConsumers, setShowDefaultToConsumers] = useState(poll.showDefaultToConsumers);
     const [anonymityMode, setAnonymityMode] = useState<'anonymous' | 'record'>(poll.anonymityMode);
     const [deadline, setDeadline] = useState(formatDateForInput(poll.deadline));
+    // Scheduled For state - only relevant if poll.status is 'scheduled'
+    const [scheduledFor, setScheduledFor] = useState(formatDateForInput(poll.scheduledFor || ''));
     const [isPersistentFinalAlert, setIsPersistentFinalAlert] = useState(poll.isPersistentFinalAlert);
     const [selectedConsumers, setSelectedConsumers] = useState<string[]>(poll.consumers);
     const [republish, setRepublish] = useState(false);
@@ -241,6 +243,11 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                 isEdited: true
             };
 
+            // Include scheduledFor only if it's a scheduled poll
+            if (poll.status === 'scheduled' && scheduledFor) {
+                updates.scheduledFor = new Date(scheduledFor).toISOString();
+            }
+
             console.log('[EditPollModal] Saving updates:', { updates, republish });
             // Republish flag is passed from state. Validation ensures it's correct.
             await onUpdate(poll.id, updates, republish);
@@ -254,6 +261,18 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
 
     const currentDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
 
+    // Check if scheduledTime is valid (must be future, must be before deadline)
+    const isScheduledTimeValid = () => {
+        if (poll.status !== 'scheduled') return true;
+        if (!scheduledFor) return false;
+
+        const schedTime = new Date(scheduledFor);
+        const deadlineTime = new Date(deadline);
+        const now = new Date();
+
+        return schedTime > now && schedTime < deadlineTime;
+    };
+
     const hasChanges =
         question !== poll.question ||
         JSON.stringify(options) !== JSON.stringify(poll.options.map(o => o.text)) ||
@@ -261,6 +280,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         showDefaultToConsumers !== poll.showDefaultToConsumers ||
         anonymityMode !== poll.anonymityMode ||
         deadline !== formatDateForInput(poll.deadline) ||
+        (poll.status === 'scheduled' && scheduledFor !== formatDateForInput(poll.scheduledFor || '')) ||
         isPersistentFinalAlert !== poll.isPersistentFinalAlert ||
         JSON.stringify([...selectedConsumers].sort()) !== JSON.stringify([...poll.consumers].sort());
 
@@ -284,6 +304,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
         !hasDuplicateOptions() &&
         currentDefaultResponse &&
         isDateValid(deadline) &&
+        isScheduledTimeValid() &&
         selectedConsumers.length > 0 &&
         selectedConsumers.length > 0 &&
         !isRepublishMissing &&
@@ -509,6 +530,31 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                         </div>
 
                         <div className="space-y-4">
+                            {poll.status === 'scheduled' && (
+                                <div>
+                                    <label className="block text-mono-text mb-2 font-medium">Scheduled Publication Time <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="datetime-local"
+                                        value={scheduledFor}
+                                        onChange={(e) => setScheduledFor(e.target.value)}
+                                        className={`w-full px-4 py-2 rounded-xl border bg-mono-bg focus:outline-none focus:ring-1 transition-all ${(showErrors || hasChanges) && !isScheduledTimeValid()
+                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                                            : 'border-mono-primary/20 focus:border-mono-primary focus:ring-mono-primary'
+                                            }`}
+                                        min={getMinDateTime()}
+                                    />
+                                    {showErrors && !isScheduledTimeValid() && (
+                                        <p className="text-red-500 text-xs mt-1">
+                                            {!scheduledFor
+                                                ? 'Publication time is required'
+                                                : new Date(scheduledFor) >= new Date(deadline)
+                                                    ? 'Publication time must be before deadline'
+                                                    : 'Please select a valid future date'}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-mono-text mb-2 font-medium">Deadline <span className="text-red-500">*</span></label>
                                 <input

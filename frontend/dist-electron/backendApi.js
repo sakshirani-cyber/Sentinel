@@ -76,6 +76,7 @@ function mapPollToDTO(poll) {
         question: poll.question,
         options: poll.options.map((o) => o.text),
         labels: poll.labels || [],
+        scheduledTime: poll.scheduledFor
     };
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);
     console.log('  showDefaultToConsumers:', poll.showDefaultToConsumers, '→ defaultFlag:', dto.defaultFlag);

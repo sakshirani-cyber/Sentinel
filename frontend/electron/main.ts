@@ -238,11 +238,9 @@ app.whenReady().then(async () => {
             await createPoll(poll);
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] ✅ Step 1 Complete: Poll saved to local DB with syncStatus=pending`);
 
-            // Check if this is a SCHEDULED poll
+            // Scheduled polls are now sent to backend immediately (to reserve Signal ID)
             if (poll.status === 'scheduled') {
-                console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🕒 Poll is SCHEDULED for ${poll.scheduledFor}. Skipping cloud sync.`);
-                console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🎉 Returning success to frontend (scheduled poll saved locally)`);
-                return { success: true };
+                console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 🕒 Poll is SCHEDULED for ${poll.scheduledFor}. Proceeding to cloud sync...`);
             }
 
             // Try to sync to backend immediately but don't block

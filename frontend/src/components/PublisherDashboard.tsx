@@ -17,7 +17,6 @@ interface PublisherDashboardProps {
   onSwitchMode: () => void;
   onLogout: () => void;
   onManageLabels: () => void;
-  onPublishNow?: (poll: Poll) => void;
 }
 
 export default function PublisherDashboard({
@@ -29,8 +28,7 @@ export default function PublisherDashboard({
   onUpdatePoll,
   onSwitchMode,
   onLogout,
-  onManageLabels,
-  onPublishNow
+  onManageLabels
 }: PublisherDashboardProps) {
   const [activeTab, setActiveTab] = useState<'create' | 'published' | 'scheduled'>('published');
   const [selectedFormType, setSelectedFormType] = useState<string | null>(null);
@@ -38,7 +36,7 @@ export default function PublisherDashboard({
 
   const userPolls = polls.filter(p => p.publisherEmail === user.email);
   const activePolls = userPolls.filter(p => p.status !== 'scheduled');
-  const scheduledPolls = polls.filter(p => p.status === 'scheduled');
+  const scheduledPolls = userPolls.filter(p => p.status === 'scheduled');
 
   const handleFormTypeSelect = (formType: string) => {
     setSelectedFormType(formType);
@@ -222,7 +220,6 @@ export default function PublisherDashboard({
             polls={scheduledPolls}
             onDeletePoll={onDeletePoll}
             onUpdatePoll={onUpdatePoll}
-            onPublishNow={(poll) => onPublishNow?.(poll)}
           />
         )}
       </main>

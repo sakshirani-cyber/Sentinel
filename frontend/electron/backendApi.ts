@@ -61,6 +61,7 @@ interface PollCreateDTO {
     question: string;
     options: string[];
     labels?: string[];
+    scheduledTime?: string;
 }
 
 export interface LabelCreateDTO {
@@ -163,7 +164,7 @@ function mapPollToDTO(poll: any): PollCreateDTO {
     const localId = parseInt(poll.id.split('-')[1]) || Date.now();
     const endTimestamp = new Date(poll.deadline).toISOString();
 
-    const dto = {
+    const dto: PollCreateDTO = {
         createdBy: poll.publisherEmail,
         anonymous: poll.anonymityMode === 'anonymous',
         endTimestamp,
@@ -176,6 +177,7 @@ function mapPollToDTO(poll: any): PollCreateDTO {
         question: poll.question,
         options: poll.options.map((o: any) => o.text),
         labels: poll.labels || [],
+        scheduledTime: poll.scheduledFor
     };
 
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);
