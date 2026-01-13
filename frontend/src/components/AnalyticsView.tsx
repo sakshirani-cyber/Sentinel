@@ -324,7 +324,14 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                             {poll.anonymityMode === 'anonymous' ? 'Anonymous' : response.consumerEmail}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-700">
-                            {response.response}
+                            <span className={response.skipReason ? "italic text-slate-500" : ""}>
+                              {response.response}
+                            </span>
+                            {response.skipReason && (
+                              <div className="mt-1 text-xs text-red-600 border-l-2 border-red-200 pl-2 italic">
+                                Reason: {response.skipReason}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             {response.isDefault ? (
