@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -69,7 +70,15 @@ public class SignalServiceImpl implements SignalService {
         dto.validatePoll();
 
         if (dto.isScheduled()) {
-            return createScheduledPoll(dto);
+            Long reservedId = signalRepository.getNextSignalId();
+
+            ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
+            scheduledPoll.setReservedSignalId(reservedId);
+            scheduledPollRepository.save(scheduledPoll);
+
+            pollSchedulerService.scheduleTask(scheduledPoll);
+
+            return new CreatePollResponse(reservedId, dto.getLocalId());
         }
 
         Signal signal = buildSignal(dto);
@@ -165,9 +174,13 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     public void deleteSignal(Long signalId) {
+        Optional<ScheduledPoll> scheduledOpt = scheduledPollRepository.findByReservedSignalId(signalId);
 
-        if (scheduledPollRepository.existsById(signalId)) {
-            deleteScheduledPoll(signalId);
+        if (scheduledOpt.isPresent()) {
+            ScheduledPoll sp = scheduledOpt.get();
+            pollSchedulerService.cancelTask(sp.getId());
+            scheduledPollRepository.delete(sp);
+            log.info("Deleted scheduled poll with reserved id: {}", signalId);
             return;
         }
 
@@ -443,20 +456,6 @@ public class SignalServiceImpl implements SignalService {
         log.info("Updated scheduled poll id: {}", scheduledPoll.getId());
     }
 
-    private void deleteScheduledPoll(Long scheduledPollId) {
-        scheduledPollRepository
-                .findById(scheduledPollId)
-                .orElseThrow(() -> new CustomException(
-                        "Scheduled poll not found",
-                        HttpStatus.NOT_FOUND
-                ));
-
-        pollSchedulerService.cancelTask(scheduledPollId);
-        scheduledPollRepository.deleteById(scheduledPollId);
-
-        log.info("Deleted scheduled poll id: {}", scheduledPollId);
-    }
-
     private ScheduledPoll buildScheduledPoll(PollCreateDTO dto) {
 
         ScheduledPoll sp = new ScheduledPoll();
@@ -471,6 +470,7 @@ public class SignalServiceImpl implements SignalService {
         sp.setEndTimestamp(dto.getEndTimestampUtc());
         sp.setPersistentAlert(dto.getPersistentAlert());
         sp.setLabels(dto.getLabels());
+        sp.setReservedSignalId(null);
         return sp;
     }
 }

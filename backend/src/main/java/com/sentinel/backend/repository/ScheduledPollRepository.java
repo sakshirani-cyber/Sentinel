@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ScheduledPollRepository extends JpaRepository<ScheduledPoll, Long> {
@@ -15,4 +16,6 @@ public interface ScheduledPollRepository extends JpaRepository<ScheduledPoll, Lo
     List<ScheduledPoll> findAllPendingSchedules(Instant now);
 
     boolean existsById(Long id);
+
+    Optional<ScheduledPoll> findByReservedSignalId(Long reservedSignalId);
 }
