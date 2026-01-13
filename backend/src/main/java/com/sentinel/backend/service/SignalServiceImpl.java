@@ -428,7 +428,7 @@ public class SignalServiceImpl implements SignalService {
 
     private void editScheduledPoll(PollEditDTO dto) {
         ScheduledPoll scheduledPoll = scheduledPollRepository
-                .findById(dto.getSignalId())
+                .findByReservedSignalId(dto.getSignalId())
                 .orElseThrow(() -> new CustomException(
                         "Scheduled poll not found",
                         HttpStatus.NOT_FOUND
