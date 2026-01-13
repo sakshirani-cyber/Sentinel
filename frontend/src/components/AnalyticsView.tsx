@@ -145,7 +145,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         response: r.response,
         status: r.isDefault ? 'System Default' : (r.skipReason ? 'Manual Skip' : 'Submitted Vote'),
         time: new Date(r.submittedAt).toLocaleString(),
-        reason: r.skipReason || ''
+        reason: poll.anonymityMode === 'anonymous' ? '' : (r.skipReason || '')
       })));
 
       // Apply styles to headers
@@ -324,10 +324,10 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                             {poll.anonymityMode === 'anonymous' ? 'Anonymous' : response.consumerEmail}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-700">
-                            <span className={response.skipReason ? "italic text-slate-500" : ""}>
+                            <span className={response.skipReason && poll.anonymityMode !== 'anonymous' ? "italic text-slate-500" : ""}>
                               {response.response}
                             </span>
-                            {response.skipReason && (
+                            {response.skipReason && poll.anonymityMode !== 'anonymous' && (
                               <div className="mt-1 text-xs text-red-600 border-l-2 border-red-200 pl-2 italic">
                                 Reason: {response.skipReason}
                               </div>
@@ -406,8 +406,8 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
             )}
           </div>
 
-          {/* Manual Skips with Reasons */}
-          {skipManualResponses.length > 0 && (
+          {/* Manual Skips with Reasons (Show only for recorded polls) */}
+          {skipManualResponses.length > 0 && poll.anonymityMode !== 'anonymous' && (
             <div className="mt-8">
               <h3 className="text-slate-900 mb-4">Manual Skips with Reasons</h3>
               <div className="space-y-3">
