@@ -103,8 +103,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         { header: 'Option', key: 'option', width: 45 },
         { header: 'Count', key: 'count', width: 15 },
         { header: 'Percentage', key: 'percentage', width: 20 },
-        { header: 'Status', key: 'status', width: 25 },
-        { header: 'Visual Distribution', key: 'visual', width: 35 }
+        { header: 'Status', key: 'status', width: 25 }
       ];
 
       const distributionRows = Object.entries(responseCounts).map(([option, count]) => {
@@ -116,8 +115,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
           option,
           count,
           percentage: percentage / 100,
-          status: isDefaultOption ? 'Default Option' : (isRemoved ? 'Removed Option' : 'Active'),
-          visual: percentage / 100
+          status: isDefaultOption ? 'Default Option' : (isRemoved ? 'Removed Option' : 'Active')
         };
       });
 
@@ -130,25 +128,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
       // Format Percentage columns
       wsDistribution.getColumn('percentage').numFmt = '0.0%';
-      wsDistribution.getColumn('visual').numFmt = '0.0%';
-
-      // Add Data Bars
-      const distRowCount = distributionRows.length;
-      if (distRowCount > 0) {
-        wsDistribution.addConditionalFormatting({
-          ref: `E2:E${distRowCount + 1}`,
-          rules: [
-            {
-              type: 'dataBar',
-              cfvo: [
-                { type: 'min', value: 0 },
-                { type: 'max', value: 1 }
-              ],
-              color: { argb: 'FF6659FF' } // Mono-accent
-            } as any
-          ]
-        });
-      }
+      wsDistribution.getColumn('percentage').numFmt = '0.0%';
 
       // --- Sheet 3: Individual Responses ---
       const wsResponses = workbook.addWorksheet('Responses');
