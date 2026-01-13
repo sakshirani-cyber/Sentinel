@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -26,5 +27,8 @@ public class PollResultDTO {
 
     private Integer defaultCount;
     private Integer reasonCount;
+
+    private List<String> anonymousReasons;
+
 }
 
