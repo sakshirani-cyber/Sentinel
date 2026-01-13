@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Poll } from '../App';
-import { Clock, Calendar, Edit, Trash2 } from 'lucide-react';
+import { Clock, Calendar, Edit, Trash2, Send } from 'lucide-react';
 import EditPollModal from './EditPollModal';
 import LabelPill from './LabelPill';
 import LabelText from './LabelText';
@@ -9,12 +9,14 @@ interface ScheduledPollsProps {
     polls: Poll[];
     onDeletePoll: (pollId: string) => void;
     onUpdatePoll: (pollId: string, updates: Partial<Poll>, republish: boolean) => void;
+    onPublishNow: (poll: Poll) => Promise<void>;
 }
 
 export default function ScheduledPolls({
     polls,
     onDeletePoll,
-    onUpdatePoll
+    onUpdatePoll,
+    onPublishNow
 }: ScheduledPollsProps) {
     const [selectedPollForEdit, setSelectedPollForEdit] = useState<Poll | null>(null);
 
@@ -96,6 +98,17 @@ export default function ScheduledPolls({
                                 >
                                     <Edit className="w-4 h-4" />
                                     Edit
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (confirm('Publish this poll now? It will be sent to all consumers immediately.')) {
+                                            await onPublishNow(poll);
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-100"
+                                >
+                                    <Send className="w-4 h-4" />
+                                    Publish Now
                                 </button>
                                 <button
                                     onClick={() => {
