@@ -268,7 +268,8 @@ class SyncManager {
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith && dto.sharedWith.length > 0 ? dto.sharedWith : (dto.consumers || []),
             syncStatus: 'synced',
-            labels: dto.labels || []
+            labels: dto.labels || [],
+            anonymousReasons: dto.anonymousReasons || []
         };
         try {
             await (0, db_1.createPoll)(poll);

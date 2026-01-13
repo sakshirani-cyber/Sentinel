@@ -18,6 +18,14 @@ declare global {
                 updateLabel: (id: string, updates: any) => Promise<any>;
                 deleteLabel: (id: string) => Promise<any>;
             };
+            backend: {
+                createPoll: (poll: any) => Promise<{ success: boolean; error?: string; signalId?: number }>;
+                submitVote: (pollId: string, signalId: number, userId: string, selectedOption?: string, defaultResponse?: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+                getPollResults: (signalId: number) => Promise<{ success: boolean; data?: any; error?: string }>;
+                editPoll: (signalId: number, poll: any, republish: boolean) => Promise<{ success: boolean; error?: string }>;
+                deletePoll: (signalId: number) => Promise<{ success: boolean; error?: string }>;
+                login: (email: string, password: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+            };
             getDeviceStatus: () => Promise<string>;
         };
     };

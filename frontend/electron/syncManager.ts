@@ -259,7 +259,8 @@ export class SyncManager {
             cloudSignalId: dto.signalId,
             consumers: dto.sharedWith && dto.sharedWith.length > 0 ? dto.sharedWith : (dto.consumers || []),
             syncStatus: 'synced',
-            labels: dto.labels || []
+            labels: dto.labels || [],
+            anonymousReasons: dto.anonymousReasons || []
         };
 
         try {

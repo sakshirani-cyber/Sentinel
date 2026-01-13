@@ -65,6 +65,7 @@ function initDB() {
                     isEdited INTEGER DEFAULT 0, -- boolean 0/1
                     updatedAt TEXT,
                     scheduledFor TEXT,
+                    anonymousReasons TEXT, -- JSON array of strings
                     createdAt TEXT DEFAULT CURRENT_TIMESTAMP
                 );
 
@@ -127,6 +128,10 @@ function initDB() {
             if (!columns.includes('labels')) {
                 console.log('[SQLite DB] Migrating: Adding labels to polls table');
                 db.exec("ALTER TABLE polls ADD COLUMN labels TEXT");
+            }
+            if (!columns.includes('anonymousReasons')) {
+                console.log('[SQLite DB] Migrating: Adding anonymousReasons to polls table');
+                db.exec("ALTER TABLE polls ADD COLUMN anonymousReasons TEXT");
             }
             const respTableInfo = db.prepare("PRAGMA table_info(responses)").all();
             const respColumns = respTableInfo.map(col => col.name);
@@ -291,12 +296,12 @@ function createPoll(poll) {
                 localId, question, options, publisherEmail, publisherName, 
                 status, deadline, anonymityMode, isPersistentFinalAlert, 
                 consumers, defaultResponse, showDefaultToConsumers, publishedAt,
-                cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor, labels
+                cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor, labels, anonymousReasons
             ) VALUES (
                 @localId, @question, @options, @publisherEmail, @publisherName, 
                 @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
                 @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
-                @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor, @labels
+                @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor, @labels, @anonymousReasons
             )
             ON CONFLICT(localId) DO UPDATE SET
                 question = excluded.question,
@@ -315,7 +320,8 @@ function createPoll(poll) {
                 syncStatus = excluded.syncStatus,
                 isEdited = excluded.isEdited,
                 updatedAt = excluded.updatedAt,
-                scheduledFor = excluded.scheduledFor
+                scheduledFor = excluded.scheduledFor,
+                anonymousReasons = excluded.anonymousReasons
         `);
         const info = stmt.run({
             localId: poll.id,
@@ -336,7 +342,8 @@ function createPoll(poll) {
             isEdited: poll.isEdited ? 1 : 0,
             updatedAt: poll.updatedAt || new Date().toISOString(),
             scheduledFor: poll.scheduledFor || null,
-            labels: JSON.stringify(poll.labels || [])
+            labels: JSON.stringify(poll.labels || []),
+            anonymousReasons: JSON.stringify(poll.anonymousReasons || [])
         });
         return info;
     }
@@ -370,7 +377,8 @@ function getPolls() {
             isEdited: !!row.isEdited,
             updatedAt: row.updatedAt,
             scheduledFor: row.scheduledFor,
-            labels: JSON.parse(row.labels || '[]')
+            labels: JSON.parse(row.labels || '[]'),
+            anonymousReasons: JSON.parse(row.anonymousReasons || '[]')
         }));
     }
     catch (error) {
@@ -389,12 +397,12 @@ function updatePoll(pollId, updates, republish = false) {
         const fields = [
             'question', 'options', 'publisherEmail', 'publisherName', 'status',
             'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor', 'labels'
+            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor', 'labels', 'anonymousReasons'
         ];
         fields.forEach(field => {
             if (updates[field] !== undefined) {
                 sets.push(`${field} = @${field}`);
-                if (field === 'options' || field === 'consumers' || field === 'labels') {
+                if (field === 'options' || field === 'consumers' || field === 'labels' || field === 'anonymousReasons') {
                     values[field] = JSON.stringify(updates[field]);
                 }
                 else if (field === 'isPersistentFinalAlert' || field === 'showDefaultToConsumers' || field === 'isEdited') {

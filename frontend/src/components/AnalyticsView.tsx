@@ -1,5 +1,6 @@
 import { Poll, Response } from '../App';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download } from 'lucide-react';
 import LabelText from './LabelText';
 import LabelPill from './LabelPill';
@@ -21,6 +22,7 @@ interface AnalyticsViewProps {
 
 export default function AnalyticsView({ poll, responses, onClose, canExport = false }: AnalyticsViewProps) {
   const [labels, setLabels] = useState<Label[]>([]);
+  const [fetchedAnalyticsData, setFetchedAnalyticsData] = useState<any | null>(null);
 
   // Fetch labels on mount
   useEffect(() => {
@@ -37,37 +39,81 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
     fetchLabels();
   }, []);
 
-  const totalConsumers = poll.consumers.length;
-  const totalResponses = responses.length;
-  // Use unique responders who manually submitted (exclude defaults) to avoid > 100% rate
-  const uniqueManualResponders = new Set(responses.filter(r => !r.isDefault).map(r => r.consumerEmail)).size;
-  const responseRate = totalConsumers > 0 ? Math.min((uniqueManualResponders / totalConsumers) * 100, 100) : 0;
+  // Fetch fresh analytics from backend (for all polls to get accurate counts)
+  useEffect(() => {
+    const fetchBackendResults = async () => {
+      if (poll.cloudSignalId && (window as any).electron?.backend) {
+        try {
+          const result = await (window as any).electron.backend.getPollResults(poll.cloudSignalId);
+          if (result.success && result.data) {
+            setFetchedAnalyticsData(result.data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch backend results:', error);
+        }
+      }
+    };
 
-  const submittedResponses = responses.filter(r => !r.isDefault);
+    if (poll.cloudSignalId) {
+      fetchBackendResults();
+    }
+  }, [poll.cloudSignalId]);
+
+  const totalConsumers = fetchedAnalyticsData?.totalAssigned ?? poll.consumers.length;
+  // Local response calc
+
+
+
+  const submittedResponses = responses.filter(r => !r.isDefault && !r.skipReason);
   const defaultResponses = responses.filter(r => r.isDefault);
-  const skippedResponses = responses.filter(r => r.skipReason);
 
-  // Get current option texts for checking orphaned responses
+  const submittedCount = fetchedAnalyticsData
+    ? (fetchedAnalyticsData.totalResponded - (fetchedAnalyticsData.defaultCount || 0) - (fetchedAnalyticsData.reasonCount || 0))
+    : submittedResponses.length;
+
+  const responseRate = totalConsumers > 0
+    ? (submittedCount / totalConsumers) * 100
+    : 0;
+
+  const totalResponses = fetchedAnalyticsData ? fetchedAnalyticsData.totalResponded : responses.length;
+
+  const defaultsCount = fetchedAnalyticsData?.defaultCount ?? defaultResponses.length;
+
+  // For anonymous polls, we use fetched reasons if available, otherwise fallback to local DB poll data
+  const effectiveAnonymousReasons = fetchedAnalyticsData?.anonymousReasons || poll.anonymousReasons;
+
+  const anonymousSkipped = (poll.anonymityMode === 'anonymous' && effectiveAnonymousReasons)
+    ? effectiveAnonymousReasons.map((reason: string) => ({
+      consumerEmail: 'Anonymous User',
+      response: '',
+      skipReason: reason,
+      submittedAt: '',
+      isDefault: false
+    }))
+    : [];
+
+  const localSkipped = responses.filter(r => r.skipReason);
+
+  const skippedResponses = anonymousSkipped.length > 0 ? anonymousSkipped : localSkipped;
+
+  const skippedCount = fetchedAnalyticsData?.reasonCount ?? skippedResponses.length;
+
   const currentOptionTexts = new Set(poll.options.map(o => o.text));
 
-  // Count responses by option
   const responseCounts = poll.options.reduce((acc, option) => {
-    acc[option.text] = responses.filter(r => r.response === option.text).length;
+    acc[option.text] = responses.filter(r => r.response === option.text && !r.skipReason).length;
     return acc;
   }, {} as Record<string, number>);
 
-  // Add counts for responses that are no longer in current options
-  // (excluding defaults and skips which are handled separately)
   responses.forEach(r => {
     if (!r.isDefault && !r.skipReason && r.response && !currentOptionTexts.has(r.response)) {
       responseCounts[r.response] = (responseCounts[r.response] || 0) + 1;
     }
   });
 
-  // Add default response count if it's not in options
   const defaultResponseIsOption = poll.defaultResponse ? currentOptionTexts.has(poll.defaultResponse) : false;
   if (poll.defaultResponse && !defaultResponseIsOption && defaultResponses.length > 0) {
-    responseCounts[poll.defaultResponse] = (responseCounts[poll.defaultResponse] || 0) + 1;
+    responseCounts[poll.defaultResponse] = (responseCounts[poll.defaultResponse] || 0) + defaultResponses.length;
   }
 
   const formatDateTime = (dateString: string) => {
@@ -80,55 +126,104 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
     });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
-      const wb = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Sentinel App';
+      workbook.created = new Date();
+
+      // Style constants
+      const headerFill: ExcelJS.Fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFF00' } // Yellow
+      };
+      const headerFont = {
+        name: 'Arial',
+        sz: 11,
+        bold: true
+      };
+
+      const applyHeaderStyle = (sheet: ExcelJS.Worksheet) => {
+        const row = sheet.getRow(1);
+        row.eachCell((cell) => {
+          cell.fill = headerFill;
+          cell.font = headerFont;
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      };
 
       // --- Sheet 1: Summary ---
-      const summaryData = [
-        { Metric: 'Poll Question', Value: poll.question },
-        { Metric: 'Total Consumers', Value: totalConsumers },
-        { Metric: 'Response Rate', Value: `${responseRate.toFixed(1)}%` },
-        { Metric: 'Submitted Responses', Value: submittedResponses.length },
-        { Metric: 'Default Responses', Value: defaultResponses.length },
-        { Metric: 'Skipped Responses', Value: skippedResponses.length },
-        { Metric: 'Generated At', Value: new Date().toLocaleString() }
+      const summarySheet = workbook.addWorksheet('Summary');
+      summarySheet.columns = [
+        { header: 'Metric', key: 'metric', width: 30 },
+        { header: 'Value', key: 'value', width: 50 },
       ];
-      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+      summarySheet.addRows([
+        { metric: 'Poll Question', value: poll.question },
+        { metric: 'Total Consumers', value: totalConsumers },
+        { metric: 'Response Rate', value: `${responseRate.toFixed(1)}%` },
+        { metric: 'Submitted Responses', value: submittedCount },
+        { metric: 'System Defaults', value: defaultsCount },
+        { metric: 'Skipped Responses', value: skippedCount },
+        { metric: 'Generated At', value: new Date().toLocaleString() }
+      ]);
+      applyHeaderStyle(summarySheet);
 
       // --- Sheet 2: Distribution ---
+      const distSheet = workbook.addWorksheet('Distribution');
+      distSheet.columns = [
+        { header: 'Option', key: 'option', width: 30 },
+        { header: 'Count', key: 'count', width: 15 },
+        { header: 'Percentage', key: 'percentage', width: 15 },
+        { header: 'Status', key: 'status', width: 20 },
+      ];
+
       const distributionData = Object.entries(responseCounts).map(([option, count]) => {
         const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
         const isDefaultOption = option === poll.defaultResponse;
         const isRemoved = !currentOptionTexts.has(option) && !isDefaultOption;
-
         return {
-          'Option': option,
-          'Count': count,
-          'Percentage': `${percentage.toFixed(1)}%`,
-          'Status': isDefaultOption ? 'Default Option' : (isRemoved ? 'Removed Option' : 'Active')
+          option: option,
+          count: count,
+          percentage: `${percentage.toFixed(1)}%`,
+          status: isDefaultOption ? 'Default Option' : (isRemoved ? 'Removed Option' : 'Active')
         };
       });
-      const wsDistribution = XLSX.utils.json_to_sheet(distributionData);
-      XLSX.utils.book_append_sheet(wb, wsDistribution, 'Distribution');
+      distSheet.addRows(distributionData);
+      applyHeaderStyle(distSheet);
 
       // --- Sheet 3: Individual Responses ---
+      const responsesSheet = workbook.addWorksheet('Responses');
+      responsesSheet.columns = [
+        { header: 'Consumer Email', key: 'email', width: 40 },
+        { header: 'Response', key: 'response', width: 30 },
+        { header: 'Status', key: 'status', width: 15 },
+        { header: 'Submitted At', key: 'submittedAt', width: 20 },
+        { header: 'Skip Reason', key: 'skipReason', width: 40 },
+      ];
+
       const responsesData = responses.map(r => ({
-        'Consumer Email': r.consumerEmail,
-        'Response': r.response,
-        'Status': r.isDefault ? 'Default' : (r.skipReason ? 'Skipped' : 'Submitted'),
-        'Submitted At': new Date(r.submittedAt).toLocaleString(),
-        'Skip Reason': r.skipReason || ''
+        email: poll.anonymityMode === 'anonymous' ? 'Anonymous User' : r.consumerEmail,
+        response: r.response,
+        status: r.isDefault ? 'Default' : (r.skipReason ? 'Skipped' : 'Submitted'),
+        submittedAt: new Date(r.submittedAt).toLocaleString(),
+        skipReason: r.skipReason || ''
       }));
-      const wsResponses = XLSX.utils.json_to_sheet(responsesData);
-      XLSX.utils.book_append_sheet(wb, wsResponses, 'Responses');
+      responsesSheet.addRows(responsesData);
+      applyHeaderStyle(responsesSheet);
 
-      // Generate file name
+      // Generate buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
       const fileName = `poll_analytics_${poll.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, fileName);
 
-      // Save file
-      XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export analytics');
@@ -173,7 +268,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-5 h-5 text-blue-600" />
@@ -195,15 +290,23 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                 <CheckCircle className="w-5 h-5 text-purple-600" />
                 <span className="text-sm text-purple-900">Submitted</span>
               </div>
-              <p className="text-purple-900">{submittedResponses.length}</p>
+              <p className="text-purple-900">{submittedCount}</p>
             </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="w-5 h-5 text-amber-600" />
-                <span className="text-sm text-amber-900">Defaults</span>
+                <span className="text-sm text-amber-900">System Defaults</span>
               </div>
-              <p className="text-amber-900">{defaultResponses.length}</p>
+              <p className="text-amber-900">{defaultsCount}</p>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <span className="text-sm text-red-900">Skipped</span>
+              </div>
+              <p className="text-red-900">{skippedCount}</p>
             </div>
           </div>
 
@@ -214,6 +317,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
               {Object.entries(responseCounts).map(([option, count]) => {
                 const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
                 const isDefaultOption = option === poll.defaultResponse;
+                const isRemoved = !currentOptionTexts.has(option) && !isDefaultOption;
 
                 return (
                   <div key={option} className="space-y-2">
@@ -263,7 +367,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {responses.length > 0 ? (
-                        responses.map((response, index) => (
+                        responses.map((response: any, index: number) => (
                           <tr key={index} className="hover:bg-slate-50">
                             <td className="px-4 py-3 text-sm text-slate-900">
                               {response.consumerEmail}
@@ -345,26 +449,30 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
               <Shield className="w-12 h-12 text-blue-600 mx-auto mb-3" />
               <h4 className="text-blue-900 mb-2">Anonymous Poll</h4>
               <p className="text-sm text-blue-700">
-                Individual responses are anonymous. Only aggregate data is shown.
+                Individual responses are anonymous. Only aggregate data and masked skip reasons are shown.
               </p>
             </div>
           )}
 
           {/* Skipped Responses with Reasons */}
-          {skippedResponses.length > 0 && poll.anonymityMode === 'record' && (
+          {skippedResponses.length > 0 && (
             <div className="mt-8">
               <h3 className="text-slate-900 mb-4">Skipped with Reasons</h3>
               <div className="space-y-3">
-                {skippedResponses.map((response, index) => (
+                {skippedResponses.map((response: any, index: number) => (
                   <div
                     key={index}
                     className="bg-red-50 border border-red-200 rounded-lg p-4"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <span className="text-sm text-red-900">{response.consumerEmail}</span>
-                      <span className="text-xs text-red-600">
-                        {formatDateTime(response.submittedAt)}
+                      <span className="text-sm text-red-900">
+                        {poll.anonymityMode === 'anonymous' ? 'Anonymous User' : response.consumerEmail}
                       </span>
+                      {response.submittedAt && (
+                        <span className="text-xs text-red-600">
+                          {formatDateTime(response.submittedAt)}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-red-700 italic">"{response.skipReason}"</p>
                   </div>
