@@ -543,7 +543,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               <button
                 onClick={handleAddOption}
                 disabled={options.length >= 10}
-                className="flex items-center gap-2 px-4 py-2 text-mono-accent hover:bg-mono-accent/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-mono-accent/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
                 Add Option {options.length >= 10 && <span className="text-xs text-slate-500">(Limit reached)</span>}
