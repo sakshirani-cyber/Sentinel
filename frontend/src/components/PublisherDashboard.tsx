@@ -136,7 +136,10 @@ export default function PublisherDashboard({
                 </button>
                 <CreatePoll
                   user={user}
-                  onCreatePoll={onCreatePoll}
+                  onCreatePoll={async (poll) => {
+                    await onCreatePoll(poll);
+                    setActiveTab('published');
+                  }}
                   existingPolls={polls}
                   formType={selectedFormType}
                 />
