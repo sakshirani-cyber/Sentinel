@@ -13,36 +13,31 @@ interface AnalyticsViewProps {
 export default function AnalyticsView({ poll, responses, onClose, canExport = false }: AnalyticsViewProps) {
   const totalConsumers = poll.consumers.length;
   const totalResponses = responses.length;
-  // Use unique responders who manually submitted (exclude defaults) to avoid > 100% rate
-  const uniqueManualResponders = new Set(responses.filter(r => !r.isDefault).map(r => r.consumerEmail)).size;
-  const responseRate = totalConsumers > 0 ? Math.min((uniqueManualResponders / totalConsumers) * 100, 100) : 0;
 
-  const submittedResponses = responses.filter(r => !r.isDefault);
-  const defaultResponses = responses.filter(r => r.isDefault);
-  const skippedResponses = responses.filter(r => r.skipReason);
+  // Responded = Manual Votes + Manual Skips (exclude system defaults)
+  const respondedCount = responses.filter(r => !r.isDefault).length;
+  const responseRate = totalConsumers > 0 ? Math.min((respondedCount / totalConsumers) * 100, 100) : 0;
+
+  const submittedResponses = responses.filter(r => !r.isDefault && !r.skipReason);
+  const skipManualResponses = responses.filter(r => r.skipReason);
+  const defaultResponses = responses.filter(r => r.isDefault && !r.skipReason);
 
   // Get current option texts for checking orphaned responses
   const currentOptionTexts = new Set(poll.options.map(o => o.text));
 
-  // Count responses by option
-  const responseCounts = poll.options.reduce((acc, option) => {
-    acc[option.text] = responses.filter(r => r.response === option.text).length;
+  // Count all responses by their value
+  const responseCounts = responses.reduce((acc, r) => {
+    const key = r.response || 'Unspecified';
+    acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // Add counts for responses that are no longer in current options
-  // (excluding defaults and skips which are handled separately)
-  responses.forEach(r => {
-    if (!r.isDefault && !r.skipReason && r.response && !currentOptionTexts.has(r.response)) {
-      responseCounts[r.response] = (responseCounts[r.response] || 0) + 1;
+  // Ensure all current poll options are shown in distribution even if 0
+  poll.options.forEach(option => {
+    if (!(option.text in responseCounts)) {
+      responseCounts[option.text] = 0;
     }
   });
-
-  // Add default response count if it's not in options
-  const defaultResponseIsOption = poll.defaultResponse ? currentOptionTexts.has(poll.defaultResponse) : false;
-  if (poll.defaultResponse && !defaultResponseIsOption && defaultResponses.length > 0) {
-    responseCounts[poll.defaultResponse] = (responseCounts[poll.defaultResponse] || 0) + 1;
-  }
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -88,11 +83,12 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
       wsSummary.addRows([
         { metric: 'Poll Question', value: poll.question },
+        { metric: 'Anonymity Mode', value: poll.anonymityMode.charAt(0).toUpperCase() + poll.anonymityMode.slice(1) },
         { metric: 'Total Consumers', value: totalConsumers },
         { metric: 'Response Rate', value: `${responseRate.toFixed(1)}%` },
-        { metric: 'Submitted Responses', value: submittedResponses.length },
-        { metric: 'Default Responses', value: defaultResponses.length },
-        { metric: 'Skipped Responses', value: skippedResponses.length },
+        { metric: 'Submitted Votes', value: submittedResponses.length },
+        { metric: 'Manual Skips', value: skipManualResponses.length },
+        { metric: 'System Defaults', value: defaultResponses.length },
         { metric: 'Generated At', value: new Date().toLocaleString() }
       ]);
 
@@ -165,9 +161,9 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
       ];
 
       wsResponses.addRows(responses.map(r => ({
-        email: r.consumerEmail,
+        email: poll.anonymityMode === 'anonymous' ? 'Anonymous' : r.consumerEmail,
         response: r.response,
-        status: r.isDefault ? 'Default' : (r.skipReason ? 'Skipped' : 'Submitted'),
+        status: r.isDefault ? 'System Default' : (r.skipReason ? 'Manual Skip' : 'Submitted Vote'),
         time: new Date(r.submittedAt).toLocaleString(),
         reason: r.skipReason || ''
       })));
@@ -244,15 +240,23 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
             <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-purple-600" />
-                <span className="text-sm text-purple-900">Submitted</span>
+                <span className="text-sm text-purple-900">Submitted Votes</span>
               </div>
               <p className="text-purple-900">{submittedResponses.length}</p>
             </div>
 
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <span className="text-sm text-red-900">Manual Skips</span>
+              </div>
+              <p className="text-red-900">{skipManualResponses.length}</p>
+            </div>
+
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <XCircle className="w-5 h-5 text-amber-600" />
-                <span className="text-sm text-amber-900">Defaults</span>
+                <Clock className="w-5 h-5 text-amber-600" />
+                <span className="text-sm text-amber-900">System Defaults</span>
               </div>
               <p className="text-amber-900">{defaultResponses.length}</p>
             </div>
@@ -298,80 +302,105 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
           </div>
 
           {/* Individual Responses (only if not anonymous) */}
-          {poll.anonymityMode === 'record' && (
-            <div>
-              <h3 className="text-slate-900 mb-4">Individual Responses</h3>
-              <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-slate-100 border-b border-slate-200">
-                      <tr>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Consumer</th>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Response</th>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Status</th>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Submitted At</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {responses.length > 0 ? (
-                        responses.map((response, index) => (
-                          <tr key={index} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 text-sm text-slate-900">
-                              {response.consumerEmail}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-slate-700">
-                              {response.response}
-                            </td>
-                            <td className="px-4 py-3">
-                              {response.isDefault ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
-                                  <Clock className="w-3 h-3" />
-                                  Default
+          {/* Summary Message (Anonymous Header) */}
+          {poll.anonymityMode === 'anonymous' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center gap-3">
+              <Shield className="w-8 h-8 text-blue-600" />
+              <div>
+                <h4 className="text-blue-900 font-medium">Anonymous Poll Active</h4>
+                <p className="text-sm text-blue-700">
+                  Individual identities are hidden in reports. aggregate data and reasons are shown below.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Individual Responses List */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-slate-900">Individual Responses</h3>
+              {poll.anonymityMode === 'anonymous' && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
+                  Identities Masked
+                </span>
+              )}
+            </div>
+            <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-100 border-b border-slate-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm text-slate-700">Consumer</th>
+                      <th className="text-left px-4 py-3 text-sm text-slate-700">Response</th>
+                      <th className="text-left px-4 py-3 text-sm text-slate-700">Status</th>
+                      <th className="text-left px-4 py-3 text-sm text-slate-700">Submitted At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {responses.length > 0 ? (
+                      responses.map((response, index) => (
+                        <tr key={index} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-sm text-slate-900 italic">
+                            {poll.anonymityMode === 'anonymous' ? 'Anonymous' : response.consumerEmail}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-700">
+                            {response.response}
+                          </td>
+                          <td className="px-4 py-3">
+                            {response.isDefault ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
+                                <Clock className="w-3 h-3" />
+                                System Default
+                              </span>
+                            ) : response.skipReason ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+                                <XCircle className="w-3 h-3" />
+                                Manual Skip
+                              </span>
+                            ) : (
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                                  <CheckCircle className="w-3 h-3" />
+                                  Submitted Vote
                                 </span>
-                              ) : response.skipReason ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
-                                  <XCircle className="w-3 h-3" />
-                                  Skipped
-                                </span>
-                              ) : (
-                                <div className="flex flex-col gap-1 items-start">
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                                    <CheckCircle className="w-3 h-3" />
-                                    Submitted
+                                {!currentOptionTexts.has(response.response) && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-xs">
+                                    <Archive className="w-3 h-3" />
+                                    Removed Option
                                   </span>
-                                  {!currentOptionTexts.has(response.response) && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-xs">
-                                      <Archive className="w-3 h-3" />
-                                      Removed Option
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">
-                              {formatDateTime(response.submittedAt)}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
-                            No responses yet
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-600">
+                            {formatDateTime(response.submittedAt)}
                           </td>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                          No responses yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
+            </div>
 
-              {/* Pending Consumers */}
-              {poll.consumers.length > responses.length && (
-                <div className="mt-6">
-                  <h4 className="text-slate-700 mb-3">
-                    Pending Responses ({poll.consumers.length - responses.length})
-                  </h4>
-                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+            {/* Pending Consumers */}
+            {poll.consumers.length > responses.length && (
+              <div className="mt-6">
+                <h4 className="text-slate-700 mb-3">
+                  Pending Responses ({poll.consumers.length - responses.length})
+                </h4>
+                <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                  {poll.anonymityMode === 'anonymous' ? (
+                    <p className="text-sm text-slate-500 italic">
+                      Consumer identities are hidden for this anonymous poll.
+                    </p>
+                  ) : (
                     <div className="flex flex-wrap gap-2">
                       {poll.consumers
                         .filter(email => !responses.some(r => r.consumerEmail === email))
@@ -384,35 +413,26 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                           </span>
                         ))}
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
-          {/* Anonymous Mode Message */}
-          {poll.anonymityMode === 'anonymous' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
-              <Shield className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-              <h4 className="text-blue-900 mb-2">Anonymous Poll</h4>
-              <p className="text-sm text-blue-700">
-                Individual responses are anonymous. Only aggregate data is shown.
-              </p>
-            </div>
-          )}
-
-          {/* Skipped Responses with Reasons */}
-          {skippedResponses.length > 0 && poll.anonymityMode === 'record' && (
+          {/* Manual Skips with Reasons */}
+          {skipManualResponses.length > 0 && (
             <div className="mt-8">
-              <h3 className="text-slate-900 mb-4">Skipped with Reasons</h3>
+              <h3 className="text-slate-900 mb-4">Manual Skips with Reasons</h3>
               <div className="space-y-3">
-                {skippedResponses.map((response, index) => (
+                {skipManualResponses.map((response, index) => (
                   <div
                     key={index}
                     className="bg-red-50 border border-red-200 rounded-lg p-4"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <span className="text-sm text-red-900">{response.consumerEmail}</span>
+                      <span className="text-sm text-red-900 font-medium font-mono">
+                        {poll.anonymityMode === 'anonymous' ? `Anonymous-#${index + 1}` : response.consumerEmail}
+                      </span>
                       <span className="text-xs text-red-600">
                         {formatDateTime(response.submittedAt)}
                       </span>

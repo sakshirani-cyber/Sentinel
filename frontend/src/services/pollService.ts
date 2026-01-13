@@ -88,18 +88,18 @@ export function mapPollToDTO(poll: Poll): PollCreateDTO {
  */
 export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[] {
     const responses: Response[] = [];
+    const isAnonymous = poll.anonymityMode === 'anonymous';
 
-    // Check if this is an anonymous poll (no individual vote data)
-    const isAnonymous = !dto.optionVotes;
-
+    // 1. Process option counts (Synthetic responses for anonymous, or verify counts)
     if (isAnonymous) {
-        // For anonymous polls, create synthetic responses from optionCounts
-        // We don't have individual user data, so we create placeholder responses
         let syntheticIndex = 0;
 
-        // Process option counts
+        // Process standard option counts
         if (dto.optionCounts) {
             for (const [option, count] of Object.entries(dto.optionCounts)) {
+                // Skip counting "Skipped" or "Default" here if they are handled separately by counts
+                // But usually optionCounts includes everything selected. 
+                // Let's assume optionCounts only has the poll options.
                 for (let i = 0; i < count; i++) {
                     responses.push({
                         pollId: poll.id,
@@ -113,7 +113,33 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
             }
         }
 
-        // Add default responses count
+        // Add manual skips with reasons if available
+        if (dto.reasonResponses) {
+            for (const [_, reason] of Object.entries(dto.reasonResponses)) {
+                responses.push({
+                    pollId: poll.id,
+                    consumerEmail: `anonymous-${syntheticIndex++}`,
+                    response: poll.defaultResponse || 'Skipped',
+                    submittedAt: new Date().toISOString(),
+                    isDefault: false, // Manual skip counts as responding
+                    skipReason: reason,
+                });
+            }
+        } else if (dto.reasonCount > 0) {
+            // Fallback for anonymous if reasonResponses is empty but reasonCount exists
+            for (let i = 0; i < dto.reasonCount; i++) {
+                responses.push({
+                    pollId: poll.id,
+                    consumerEmail: `anonymous-${syntheticIndex++}`,
+                    response: poll.defaultResponse || 'Skipped',
+                    submittedAt: new Date().toISOString(),
+                    isDefault: false,
+                    skipReason: 'Reason provided (Anonymous)',
+                });
+            }
+        }
+
+        // Add system default responses (didn't respond at all)
         if (dto.defaultCount > 0) {
             for (let i = 0; i < dto.defaultCount; i++) {
                 responses.push({
@@ -127,24 +153,13 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
             }
         }
 
-        // Add skipped responses count
-        if (dto.reasonCount > 0) {
-            for (let i = 0; i < dto.reasonCount; i++) {
-                responses.push({
-                    pollId: poll.id,
-                    consumerEmail: `anonymous-${syntheticIndex++}`,
-                    response: poll.defaultResponse || 'Skipped',
-                    submittedAt: new Date().toISOString(),
-                    isDefault: true,
-                    skipReason: 'Reason provided (anonymous)',
-                });
-            }
-        }
-
         return responses;
     }
 
-    // Non-anonymous polls: Process individual vote data as before
+    // -------------------------------------------------------------------------
+    // Non-anonymous polls: Process individual vote data
+    // -------------------------------------------------------------------------
+
     // 1. Process standard votes (optionVotes)
     if (dto.optionVotes) {
         for (const [option, votes] of Object.entries(dto.optionVotes)) {
@@ -177,25 +192,24 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
         }
     }
 
-    // 2. Process default responses
+    // 2. Process default responses (System defaults)
     if (dto.defaultResponses) {
         for (const vote of dto.defaultResponses) {
             responses.push({
                 pollId: poll.id,
                 consumerEmail: vote.userEmail,
-                response: vote.selectedOption, // Usually the default option text
+                response: vote.selectedOption,
                 submittedAt: vote.submittedAt || poll.deadline,
                 isDefault: true,
-                skipReason: undefined, // Or could be "Default Response Triggered"
+                skipReason: undefined,
             });
         }
     }
 
-    // 3. Process removed users (users who were unshared during edit)
+    // 3. Process removed users
     if (dto.removedUsers) {
         for (const [_, votes] of Object.entries(dto.removedUsers)) {
             for (const vote of votes) {
-                // Only add if not already present (safety check)
                 if (!responses.some(r => r.consumerEmail === vote.userEmail)) {
                     responses.push({
                         pollId: poll.id,
@@ -210,46 +224,40 @@ export function mapResultsToResponses(dto: PollResultDTO, poll: Poll): Response[
         }
     }
 
-    // 4. Map reasonResponses to the corresponding user's response
-    // If the user isn't already in the list (e.g. backend didn't count them as vote/default), add them now.
+    // 4. Map reasonResponses (Manual Skips)
     if (dto.reasonResponses) {
         for (const [userEmail, reason] of Object.entries(dto.reasonResponses)) {
             let existingResponse = responses.find(r => r.consumerEmail === userEmail);
 
             if (existingResponse) {
                 existingResponse.skipReason = reason;
+                existingResponse.isDefault = false; // Manual skip is not a system default
             } else {
-                // User gave a reason but wasn't in optionVotes or defaultResponses
-                // Treat as Default Response as per requirement
                 responses.push({
                     pollId: poll.id,
                     consumerEmail: userEmail,
                     response: poll.defaultResponse || 'Skipped',
-                    submittedAt: new Date().toISOString(), // We don't have exact time from reason map, use now or approx
-                    isDefault: true,
+                    submittedAt: new Date().toISOString(),
+                    isDefault: false,
                     skipReason: reason,
                 });
             }
         }
     }
 
-    // 5. Fill in missing users (if any remain) as strictly default (client-side fallback)
+    // 5. Client-side fallback for pending users after deadline
     const isCompleted = new Date(poll.deadline) <= new Date();
-
     if (isCompleted) {
         const respondedUsers = new Set(responses.map(r => r.consumerEmail));
         for (const consumer of poll.consumers) {
             if (!respondedUsers.has(consumer)) {
-                // Check if there's a reason-only response (unlikely given backend logic, but safe to check)
-                const reason = dto.reasonResponses && dto.reasonResponses[consumer];
-
                 responses.push({
                     pollId: poll.id,
                     consumerEmail: consumer,
                     response: poll.defaultResponse || '',
                     submittedAt: poll.deadline,
                     isDefault: true,
-                    skipReason: reason,
+                    skipReason: undefined,
                 });
             }
         }
