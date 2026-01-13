@@ -197,38 +197,6 @@ export function initDB() {
             console.error('[SQLite DB] Error during duplicate cleanup:', cleanupError);
         }
 
-        // New Migration: Cleanup and Seed Labels
-        console.log('[SQLite DB] Cleaning and Seeding Labels...');
-        try {
-            const seedLabels = [
-                { name: '~#Satvik~', color: '#6659ff', description: 'Import tag' },
-                { name: '~#Food~', color: '#ffe400', description: 'Food Alert' },
-                { name: '~#Urgent~', color: '#d83013', description: 'Very Important' }
-            ];
-
-            // Delete all except seed labels
-            const deleteStmt = db.prepare(`
-                DELETE FROM labels 
-                WHERE name NOT IN (?, ?, ?)
-            `);
-            deleteStmt.run(seedLabels[0].name, seedLabels[1].name, seedLabels[2].name);
-
-            // Ensure seed labels exist with correct properties
-            for (const label of seedLabels) {
-                const existing = db.prepare('SELECT id FROM labels WHERE name = ?').get(label.name) as { id: string } | undefined;
-                if (existing) {
-                    db.prepare('UPDATE labels SET color = ?, description = ? WHERE name = ?').run(label.color, label.description, label.name);
-                } else {
-                    const id = (Date.now() + Math.floor(Math.random() * 1000)).toString();
-                    db.prepare('INSERT INTO labels (id, name, color, description, syncStatus) VALUES (?, ?, ?, ?, ?)')
-                        .run(id, label.name, label.color, label.description, 'synced');
-                }
-            }
-            console.log('[SQLite DB] Label cleanup and seeding complete.');
-        } catch (seedError) {
-            console.error('[SQLite DB] Error seeding labels:', seedError);
-        }
-
         console.log('[SQLite DB] Initialization complete.');
     } catch (error) {
         console.error('[SQLite DB] FATAL ERROR during initialization:', error);
