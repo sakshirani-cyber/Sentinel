@@ -398,12 +398,12 @@ export default function ConsumerDashboard({
 
         {activeTab === 'analytics' && (
           <div>
-            <div className="mb-6">
-              <h2 className="text-mono-text mb-2">Poll Analytics</h2>
+            {/* <div className="mb-6"> */}
+            {/* <h2 className="text-mono-text mb-2">Poll Analytics</h2>
               <p className="text-mono-text/60">
                 View response analytics for polls you were assigned to
-              </p>
-            </div>
+              </p> */}
+            {/* </div> */}
             {userPolls.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-20 h-20 bg-mono-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
