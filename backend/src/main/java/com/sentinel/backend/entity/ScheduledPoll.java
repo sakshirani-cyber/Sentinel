@@ -22,6 +22,9 @@ public class ScheduledPoll {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true)
+    private Long reservedSignalId;
+
     @Column(nullable = false)
     private String question;
 

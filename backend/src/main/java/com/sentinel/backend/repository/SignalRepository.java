@@ -16,4 +16,7 @@ public interface SignalRepository extends JpaRepository<Signal, Long> {
             @Param("signalId") Long signalId,
             @Param("status") String status
     );
+
+    @Query(value = "SELECT nextval('signal_id_seq')", nativeQuery = true)
+    Long getNextSignalId();
 }
