@@ -266,27 +266,6 @@ function App() {
     }
   };
 
-  const handlePublishNow = async (poll: Poll) => {
-    try {
-      console.log(`[App] 🚀 Publishing scheduled poll now: ${poll.id}`);
-      const updatedPoll = { ...poll, status: 'active' as const, scheduledFor: undefined, publishedAt: new Date().toISOString() };
-
-      // Treat it as a new creation to trigger the full sync flow (which now won't be skipped since status is active)
-      if ((window as any).electron) {
-        const result = await (window as any).electron.backend.createPoll(updatedPoll);
-        if (result.success) {
-          console.log('[App] ✅ Scheduled poll published successfully');
-          setPolls(prev => prev.map(p => p.id === poll.id ? updatedPoll : p));
-        } else {
-          console.error('[App] ❌ Failed to publish scheduled poll:', result.error);
-          alert('Failed to publish poll: ' + result.error);
-        }
-      }
-    } catch (error) {
-      console.error('[App] Error publishing poll:', error);
-      alert('Error publishing poll');
-    }
-  };
 
 
 
@@ -366,7 +345,6 @@ function App() {
           onSwitchMode={() => setViewMode('consumer')}
           onLogout={handleLogout}
           onManageLabels={() => setViewMode('labels')}
-          onPublishNow={handlePublishNow}
         />
       </>
     );
