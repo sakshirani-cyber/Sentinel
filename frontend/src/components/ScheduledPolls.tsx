@@ -69,7 +69,7 @@ export default function ScheduledPolls({
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-full font-medium border border-blue-100">
+                                        <span className="flex items-center gap-1.5 px-3 py-1 bg-mono-accent/20 text-mono-primary text-xs rounded-full font-medium border border-mono-accent/30">
                                             <Clock className="w-3 h-3" />
                                             Scheduled
                                         </span>
@@ -92,7 +92,7 @@ export default function ScheduledPolls({
                             <div className="flex gap-2 pt-4 border-t border-mono-primary/5">
                                 <button
                                     onClick={() => setSelectedPollForEdit(poll)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-mono-primary/5 text-mono-text rounded-lg hover:bg-mono-primary/10 transition-colors text-sm font-medium"
+                                    className="flex items-center gap-2 px-4 py-2 bg-mono-accent/20 text-mono-primary rounded-lg hover:bg-mono-accent/30 transition-colors text-sm font-medium border border-mono-accent/30"
                                 >
                                     <Edit className="w-4 h-4" />
                                     Edit
