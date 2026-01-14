@@ -30,7 +30,10 @@ public interface PollResultRepository extends JpaRepository<PollResult, PollResu
     );
 
     @Modifying
-    @Query(DELETE_POLL_RESULTS_BY_SIGNAL_ID)
-    int deleteBySignalId(@Param("signalId") Long signalId);
+    @Query(
+            value = DELETE_POLL_RESULTS_BY_SIGNAL_ID,
+            nativeQuery = true
+    )
+    void deleteBySignalId(@Param("signalId") Long signalId);
 
 }

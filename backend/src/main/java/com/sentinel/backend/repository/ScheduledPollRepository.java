@@ -9,13 +9,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static com.sentinel.backend.constant.Queries.FETCH_ALL_SCHEDULED_POLL;
+
 @Repository
 public interface ScheduledPollRepository extends JpaRepository<ScheduledPoll, Long> {
 
-    @Query("SELECT sp FROM ScheduledPoll sp WHERE sp.scheduledTime > :now")
+    @Query(
+            value = FETCH_ALL_SCHEDULED_POLL,
+            nativeQuery = true
+    )
     List<ScheduledPoll> findAllPendingSchedules(Instant now);
-
-    boolean existsById(Long id);
 
     Optional<ScheduledPoll> findByReservedSignalId(Long reservedSignalId);
 }

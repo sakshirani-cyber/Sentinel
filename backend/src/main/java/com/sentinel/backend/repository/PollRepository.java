@@ -11,6 +11,9 @@ import static com.sentinel.backend.constant.Queries.DELETE_POLL_BY_SIGNAL_ID;
 public interface PollRepository extends JpaRepository<Poll, Long> {
 
     @Modifying
-    @Query(DELETE_POLL_BY_SIGNAL_ID)
-    int deleteBySignalId(@Param("signalId") Long signalId);
+    @Query(
+            value = DELETE_POLL_BY_SIGNAL_ID,
+            nativeQuery = true
+    )
+    void deleteBySignalId(@Param("signalId") Long signalId);
 }
