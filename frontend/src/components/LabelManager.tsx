@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Search, Tag, AlertCircle, Pencil, Check, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ArrowLeft, Plus, Search, Tag, AlertCircle, Pencil, Check, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { User } from '../App';
 import { HexColorPicker, HexColorInput } from "react-colorful";
@@ -29,6 +29,10 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
     const [isCreating, setIsCreating] = useState(false);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     // New Label State
     const [newLabelName, setNewLabelName] = useState('');
@@ -154,6 +158,17 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
         (label.description && label.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredLabels.length / itemsPerPage);
+    const paginatedLabels = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredLabels.slice(start, start + itemsPerPage);
+    }, [filteredLabels, currentPage, itemsPerPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, itemsPerPage]);
+
     return (
         <div className="min-h-screen bg-mono-bg">
             {/* Header - Matching PublisherDashboard */}
@@ -239,21 +254,23 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
                         <p className="text-mono-text/60">Loading labels...</p>
                     </div>
                 ) : filteredLabels.length === 0 && !isCreating ? (
-                    <div className="text-center py-24 bg-white rounded-xl shadow-sm border border-mono-primary/5">
-                        <div className="w-20 h-20 bg-mono-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div className="text-center py-24 bg-white rounded-xl shadow-sm border border-mono-primary/5 flex flex-col items-center justify-center">
+                        <div className="w-20 h-20 bg-mono-primary/5 rounded-full flex items-center justify-center mb-6">
                             <Tag className="w-10 h-10 text-mono-primary/40" />
                         </div>
                         <h3 className="text-mono-text text-lg font-medium mb-2">No Labels Found</h3>
-                        <p className="text-mono-text/60 mb-8 max-w-sm mx-auto">
+                        <p className="text-mono-text/60 mb-8 max-w-sm mx-auto text-center">
                             {searchQuery ? 'Try a different search term.' : 'Start organizing your polls by creating your first label.'}
                         </p>
-                        <button
-                            onClick={() => setIsCreating(true)}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-md font-medium"
-                        >
-                            <Plus className="w-5 h-5" />
-                            <span>Create First Label</span>
-                        </button>
+                        {!searchQuery && (
+                            <button
+                                onClick={() => setIsCreating(true)}
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-md font-medium"
+                            >
+                                <Plus className="w-5 h-5" />
+                                <span>Create First Label</span>
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="bg-white border border-mono-primary/10 rounded-xl overflow-hidden shadow-sm">
@@ -375,7 +392,7 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
                                     )}
 
                                     {/* Label Rows */}
-                                    {filteredLabels.map((label) => (
+                                    {paginatedLabels.map((label) => (
                                         <tr
                                             key={label.id}
                                             className="hover:bg-mono-primary/[0.02] transition-colors"
@@ -482,6 +499,84 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Pagination Controls */}
+                        <div className="px-6 py-4 bg-mono-primary/[0.02] border-t border-mono-primary/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <span className="text-sm text-mono-text/60">
+                                    Showing {Math.min(filteredLabels.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredLabels.length, currentPage * itemsPerPage)} of {filteredLabels.length} labels
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-mono-text/60">Rows:</span>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <button className="flex items-center justify-between gap-2 px-3 py-1.5 bg-white border border-mono-primary/10 rounded-lg text-sm text-mono-primary hover:border-mono-accent/50 hover:bg-mono-accent/5 transition-all min-w-[64px]">
+                                                <span>{itemsPerPage}</span>
+                                                <ChevronDown className="w-3.5 h-3.5 text-mono-text/40" />
+                                            </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-24 p-1 bg-white/80 backdrop-blur-xl border border-mono-primary/10 shadow-xl rounded-xl z-50">
+                                            <div className="flex flex-col gap-0.5">
+                                                {[5, 10, 20, 50, 100].map(size => (
+                                                    <button
+                                                        key={size}
+                                                        onClick={() => setItemsPerPage(size)}
+                                                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all ${itemsPerPage === size
+                                                                ? 'bg-mono-accent text-mono-primary font-medium'
+                                                                : 'text-mono-text/70 hover:bg-mono-primary/5 hover:text-mono-primary'
+                                                            }`}
+                                                    >
+                                                        {size}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={currentPage === 1}
+                                    className="p-2 text-mono-text/50 hover:text-mono-primary hover:bg-mono-primary/5 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    title="First Page"
+                                >
+                                    <ChevronsLeft className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-2 text-mono-text/50 hover:text-mono-primary hover:bg-mono-primary/5 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    title="Previous Page"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+
+                                <div className="flex items-center gap-1 px-3 py-1 bg-mono-primary/5 rounded-lg">
+                                    <span className="text-sm font-medium text-mono-primary">{currentPage}</span>
+                                    <span className="text-sm text-mono-text/40">/</span>
+                                    <span className="text-sm text-mono-text/60">{totalPages || 1}</span>
+                                </div>
+
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage >= totalPages}
+                                    className="p-2 text-mono-text/50 hover:text-mono-primary hover:bg-mono-primary/5 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    title="Next Page"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={currentPage >= totalPages}
+                                    className="p-2 text-mono-text/50 hover:text-mono-primary hover:bg-mono-primary/5 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    title="Last Page"
+                                >
+                                    <ChevronsRight className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

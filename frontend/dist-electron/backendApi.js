@@ -17,7 +17,7 @@ const axios_1 = __importDefault(require("axios"));
 console.log('>>> [Backend API] MODULE LOADED <<<');
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
-const API_BASE_URL = process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com';
+const API_BASE_URL = process.env.VITE_BACKEND_URL || 'http://172.25.4.45:8080';
 console.log(`[Backend API] Initialized with BASE_URL: ${API_BASE_URL}`);
 const apiClient = axios_1.default.create({
     baseURL: API_BASE_URL,
