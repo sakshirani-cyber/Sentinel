@@ -6,17 +6,24 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import static com.sentinel.backend.constant.Queries.GET_NEXT_SIGNAL_ID;
 import static com.sentinel.backend.constant.Queries.UPDATE_SIGNAL_STATUS;
 
 public interface SignalRepository extends JpaRepository<Signal, Long> {
 
     @Modifying
-    @Query(UPDATE_SIGNAL_STATUS)
-    int updateSignalStatus(
+    @Query(
+            value = UPDATE_SIGNAL_STATUS,
+            nativeQuery = true
+    )
+    void updateSignalStatus(
             @Param("signalId") Long signalId,
             @Param("status") String status
     );
 
-    @Query(value = "SELECT nextval('signal_id_seq')", nativeQuery = true)
+    @Query(
+            value = GET_NEXT_SIGNAL_ID,
+            nativeQuery = true
+    )
     Long getNextSignalId();
 }
