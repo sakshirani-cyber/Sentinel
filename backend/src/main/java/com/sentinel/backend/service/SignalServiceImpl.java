@@ -81,10 +81,13 @@ public class SignalServiceImpl implements SignalService {
             return new CreatePollResponse(reservedId, dto.getLocalId());
         }
 
+        Long signalId = signalRepository.getNextSignalId();
         Signal signal = buildSignal(dto);
+        signal.setId(signalId);
         signalRepository.save(signal);
 
         Poll poll = new Poll();
+        poll.setSignalId(signalId);
         poll.setSignal(signal);
         poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());

@@ -1,5 +1,6 @@
 package com.sentinel.backend.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,7 +20,7 @@ public class Poll {
     @Column(name = "signal_id", nullable = false)
     private Long signalId;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false, cascade = {CascadeType.MERGE, CascadeType.REFRESH})
     @MapsId
     @JoinColumn(name = "signal_id")
     private Signal signal;

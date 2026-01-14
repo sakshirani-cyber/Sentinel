@@ -101,6 +101,7 @@ public class PollSchedulerService {
             signalRepository.save(signal);
 
             Poll poll = new Poll();
+            poll.setSignalId(sp.getReservedSignalId());
             poll.setSignal(signal);
             poll.setQuestion(sp.getQuestion());
             poll.setOptions(sp.getOptions());
