@@ -2,10 +2,7 @@ package com.sentinel.backend.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -18,8 +15,7 @@ import java.time.Instant;
 public class Signal {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "signal_gen")
-    @SequenceGenerator(name = "signal_gen", sequenceName = "signal_id_seq", allocationSize = 1)
+    @Column(name = "id", nullable = false)
     private Long id;
 
     @Column(name = "created_by", nullable = false)
