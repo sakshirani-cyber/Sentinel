@@ -37,6 +37,8 @@ public class Queries {
                 OR
                 ? = ANY (s.shared_with)
             )
+        AND
+            s.status != 'DELETED'
         ORDER BY s.created_on ASC
         """;
 
