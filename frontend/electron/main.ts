@@ -297,7 +297,6 @@ app.whenReady().then(async () => {
     ipcMain.handle('db-delete-poll', async (_event, pollId) => {
         console.log(`[IPC Handler] db-delete-poll called for pollId: ${pollId}`);
         try {
-            // Get the poll first to check if it has a cloudSignalId
             const polls = getPolls();
             const poll = polls.find(p => p.id === pollId);
 
@@ -305,11 +304,9 @@ app.whenReady().then(async () => {
                 console.warn(`[IPC Handler] db-delete-poll: Poll ${pollId} not found in DB`);
             }
 
-            // Delete from local DB
             const result = deletePoll(pollId);
             console.log(`[IPC Handler] Local deletion result for ${pollId}:`, result);
 
-            // If poll has cloudSignalId, sync deletion to cloud
             if (poll?.cloudSignalId) {
                 console.log(`[IPC Handler] Syncing deletion to cloud for signalId: ${poll.cloudSignalId}`);
                 backendApi.deletePoll(poll.cloudSignalId).then(() => {
