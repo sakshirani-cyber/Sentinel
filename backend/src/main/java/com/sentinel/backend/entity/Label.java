@@ -30,9 +30,6 @@ public class Label {
     @Column(nullable = false)
     private String description;
 
-    @Column(nullable = false, length = 7)
-    private String color;
-
     @Column(
             name = "created_at",
             nullable = false,

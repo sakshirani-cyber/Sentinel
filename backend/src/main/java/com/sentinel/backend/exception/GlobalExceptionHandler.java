@@ -14,53 +14,31 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidationErrors(MethodArgumentNotValidException ex) {
-
+        String field = ex.getBindingResult().getFieldError().getField();
         String message = ex.getBindingResult().getFieldError().getDefaultMessage();
 
-        log.error(
-                "[EXCEPTION] Validation failed | field={} | message={}",
-                ex.getBindingResult().getFieldError().getField(),
-                message
-        );
+        log.warn("[VALIDATION][ERROR] field={} | message={}", field, message);
 
-        return ResponseEntity.badRequest()
-                .body(ApiResponse.failure(message));
+        return ResponseEntity.badRequest().body(ApiResponse.failure(message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<?>> handleIllegalArguementException(IllegalArgumentException ex) {
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("[VALIDATION][ERROR] message={}", ex.getMessage());
 
-        log.error(
-                "[EXCEPTION] Illegal argument | message={}",
-                ex.getMessage()
-        );
-
-        return ResponseEntity.badRequest()
-                .body(ApiResponse.failure(ex.getMessage()));
+        return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage()));
     }
 
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<?>> handleCustomException(CustomException ex) {
+        log.warn("[BUSINESS][ERROR] status={} | message={}", ex.getStatus().value(), ex.getMessage());
 
-        log.error(
-                "[EXCEPTION] Business exception | status={} | message={}",
-                ex.getStatus(),
-                ex.getMessage()
-        );
-
-        return ResponseEntity.status(ex.getStatus())
-                .body(ApiResponse.failure(ex.getMessage()));
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.failure(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<?>> handleUnexpected(Exception ex) {
-
-        log.error(
-                "[EXCEPTION][UNEXPECTED] Unhandled exception occurred | exception={} | message={}",
-                ex.getClass().getSimpleName(),
-                ex.getMessage(),
-                ex
-        );
+    public ResponseEntity<ApiResponse<?>> handleUnexpectedException(Exception ex) {
+        log.error("[SYSTEM][ERROR] exception={} | message={}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("Something went wrong. Please try again."));

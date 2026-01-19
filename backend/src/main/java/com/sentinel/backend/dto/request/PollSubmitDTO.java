@@ -1,6 +1,7 @@
 package com.sentinel.backend.dto.request;
 
 import com.sentinel.backend.util.NormalizationUtils;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -34,5 +35,14 @@ public class PollSubmitDTO {
         selectedOption = NormalizationUtils.trimToNull(selectedOption);
         defaultResponse = NormalizationUtils.trimToNull(defaultResponse);
         reason = NormalizationUtils.trimToNull(reason);
+    }
+
+    @AssertTrue(message = "Exactly one of selectedOption, defaultResponse, or reason must be provided")
+    public boolean isExactlyOneResponseProvided() {
+        int count = 0;
+        if (selectedOption != null && !selectedOption.isBlank()) count++;
+        if (defaultResponse != null && !defaultResponse.isBlank()) count++;
+        if (reason != null && !reason.isBlank()) count++;
+        return count == 1;
     }
 }

@@ -27,4 +27,6 @@ public class PollSsePayload {
     private boolean republish;
 
     private String[] labels;
+
+    private String title;
 }

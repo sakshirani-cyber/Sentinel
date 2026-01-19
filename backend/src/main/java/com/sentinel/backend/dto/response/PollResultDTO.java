@@ -26,6 +26,7 @@ public class PollResultDTO {
 
     private UserVoteDTO[] defaultResponses;
     private Map<String, String> reasonResponses;
+    private Map<String, Integer> removedOptionCount;
 
     private Integer defaultCount;
     private Integer reasonCount;

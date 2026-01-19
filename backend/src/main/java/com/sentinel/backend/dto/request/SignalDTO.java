@@ -50,13 +50,12 @@ public abstract class SignalDTO {
     @NotNull(message = "Persistent Flag is required")
     private Boolean persistentAlert;
 
+    @NotBlank(message = "Title is required")
+    private String title;
+
     private String[] labels;
 
     private Instant scheduledTime;
-
-    public boolean isScheduled() {
-        return scheduledTime != null;
-    }
 
     private Instant parsedEndUtc;
 
@@ -65,6 +64,7 @@ public abstract class SignalDTO {
         endTimestamp = NormalizationUtils.trimToNull(endTimestamp);
         type = NormalizationUtils.trimToNull(type);
         defaultOption = NormalizationUtils.trimToNull(defaultOption);
+        title = NormalizationUtils.trimToNull(title);
 
         sharedWith = NormalizationUtils.trimArray(sharedWith);
         labels = NormalizationUtils.trimArray(labels);
