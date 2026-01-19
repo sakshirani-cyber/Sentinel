@@ -417,18 +417,6 @@ public class SignalServiceImpl implements SignalService {
                 .build();
     }
 
-    private CreatePollResponse createScheduledPoll(PollCreateDTO dto) {
-        ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
-        scheduledPollRepository.save(scheduledPoll);
-
-        pollSchedulerService.scheduleTask(scheduledPoll);
-
-        log.info("Created scheduled poll id: {} for time: {}",
-                scheduledPoll.getId(), scheduledPoll.getScheduledTime());
-
-        return new CreatePollResponse(scheduledPoll.getId(), dto.getLocalId());
-    }
-
     private void editScheduledPoll(PollEditDTO dto) {
         ScheduledPoll scheduledPoll = scheduledPollRepository
                 .findByReservedSignalId(dto.getSignalId())

@@ -38,21 +38,9 @@ public class PollSyncCache {
         return events != null ? new ArrayList<>(events) : null;
     }
 
-    public List<SseEvent<?>> consume(String userEmail) {
-        List<SseEvent<?>> events = cache.remove(userEmail);
-        if (events != null) {
-            log.debug("[CACHE][CONSUME] Removed {} events for userEmail={}", events.size(), userEmail);
-        }
-        return events;
-    }
-
     public void clear(String userEmail) {
         cache.remove(userEmail);
         log.debug("[CACHE][CLEAR] Cleared all events for userEmail={}", userEmail);
-    }
-
-    public boolean isEmpty() {
-        return cache.isEmpty();
     }
 
     public int size() {
