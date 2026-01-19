@@ -313,6 +313,7 @@ public class SignalServiceImpl implements SignalService {
         Map<String, Integer> optionCounts = new LinkedHashMap<>();
         Map<String, List<UserVoteDTO>> optionVotes = new LinkedHashMap<>();
         Map<String, List<UserVoteDTO>> removedOptions = new LinkedHashMap<>();
+        Map<String, Integer> removedOptionCounts = new LinkedHashMap<>();
         List<UserVoteDTO> defaultResponses = new ArrayList<>();
         Map<String, String> reasonResponses = new LinkedHashMap<>();
         List<String> anonymousReasonTexts = new ArrayList<>();
@@ -335,13 +336,14 @@ public class SignalServiceImpl implements SignalService {
                     removedOptions
                             .computeIfAbsent(r.getSelectedOption(), k -> new ArrayList<>())
                             .add(vote);
+                    removedOptionCounts.compute(r.getSelectedOption(), (k, v) -> v == null ? 1 : v + 1);
                 } else {
                     optionCounts.compute(r.getSelectedOption(), (k, v) -> v + 1);
                     optionVotes.get(r.getSelectedOption()).add(vote);
                 }
             } else if (hasText(r.getReason())) {
-            reasonResponses.put(r.getId().getUserEmail(), r.getReason());
-            anonymousReasonTexts.add(r.getReason());
+                reasonResponses.put(r.getId().getUserEmail(), r.getReason());
+                anonymousReasonTexts.add(r.getReason());
             } else {
                 defaultResponses.add(vote);
             }
@@ -362,6 +364,9 @@ public class SignalServiceImpl implements SignalService {
         if (Boolean.TRUE.equals(signal.getAnonymous())) {
             dto.setAnonymousReasons(
                     anonymousReasonTexts.isEmpty() ? null : anonymousReasonTexts
+            );
+            dto.setRemovedOptionCount(
+                    removedOptionCounts.isEmpty() ? null : removedOptionCounts
             );
             return dto;
         }
