@@ -2,18 +2,27 @@ package com.sentinel.backend.dto.request;
 
 import com.sentinel.backend.model.SignalType;
 import com.sentinel.backend.util.NormalizationUtils;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public abstract class SignalDTO {
 
     @NotBlank(message = "Created By is required")
+    @Email(message = "Invalid email format")
     private String createdBy;
 
     @NotNull(message = "Anonymous flag is required")
@@ -23,6 +32,7 @@ public abstract class SignalDTO {
     private String endTimestamp;
 
     @NotNull(message = "Shared With List cannot be null")
+    @Size(min = 1, message = "Shared With List must contain at least one user")
     private String[] sharedWith;
 
     @NotBlank(message = "Type is required")

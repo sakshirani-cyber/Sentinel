@@ -2,13 +2,15 @@ package com.sentinel.backend.dto.response;
 
 import com.sentinel.backend.dto.helper.UserVoteDTO;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 import java.util.Map;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class PollResultDTO {

@@ -3,15 +3,24 @@ package com.sentinel.backend.dto.request;
 import com.sentinel.backend.util.NormalizationUtils;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class PollCreateDTO extends SignalDTO {
 
     @NotBlank(message = "Question is required")
+    @Size(min = 3, max = 1000, message = "Question Size should be between 3-1000 characters")
     private String question;
 
     @NotNull(message = "Options must be provided")
+    @Size(min = 2, max = 10, message = "Must have 2-10 options")
     private String[] options;
 
     public void normalizePoll() {
@@ -20,12 +29,6 @@ public class PollCreateDTO extends SignalDTO {
     }
 
     public void validatePoll() {
-
-        if (options == null || options.length < 2) {
-            throw new IllegalArgumentException(
-                    "Options must contain at least 2 values"
-            );
-        }
 
         NormalizationUtils.validateNoBlanks(options, "Options");
         NormalizationUtils.validateUniqueIgnoreCase(options, "Options");
