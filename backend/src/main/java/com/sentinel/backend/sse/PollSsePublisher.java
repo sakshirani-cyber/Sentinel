@@ -18,10 +18,13 @@ public class PollSsePublisher {
     private final AsyncPollDbService dbService;
 
     public <T> void publish(String[] recipients, String eventType, T payload) {
+        if (recipients == null || recipients.length == 0) {
+            log.warn("[SSE][PUBLISH] No recipients to publish");
+            return;
+        }
 
         long start = System.currentTimeMillis();
-
-        int totalRecipients = recipients != null ? recipients.length : 0;
+        int totalRecipients = recipients.length;
         int delivered = 0;
         int offline = 0;
         int failed = 0;

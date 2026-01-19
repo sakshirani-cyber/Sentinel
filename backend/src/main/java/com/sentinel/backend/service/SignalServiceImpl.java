@@ -133,9 +133,7 @@ public class SignalServiceImpl implements SignalService {
         List<PollResult> results =
                 pollResultRepository.findByIdSignalId(signalId);
 
-        PollResultDTO dto = buildPollResults(signal, poll, results);
-
-        return dto;
+        return buildPollResults(signal, poll, results);
     }
 
     @Override
