@@ -367,8 +367,10 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   };
 
   const isValid =
-    question.trim() &&
+    question.trim().length >= 3 &&
+    question.trim().length <= 1000 &&
     options.filter(o => o.trim()).length >= 2 &&
+    options.filter(o => o.trim()).length <= 10 &&
     !hasDuplicateOptions() &&
     (useCustomDefault ? customDefault.trim() : defaultResponse) &&
     isDateValid(deadline) &&
@@ -498,8 +500,11 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 : 'border-slate-300 focus:ring-mono-accent/20'
                 }`}
             />
-            {showErrors && !question.trim() && (
-              <p className="text-red-500 text-xs mt-1">Question is required</p>
+            {showErrors && (!question.trim() || question.trim().length < 3) && (
+              <p className="text-red-500 text-xs mt-1">Question must be at least 3 characters</p>
+            )}
+            {showErrors && question.trim().length > 1000 && (
+              <p className="text-red-500 text-xs mt-1">Question must be less than 1000 characters</p>
             )}
           </div>
 

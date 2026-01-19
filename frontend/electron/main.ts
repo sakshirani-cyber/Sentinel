@@ -231,6 +231,14 @@ app.whenReady().then(async () => {
         });
         console.log('='.repeat(80) + '\n');
 
+        // Input Validation
+        if (poll.question.trim().length < 3 || poll.question.trim().length > 1000) {
+            return { success: false, error: 'Question must be between 3 and 1000 characters' };
+        }
+        if (poll.options.length < 2 || poll.options.length > 10) {
+            return { success: false, error: 'Poll must have between 2 and 10 options' };
+        }
+
         try {
             // Write to local DB first
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 💾 Step 1: Saving to local DB...`);
@@ -1005,6 +1013,17 @@ ipcMain.handle('db-create-label', async (event, label) => {
     console.log(`[IPC Handler] [${time}] 🏷️ db-create-label received: "${label.name}"`);
     console.log(`[IPC Handler] Label Data:`, label);
 
+    // Input Validation
+    if (label.name.length > 100) {
+        return { success: false, error: 'Label name cannot exceed 100 characters' };
+    }
+    if (label.description && label.description.length > 500) {
+        return { success: false, error: 'Description cannot exceed 500 characters' };
+    }
+    if (label.name.includes('~') || label.name.includes('#')) {
+        return { success: false, error: 'Label name cannot contain special characters like ~ or #' };
+    }
+
     try {
         const result = createLabel(label);
         console.log(`[IPC Handler] [${time}] ✅ Local label created: ${label.name} (id: ${label.id})`);
@@ -1068,6 +1087,11 @@ ipcMain.handle('db-update-label', async (event, { id, updates }) => {
     console.log(`[IPC Handler] [${time}] ✏️ db-update-label received`);
     console.log(`[IPC Handler] Label ID: ${id}`);
     console.log(`[IPC Handler] Updates:`, updates);
+
+    // Input Validation
+    if (updates.description && updates.description.length > 500) {
+        return { success: false, error: 'Description cannot exceed 500 characters' };
+    }
 
     try {
         // 1. Update Locally

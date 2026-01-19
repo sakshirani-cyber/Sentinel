@@ -77,8 +77,23 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
             return;
         }
 
+        if (newLabelName.length > 100) {
+            setCreateError('Label name cannot exceed 100 characters');
+            return;
+        }
+
         if (newLabelName.includes(' ')) {
             setCreateError('Label name cannot contain spaces');
+            return;
+        }
+
+        if (newLabelName.includes('~') || newLabelName.includes('#')) {
+            setCreateError('Label name cannot contain special characters like ~ or #');
+            return;
+        }
+
+        if (newLabelDesc.length > 500) {
+            setCreateError('Description cannot exceed 500 characters');
             return;
         }
 
@@ -123,6 +138,10 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
 
 
     const saveEdit = async (labelId: string) => {
+        if (editDesc.length > 500) {
+            alert('Description cannot exceed 500 characters');
+            return;
+        }
         try {
             const updates: any = {
                 color: editColor,
@@ -523,8 +542,8 @@ export default function LabelManager({ onBack, polls, user }: LabelManagerProps)
                                                         key={size}
                                                         onClick={() => setItemsPerPage(size)}
                                                         className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all ${itemsPerPage === size
-                                                                ? 'bg-mono-accent text-mono-primary font-medium'
-                                                                : 'text-mono-text/70 hover:bg-mono-primary/5 hover:text-mono-primary'
+                                                            ? 'bg-mono-accent text-mono-primary font-medium'
+                                                            : 'text-mono-text/70 hover:bg-mono-primary/5 hover:text-mono-primary'
                                                             }`}
                                                     >
                                                         {size}
