@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +35,7 @@ public class AsyncPollDbService {
                         userEmail,
                         event.getEventType(),
                         payloadJson,
-                        java.sql.Timestamp.from(event.getEventTime())
+                        Timestamp.from(event.getEventTime())
                 );
 
                 log.info(
@@ -112,5 +113,110 @@ public class AsyncPollDbService {
             log.error("[DB][LOAD][ERROR] userEmail={} | reason={}", userEmail, ex.getMessage(), ex);
             return new ArrayList<>();
         }
+    }
+
+    public void asyncBatchInsert(String[] userEmails, SseEvent<?> event) {
+        if (userEmails == null || userEmails.length == 0) {
+            return;
+        }
+
+        asyncExecutor.submit(() -> {
+            try {
+                long startTime = System.currentTimeMillis();
+
+                String payloadJson = objectMapper.writeValueAsString(event.getPayload());
+                Timestamp timestamp = Timestamp.from(event.getEventTime());
+
+                int batchSize = 100;
+                int totalUsers = userEmails.length;
+                int totalInserted = 0;
+
+                for (int i = 0; i < totalUsers; i += batchSize) {
+                    int endIndex = Math.min(i + batchSize, totalUsers);
+                    int currentBatchSize = endIndex - i;
+
+                    String sql = """
+                        INSERT INTO sse_pending_event (user_email, event_type, payload, created_at)
+                        VALUES (?, ?, ?, ?)
+                        """;
+
+                    List<Object[]> batchArgs = new ArrayList<>();
+                    for (int j = i; j < endIndex; j++) {
+                        batchArgs.add(new Object[]{
+                                userEmails[j],
+                                event.getEventType(),
+                                payloadJson,
+                                timestamp
+                        });
+                    }
+
+                    int[] results = jdbcTemplate.batchUpdate(sql, batchArgs);
+                    totalInserted += results.length;
+
+                    log.debug(
+                            "[DB][BATCH][INSERT] Batch {}/{} | inserted={} users",
+                            (i / batchSize) + 1,
+                            (totalUsers + batchSize - 1) / batchSize,
+                            currentBatchSize
+                    );
+                }
+
+                long duration = System.currentTimeMillis() - startTime;
+
+                log.info(
+                        "[DB][BATCH][INSERT] success | totalUsers={} | inserted={} | durationMs={} | avgPerUser={}ms",
+                        totalUsers,
+                        totalInserted,
+                        duration,
+                        totalUsers > 0 ? duration / totalUsers : 0
+                );
+
+            } catch (Exception ex) {
+                log.error(
+                        "[DB][BATCH][INSERT][ERROR] users={} | reason={}",
+                        userEmails.length,
+                        ex.getMessage(),
+                        ex
+                );
+            }
+        });
+    }
+
+    public void asyncBatchDelete(String[] userEmails) {
+        if (userEmails == null || userEmails.length == 0) {
+            return;
+        }
+
+        asyncExecutor.submit(() -> {
+            try {
+                long startTime = System.currentTimeMillis();
+
+                String placeholders = String.join(",", "?".repeat(userEmails.length).split(""));
+
+                String sql = String.format(
+                        "DELETE FROM sse_pending_event WHERE user_email IN (%s)",
+                        placeholders
+                );
+
+                int deleted = jdbcTemplate.update(sql, (Object[]) userEmails);
+
+                long duration = System.currentTimeMillis() - startTime;
+
+                log.info(
+                        "[DB][BATCH][DELETE] success | totalUsers={} | rowsDeleted={} | durationMs={}",
+                        userEmails.length,
+                        deleted,
+                        duration
+                );
+
+            } catch (Exception ex) {
+                log.error(
+                        "[DB][BATCH][DELETE][ERROR] users={} | reason={}",
+                        userEmails.length,
+                        ex.getMessage(),
+                        ex
+                );
+            }
+        });
     }
 }

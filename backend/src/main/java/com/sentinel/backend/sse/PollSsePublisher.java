@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -31,13 +33,16 @@ public class PollSsePublisher {
 
         SseEvent<T> event = new SseEvent<>(eventType, Instant.now(), payload);
 
+        List<String> offlineUsers = new ArrayList<>();
+
         for (String userEmail : recipients) {
 
             SseEmitter emitter = registry.get(userEmail);
 
             if (emitter == null) {
                 offline++;
-                storeForLater(userEmail, event);
+                offlineUsers.add(userEmail);
+                pollSyncCache.put(userEmail, event);
                 continue;
             }
 
@@ -54,7 +59,8 @@ public class PollSsePublisher {
             } catch (Exception ex) {
                 failed++;
                 registry.remove(userEmail);
-                storeForLater(userEmail, event);
+                offlineUsers.add(userEmail);
+                pollSyncCache.put(userEmail, event);
 
                 log.warn(
                         "[SSE][PUBLISH][ERROR] Delivery failed | eventType={} | userEmail={} | exception={}",
@@ -63,6 +69,18 @@ public class PollSsePublisher {
                         ex.getMessage()
                 );
             }
+        }
+
+        if (!offlineUsers.isEmpty()) {
+            dbService.asyncBatchInsert(
+                    offlineUsers.toArray(new String[0]),
+                    event
+            );
+
+            log.info(
+                    "[SSE][PUBLISH] Scheduled batch DB insert for {} offline users",
+                    offlineUsers.size()
+            );
         }
 
         log.info(
@@ -74,10 +92,5 @@ public class PollSsePublisher {
                 failed,
                 System.currentTimeMillis() - start
         );
-    }
-
-    private <T> void storeForLater(String userEmail, SseEvent<T> event) {
-        pollSyncCache.put(userEmail, event);
-        dbService.asyncInsert(userEmail, event);
     }
 }
