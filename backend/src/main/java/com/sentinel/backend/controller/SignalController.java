@@ -38,17 +38,17 @@ public class SignalController {
 
     @PostMapping("/create/poll")
     public ResponseEntity<ApiResponse<CreatePollResponse>> createSignal(
-            @RequestBody @Valid PollCreateDTO req) {
+            @RequestBody @Valid PollCreateDTO dto) {
 
         long start = System.currentTimeMillis();
 
         log.info(
                 "[CONTROLLER] Create poll request received | createdBy={} | sharedWithCount={}",
-                req.getCreatedBy(),
-                req.getSharedWith() != null ? req.getSharedWith().length : 0
+                dto.getCreatedBy(),
+                dto.getSharedWith() != null ? dto.getSharedWith().length : 0
         );
 
-        CreatePollResponse resp = signalService.createPoll(req);
+        CreatePollResponse resp = signalService.createPoll(dto);
 
         log.info(
                 "[CONTROLLER] Create poll completed | signalId={} | localId={} | durationMs={}",
@@ -60,24 +60,49 @@ public class SignalController {
         return ResponseEntity.ok(ApiResponse.success(CREATED, resp));
     }
 
+    @PostMapping("/create/poll/scheduled")
+    public ResponseEntity<ApiResponse<CreatePollResponse>> createScheduledPoll(
+            @RequestBody @Valid PollCreateDTO dto) {
+
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Create scheduled poll request received | createdBy={} | sharedWithCount={} | scheduledTime={}",
+                dto.getCreatedBy(),
+                dto.getSharedWith() != null ? dto.getSharedWith().length : 0,
+                dto.getScheduledTime()
+        );
+
+        CreatePollResponse resp = signalService.createScheduledPoll(dto);
+
+        log.info(
+                "[CONTROLLER] Create scheduled poll completed | reservedSignalId={} | localId={} | durationMs={}",
+                resp.getSignalId(),
+                resp.getLocalId(),
+                System.currentTimeMillis() - start
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(CREATED, resp));
+    }
+
     @PostMapping("/poll/response")
     public ResponseEntity<ApiResponse<Void>> submitResponse(
-            @RequestBody @Valid PollSubmitDTO req) {
+            @RequestBody @Valid PollSubmitDTO dto) {
 
         long start = System.currentTimeMillis();
 
         log.info(
                 "[CONTROLLER] Poll response submission received | signalId={} | user={}",
-                req.getSignalId(),
-                req.getUserEmail()
+                dto.getSignalId(),
+                dto.getUserEmail()
         );
 
-        signalService.submitOrUpdateVote(req);
+        signalService.submitOrUpdateVote(dto);
 
         log.info(
-                "[CONTROLLER] Poll response processed | signalId={} | user={} | durationMs={}",
-                req.getSignalId(),
-                req.getUserEmail(),
+                "[CONTROLLER] Poll response submitted | signalId={} | user={} | durationMs={}",
+                dto.getSignalId(),
+                dto.getUserEmail(),
                 System.currentTimeMillis() - start
         );
 
@@ -129,6 +154,29 @@ public class SignalController {
         return ResponseEntity.ok(ApiResponse.success(EDITED, null));
     }
 
+    @PutMapping("/poll/edit/scheduled")
+    public ResponseEntity<ApiResponse<Void>> editScheduled(
+            @RequestBody @Valid PollEditDTO dto) {
+
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Edit scheduled poll request received | reservedSignalId={} | editor={}",
+                dto.getSignalId(),
+                dto.getLastEditedBy()
+        );
+
+        signalService.editScheduledSignal(dto);
+
+        log.info(
+                "[CONTROLLER] Edit scheduled poll completed | reservedSignalId={} | durationMs={}",
+                dto.getSignalId(),
+                System.currentTimeMillis() - start
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(EDITED, null));
+    }
+
     @DeleteMapping("/{signalId}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Long signalId) {
@@ -144,6 +192,28 @@ public class SignalController {
 
         log.info(
                 "[CONTROLLER] Delete signal completed | signalId={} | durationMs={}",
+                signalId,
+                System.currentTimeMillis() - start
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(DELETED, null));
+    }
+
+    @DeleteMapping("/scheduled/{signalId}")
+    public ResponseEntity<ApiResponse<Void>> deleteScheduled(
+            @PathVariable Long signalId) {
+
+        long start = System.currentTimeMillis();
+
+        log.info(
+                "[CONTROLLER] Delete scheduled signal request received | reservedSignalId={}",
+                signalId
+        );
+
+        signalService.deleteScheduledSignal(signalId);
+
+        log.info(
+                "[CONTROLLER] Delete scheduled signal completed | reservedSignalId={} | durationMs={}",
                 signalId,
                 System.currentTimeMillis() - start
         );

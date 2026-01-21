@@ -34,7 +34,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -69,18 +68,6 @@ public class SignalServiceImpl implements SignalService {
         dto.validateCommon();
         dto.validatePoll();
 
-        if (dto.isScheduled()) {
-            Long reservedId = signalRepository.getNextSignalId();
-
-            ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
-            scheduledPoll.setReservedSignalId(reservedId);
-            scheduledPollRepository.save(scheduledPoll);
-
-            pollSchedulerService.scheduleTask(scheduledPoll);
-
-            return new CreatePollResponse(reservedId, dto.getLocalId());
-        }
-
         Long signalId = signalRepository.getNextSignalId();
         Signal signal = buildSignal(dto);
         signal.setId(signalId);
@@ -96,6 +83,25 @@ public class SignalServiceImpl implements SignalService {
         publish(signal, poll, POLL_CREATED, false);
 
         return new CreatePollResponse(signal.getId(), dto.getLocalId());
+    }
+
+    @Override
+    public CreatePollResponse createScheduledPoll(PollCreateDTO dto) {
+
+        dto.normalizeCommon();
+        dto.normalizePoll();
+        dto.validateCommon();
+        dto.validatePoll();
+
+        Long reservedId = signalRepository.getNextSignalId();
+
+        ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
+        scheduledPoll.setReservedSignalId(reservedId);
+        scheduledPollRepository.save(scheduledPoll);
+
+        pollSchedulerService.scheduleTask(scheduledPoll);
+
+        return new CreatePollResponse(reservedId, dto.getLocalId());
     }
 
     @Override
@@ -144,11 +150,6 @@ public class SignalServiceImpl implements SignalService {
         dto.validateCommon();
         dto.validatePoll();
 
-        if (dto.isScheduled()) {
-            editScheduledPoll(dto);
-            return;
-        }
-
         Signal signal = getEditablePollSignal(dto.getSignalId());
         Poll poll = getPoll(dto.getSignalId());
 
@@ -174,16 +175,42 @@ public class SignalServiceImpl implements SignalService {
     }
 
     @Override
-    public void deleteSignal(Long signalId) {
-        Optional<ScheduledPoll> scheduledOpt = scheduledPollRepository.findByReservedSignalId(signalId);
+    public void editScheduledSignal(PollEditDTO dto) {
 
-        if (scheduledOpt.isPresent()) {
-            ScheduledPoll sp = scheduledOpt.get();
-            pollSchedulerService.cancelTask(sp.getId());
-            scheduledPollRepository.delete(sp);
-            log.info("Deleted scheduled poll with reserved id: {}", signalId);
-            return;
+        dto.normalizeCommon();
+        dto.normalizePoll();
+        dto.validateCommon();
+        dto.validatePoll();
+
+        ScheduledPoll scheduledPoll = scheduledPollRepository
+                .findByReservedSignalId(dto.getSignalId())
+                .orElseThrow(() -> new CustomException(
+                        "Scheduled poll not found",
+                        HttpStatus.NOT_FOUND
+                ));
+
+        Instant oldScheduledTime = scheduledPoll.getScheduledTime();
+
+        scheduledPoll.setQuestion(dto.getQuestion());
+        scheduledPoll.setOptions(dto.getOptions());
+        scheduledPoll.setAnonymous(dto.getAnonymous());
+        scheduledPoll.setSharedWith(dto.getSharedWith());
+        scheduledPoll.setDefaultFlag(dto.getDefaultFlag());
+        scheduledPoll.setDefaultOption(dto.getDefaultOption());
+        scheduledPoll.setScheduledTime(dto.getScheduledTime());
+        scheduledPoll.setEndTimestamp(dto.getEndTimestampUtc());
+        scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
+        scheduledPoll.setLabels(dto.getLabels());
+
+        scheduledPollRepository.save(scheduledPoll);
+
+        if (!oldScheduledTime.equals(dto.getScheduledTime())) {
+            pollSchedulerService.rescheduleTask(scheduledPoll);
         }
+    }
+
+    @Override
+    public void deleteSignal(Long signalId) {
 
         Signal signal = getPollSignal(signalId);
 
@@ -196,6 +223,20 @@ public class SignalServiceImpl implements SignalService {
                 POLL_DELETED,
                 signalId
         );
+    }
+
+    @Override
+    public void deleteScheduledSignal(Long signalId) {
+
+        ScheduledPoll scheduledPoll = scheduledPollRepository
+                .findByReservedSignalId(signalId)
+                .orElseThrow(() -> new CustomException(
+                        "Scheduled poll not found",
+                        HttpStatus.NOT_FOUND
+                ));
+
+        pollSchedulerService.cancelTask(scheduledPoll.getId());
+        scheduledPollRepository.delete(scheduledPoll);
     }
 
     @Override
@@ -418,36 +459,6 @@ public class SignalServiceImpl implements SignalService {
                 .sharedWith(signal.getSharedWith())
                 .labels(signal.getLabels())
                 .build();
-    }
-
-    private void editScheduledPoll(PollEditDTO dto) {
-        ScheduledPoll scheduledPoll = scheduledPollRepository
-                .findByReservedSignalId(dto.getSignalId())
-                .orElseThrow(() -> new CustomException(
-                        "Scheduled poll not found",
-                        HttpStatus.NOT_FOUND
-                ));
-
-        Instant oldScheduledTime = scheduledPoll.getScheduledTime();
-
-        scheduledPoll.setQuestion(dto.getQuestion());
-        scheduledPoll.setOptions(dto.getOptions());
-        scheduledPoll.setAnonymous(dto.getAnonymous());
-        scheduledPoll.setSharedWith(dto.getSharedWith());
-        scheduledPoll.setDefaultFlag(dto.getDefaultFlag());
-        scheduledPoll.setDefaultOption(dto.getDefaultOption());
-        scheduledPoll.setScheduledTime(dto.getScheduledTime());
-        scheduledPoll.setEndTimestamp(dto.getEndTimestampUtc());
-        scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
-        scheduledPoll.setLabels(dto.getLabels());
-
-        scheduledPollRepository.save(scheduledPoll);
-
-        if (!oldScheduledTime.equals(dto.getScheduledTime())) {
-            pollSchedulerService.rescheduleTask(scheduledPoll);
-        }
-
-        log.info("Updated scheduled poll id: {}", scheduledPoll.getId());
     }
 
     private ScheduledPoll buildScheduledPoll(PollCreateDTO dto) {
