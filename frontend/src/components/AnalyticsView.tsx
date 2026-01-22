@@ -1,10 +1,10 @@
-import { Poll, Response } from '../App';
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
+import { Poll, Response } from '../types';
+import type { Worksheet, Fill } from 'exceljs';
 import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download } from 'lucide-react';
 import LabelText from './LabelText';
 import LabelPill from './LabelPill';
 import { useState, useEffect } from 'react';
+import saveAs from 'file-saver';
 
 interface Label {
   id: string;
@@ -128,12 +128,13 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
   const handleExport = async () => {
     try {
+      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
       workbook.creator = 'Sentinel App';
       workbook.created = new Date();
 
       // Style constants
-      const headerFill: ExcelJS.Fill = {
+      const headerFill: Fill = {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: 'FFFFFF00' } // Yellow
@@ -144,7 +145,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         bold: true
       };
 
-      const applyHeaderStyle = (sheet: ExcelJS.Worksheet) => {
+      const applyHeaderStyle = (sheet: Worksheet) => {
         const row = sheet.getRow(1);
         row.eachCell((cell) => {
           cell.fill = headerFill;

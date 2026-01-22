@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { User, Poll } from '../App';
+import { User, Poll } from '../types';
 import { Plus, X, Eye, Check, Upload, Loader2, CalendarClock } from 'lucide-react';
-import * as XLSX from 'xlsx';
+
 import PollPreview from './PollPreview';
 import { cn } from './ui/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -140,6 +140,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
 
     try {
       const data = await file.arrayBuffer();
+      const XLSX = await import('xlsx');
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });

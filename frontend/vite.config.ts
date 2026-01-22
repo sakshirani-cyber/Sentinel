@@ -53,6 +53,15 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-tooltip', 'lucide-react'],
+          'excel-vendor': ['exceljs', 'xlsx'],
+        },
+      },
+    },
   },
   server: {
     port: 3000,

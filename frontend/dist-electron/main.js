@@ -240,6 +240,13 @@ electron_1.app.whenReady().then(async () => {
             isPersistentFinalAlert: poll.isPersistentFinalAlert
         });
         console.log('='.repeat(80) + '\n');
+        // Input Validation
+        if (poll.question.trim().length < 3 || poll.question.trim().length > 1000) {
+            return { success: false, error: 'Question must be between 3 and 1000 characters' };
+        }
+        if (poll.options.length < 2 || poll.options.length > 10) {
+            return { success: false, error: 'Poll must have between 2 and 10 options' };
+        }
         try {
             // Write to local DB first
             console.log(`[IPC Handler] [${new Date().toLocaleTimeString()}] 💾 Step 1: Saving to local DB...`);
@@ -306,16 +313,13 @@ electron_1.app.whenReady().then(async () => {
     electron_1.ipcMain.handle('db-delete-poll', async (_event, pollId) => {
         console.log(`[IPC Handler] db-delete-poll called for pollId: ${pollId}`);
         try {
-            // Get the poll first to check if it has a cloudSignalId
             const polls = (0, db_1.getPolls)();
             const poll = polls.find(p => p.id === pollId);
             if (!poll) {
                 console.warn(`[IPC Handler] db-delete-poll: Poll ${pollId} not found in DB`);
             }
-            // Delete from local DB
             const result = (0, db_1.deletePoll)(pollId);
             console.log(`[IPC Handler] Local deletion result for ${pollId}:`, result);
-            // If poll has cloudSignalId, sync deletion to cloud
             if (poll?.cloudSignalId) {
                 console.log(`[IPC Handler] Syncing deletion to cloud for signalId: ${poll.cloudSignalId}`);
                 backendApi.deletePoll(poll.cloudSignalId).then(() => {
@@ -946,6 +950,16 @@ electron_1.ipcMain.handle('db-create-label', async (event, label) => {
     console.log('\n' + '*'.repeat(80));
     console.log(`[IPC Handler] [${time}] 🏷️ db-create-label received: "${label.name}"`);
     console.log(`[IPC Handler] Label Data:`, label);
+    // Input Validation
+    if (label.name.length > 100) {
+        return { success: false, error: 'Label name cannot exceed 100 characters' };
+    }
+    if (label.description && label.description.length > 500) {
+        return { success: false, error: 'Description cannot exceed 500 characters' };
+    }
+    if (label.name.includes('~') || label.name.includes('#')) {
+        return { success: false, error: 'Label name cannot contain special characters like ~ or #' };
+    }
     try {
         const result = (0, db_1.createLabel)(label);
         console.log(`[IPC Handler] [${time}] ✅ Local label created: ${label.name} (id: ${label.id})`);
@@ -1008,6 +1022,10 @@ electron_1.ipcMain.handle('db-update-label', async (event, { id, updates }) => {
     console.log(`[IPC Handler] [${time}] ✏️ db-update-label received`);
     console.log(`[IPC Handler] Label ID: ${id}`);
     console.log(`[IPC Handler] Updates:`, updates);
+    // Input Validation
+    if (updates.description && updates.description.length > 500) {
+        return { success: false, error: 'Description cannot exceed 500 characters' };
+    }
     try {
         // 1. Update Locally
         const result = (0, db_1.updateLabel)(id, updates);

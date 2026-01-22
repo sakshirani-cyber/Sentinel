@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Poll } from '../App';
+import { Poll } from '../types';
 import { Plus, X, Check, Upload, AlertCircle, Loader2 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
     Tooltip,
@@ -150,6 +150,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
 
         try {
             const data = await file.arrayBuffer();
+            const XLSX = await import('xlsx');
             const workbook = XLSX.read(data);
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });

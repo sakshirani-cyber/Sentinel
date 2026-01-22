@@ -1,5 +1,5 @@
 import apiClient, { ApiResponse } from './apiClient';
-import { Poll, Response } from '../App';
+import { Poll, Response } from '../types';
 
 // ============================================================================
 // Backend API Types
