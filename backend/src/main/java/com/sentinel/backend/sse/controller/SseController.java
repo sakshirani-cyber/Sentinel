@@ -1,7 +1,6 @@
 package com.sentinel.backend.sse.controller;
 
-import com.sentinel.backend.sse.AsyncPollDbService;
-import com.sentinel.backend.sse.PollSyncCache;
+import com.sentinel.backend.cache.RedisCacheService;
 import com.sentinel.backend.sse.SseEmitterRegistry;
 import com.sentinel.backend.sse.dto.SseEvent;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.sentinel.backend.constant.Constants.CONNECTED;
@@ -23,8 +21,7 @@ import static com.sentinel.backend.constant.Constants.CONNECTED;
 public class SseController {
 
     private final SseEmitterRegistry registry;
-    private final PollSyncCache pollSyncCache;
-    private final AsyncPollDbService dbService;
+    private final RedisCacheService cache;
 
     @GetMapping(value = "/sse/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@RequestParam String userEmail) {
@@ -47,7 +44,8 @@ public class SseController {
 
         emitter.onError(e -> {
             registry.remove(userEmail);
-            log.error("[SSE][CONNECT] Connection error | userEmail={} | error={}", userEmail, e.getMessage());
+            log.error("[SSE][CONNECT] Connection error | userEmail={} | error={}",
+                    userEmail, e.getMessage());
         });
 
         try {
@@ -74,30 +72,18 @@ public class SseController {
 
     private void deliverPendingEvents(String userEmail, SseEmitter emitter) {
 
-        List<SseEvent<?>> events = pollSyncCache.get(userEmail);
-        boolean loadedFromDb = false;
+        String eventsKey = cache.buildKey("sse:events", userEmail);
+        List<SseEvent<?>> events = cache.getList(eventsKey, SseEvent.class);
 
         if (events == null || events.isEmpty()) {
-            log.debug("[SSE][DELIVER] Cache empty, loading from DB | userEmail={}", userEmail);
-
-            events = dbService.loadPending(userEmail);
-            loadedFromDb = true;
-
-            if (events == null || events.isEmpty()) {
-                log.debug("[SSE][DELIVER] No pending events found | userEmail={}", userEmail);
-                return;
-            }
-
-            log.info("[SSE][DELIVER] Loaded {} events from DB | userEmail={}", events.size(), userEmail);
-        } else {
-            log.info("[SSE][DELIVER] Found {} events in cache | userEmail={}", events.size(), userEmail);
+            log.debug("[SSE][DELIVER] No pending events found | userEmail={}", userEmail);
+            return;
         }
+
+        log.info("[SSE][DELIVER] Found {} events in Redis | userEmail={}", events.size(), userEmail);
 
         if (registry.get(userEmail) == null) {
             log.warn("[SSE][DELIVER] Emitter removed before delivery | userEmail={}", userEmail);
-            if (!loadedFromDb) {
-                pollSyncCache.put(userEmail, events);
-            }
             return;
         }
 
@@ -112,26 +98,24 @@ public class SseController {
                 );
                 deliveredCount++;
 
+                log.debug("[SSE][DELIVER] Event delivered {}/{} | userEmail={} | eventType={}",
+                        deliveredCount, events.size(), userEmail, event.getEventType());
+
             } catch (Exception ex) {
                 log.error("[SSE][DELIVER] Failed to deliver event {} of {} | userEmail={} | error={}",
                         deliveredCount + 1, events.size(), userEmail, ex.getMessage());
 
-                List<SseEvent<?>> undelivered = new ArrayList<>(
-                        events.subList(deliveredCount, events.size())
-                );
-                pollSyncCache.put(userEmail, undelivered);
-
-                log.warn("[SSE][DELIVER] Stored {} undelivered events back to cache | userEmail={}",
-                        undelivered.size(), userEmail);
+                log.warn("[SSE][DELIVER] Keeping {} undelivered events in Redis | userEmail={}",
+                        events.size() - deliveredCount, userEmail);
 
                 return;
             }
         }
 
-        log.info("[SSE][DELIVER] Successfully delivered {} events | userEmail={}",
-                deliveredCount, userEmail);
-
-        pollSyncCache.clear(userEmail);
-        dbService.asyncDelete(userEmail);
+        if (deliveredCount == events.size()) {
+            cache.delete(eventsKey);
+            log.info("[SSE][DELIVER] Successfully delivered {} events, cleared from Redis | userEmail={}",
+                    deliveredCount, userEmail);
+        }
     }
 }
