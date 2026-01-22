@@ -5,11 +5,9 @@ import com.sentinel.backend.cache.RedisCacheService;
 import com.sentinel.backend.entity.Poll;
 import com.sentinel.backend.entity.ScheduledPoll;
 import com.sentinel.backend.entity.Signal;
-import com.sentinel.backend.repository.PollRepository;
 import com.sentinel.backend.repository.ScheduledPollRepository;
-import com.sentinel.backend.repository.SignalRepository;
 import com.sentinel.backend.sse.PollSsePublisher;
-import com.sentinel.backend.sse.dto.PollSsePayload;
+import com.sentinel.backend.util.PollCacheHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -20,6 +18,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import static com.sentinel.backend.constant.Constants.ACTIVE;
-import static com.sentinel.backend.constant.Constants.POLL;
+import static com.sentinel.backend.constant.CacheKeys.LOCK_SCHEDULED_PUBLISH_PREFIX;
+import static com.sentinel.backend.constant.CacheKeys.SCHEDULED_POLL;
 import static com.sentinel.backend.constant.Constants.POLL_CREATED;
 
 @Service
@@ -42,35 +41,33 @@ public class PollSchedulerService {
     private final RedissonClient redissonClient;
     private final RedisCacheService cache;
     private final AsyncDbSyncService asyncDbSync;
+    private final PollCacheHelper pollCacheHelper;
 
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     @EventListener(ApplicationReadyEvent.class)
     public void initializeScheduler() {
-        log.info("[SCHEDULER][INIT] Initializing poll scheduler on startup...");
+        log.info("[SCHEDULER][INIT] Starting poll scheduler initialization");
 
         try {
-            List<ScheduledPoll> pendingPolls = scheduledPollRepository
-                    .findAllPendingSchedules(Instant.now());
+            List<ScheduledPoll> pendingPolls = scheduledPollRepository.findAllPendingSchedules(Instant.now());
 
             log.info("[SCHEDULER][INIT] Found {} pending scheduled polls", pendingPolls.size());
 
-            for (ScheduledPoll sp : pendingPolls) {
-                scheduleTask(sp);
+            for (ScheduledPoll scheduledPoll : pendingPolls) {
+                scheduleTask(scheduledPoll);
             }
 
-            log.info("[SCHEDULER][INIT] Initialization complete | scheduled={}", pendingPolls.size());
+            log.info("[SCHEDULER][INIT] Initialization complete | scheduledCount={}", pendingPolls.size());
 
         } catch (Exception e) {
-            log.error("[SCHEDULER][INIT][ERROR] Failed to initialize scheduler", e);
+            log.error("[SCHEDULER][INIT][ERROR] Failed to initialize scheduler | error={}", e.getMessage(), e);
         }
     }
 
     public void scheduleTask(ScheduledPoll scheduledPoll) {
-
         if (scheduledTasks.containsKey(scheduledPoll.getId())) {
-            log.warn("[SCHEDULER][SCHEDULE] Task already scheduled in this instance | pollId={}",
-                    scheduledPoll.getId());
+            log.warn("[SCHEDULER][SCHEDULE] Task already scheduled | pollId={}", scheduledPoll.getId());
             return;
         }
 
@@ -82,15 +79,13 @@ public class PollSchedulerService {
 
             scheduledTasks.put(scheduledPoll.getId(), future);
 
-            log.info("[SCHEDULER][SCHEDULE] Task scheduled | pollId={} | scheduledTime={} | " +
-                            "timeUntilExecution={}s",
-                    scheduledPoll.getId(),
-                    scheduledPoll.getScheduledTime(),
-                    java.time.Duration.between(Instant.now(), scheduledPoll.getScheduledTime()).getSeconds());
+            long secondsUntilExecution = Duration.between(Instant.now(), scheduledPoll.getScheduledTime()).getSeconds();
+            log.info("[SCHEDULER][SCHEDULE] Task scheduled | pollId={} | scheduledTime={} | secondsUntilExecution={}",
+                    scheduledPoll.getId(), scheduledPoll.getScheduledTime(), secondsUntilExecution);
 
         } catch (Exception e) {
-            log.error("[SCHEDULER][SCHEDULE][ERROR] Failed to schedule task | pollId={}",
-                    scheduledPoll.getId(), e);
+            log.error("[SCHEDULER][SCHEDULE][ERROR] Failed to schedule task | pollId={} | error={}",
+                    scheduledPoll.getId(), e.getMessage(), e);
         }
     }
 
@@ -99,8 +94,7 @@ public class PollSchedulerService {
 
         if (future != null && !future.isDone()) {
             boolean cancelled = future.cancel(false);
-            log.info("[SCHEDULER][CANCEL] Task cancelled | pollId={} | cancelled={}",
-                    scheduledPollId, cancelled);
+            log.info("[SCHEDULER][CANCEL] Task cancelled | pollId={} | success={}", scheduledPollId, cancelled);
         } else {
             log.debug("[SCHEDULER][CANCEL] No active task found | pollId={}", scheduledPollId);
         }
@@ -116,76 +110,59 @@ public class PollSchedulerService {
 
     @Transactional
     public void publishScheduledPoll(Long scheduledPollId) {
-
-        String lockKey = "lock:scheduled:publish:" + scheduledPollId;
+        String lockKey = LOCK_SCHEDULED_PUBLISH_PREFIX + scheduledPollId;
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
             boolean acquired = lock.tryLock(1, 30, TimeUnit.SECONDS);
 
             if (!acquired) {
-                log.warn("[SCHEDULER][PUBLISH] Could not acquire lock, likely published by another instance | pollId={}",
+                log.warn("[SCHEDULER][PUBLISH] Lock not acquired, likely published by another instance | pollId={}",
                         scheduledPollId);
                 scheduledTasks.remove(scheduledPollId);
                 return;
             }
 
-            log.info("[SCHEDULER][PUBLISH] Lock acquired, publishing scheduled poll | pollId={}",
-                    scheduledPollId);
+            log.info("[SCHEDULER][PUBLISH] Lock acquired, publishing scheduled poll | pollId={}", scheduledPollId);
 
-            ScheduledPoll sp = scheduledPollRepository.findById(scheduledPollId).orElse(null);
+            ScheduledPoll scheduledPoll = scheduledPollRepository.findById(scheduledPollId).orElse(null);
 
-            if (sp == null) {
+            if (scheduledPoll == null) {
                 log.warn("[SCHEDULER][PUBLISH] Scheduled poll not found (may have been deleted) | pollId={}",
                         scheduledPollId);
                 scheduledTasks.remove(scheduledPollId);
                 return;
             }
 
-            Signal signal = buildSignal(sp);
-            signal.setId(sp.getReservedSignalId());
-            signal.setCreatedOn(Instant.now());
+            Signal signal = pollCacheHelper.buildSignalFromScheduledPoll(scheduledPoll);
+            Poll poll = pollCacheHelper.buildPollFromScheduledPoll(scheduledPoll, signal);
 
-            Poll poll = new Poll();
-            poll.setSignalId(sp.getReservedSignalId());
-            poll.setSignal(signal);
-            poll.setQuestion(sp.getQuestion());
-            poll.setOptions(sp.getOptions());
-
-            savePollToCache(signal, poll);
+            pollCacheHelper.savePollToCache(signal, poll);
 
             asyncDbSync.asyncSaveSignal(signal);
             asyncDbSync.asyncSavePoll(poll);
 
-            PollSsePayload payload = buildPollSsePayload(signal, poll);
-            payload.setRepublish(false);
-
             pollSsePublisher.publish(
                     signal.getSharedWith(),
                     POLL_CREATED,
-                    payload
+                    pollCacheHelper.buildPollSsePayload(signal, poll, false)
             );
 
             scheduledPollRepository.deleteById(scheduledPollId);
-
-            String cacheKey = cache.buildKey("scheduled_poll", sp.getReservedSignalId().toString());
-            cache.delete(cacheKey);
-
+            cache.delete(cache.buildKey(SCHEDULED_POLL, scheduledPoll.getReservedSignalId().toString()));
             scheduledTasks.remove(scheduledPollId);
 
-            log.info("[SCHEDULER][PUBLISH] Successfully published scheduled poll | " +
-                            "scheduledPollId={} | signalId={} | recipients={}",
+            log.info("[SCHEDULER][PUBLISH] Successfully published scheduled poll | scheduledPollId={} | signalId={} | recipientCount={}",
                     scheduledPollId, signal.getId(), signal.getSharedWith().length);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.error("[SCHEDULER][PUBLISH][ERROR] Interrupted while acquiring lock | pollId={}",
-                    scheduledPollId, e);
+            log.error("[SCHEDULER][PUBLISH][ERROR] Interrupted while acquiring lock | pollId={}", scheduledPollId);
             scheduledTasks.remove(scheduledPollId);
 
         } catch (Exception e) {
-            log.error("[SCHEDULER][PUBLISH][ERROR] Failed to publish scheduled poll | pollId={}",
-                    scheduledPollId, e);
+            log.error("[SCHEDULER][PUBLISH][ERROR] Failed to publish scheduled poll | pollId={} | error={}",
+                    scheduledPollId, e.getMessage(), e);
             scheduledTasks.remove(scheduledPollId);
 
         } finally {
@@ -193,67 +170,6 @@ public class PollSchedulerService {
                 lock.unlock();
                 log.debug("[SCHEDULER][PUBLISH] Lock released | pollId={}", scheduledPollId);
             }
-        }
-    }
-
-    private Signal buildSignal(ScheduledPoll sp) {
-        Signal s = new Signal();
-        s.setCreatedBy(sp.getCreatedBy());
-        s.setAnonymous(sp.getAnonymous());
-        s.setTypeOfSignal(POLL);
-        s.setSharedWith(sp.getSharedWith());
-        s.setDefaultFlag(sp.getDefaultFlag());
-        s.setDefaultOption(sp.getDefaultOption());
-        s.setEndTimestamp(sp.getEndTimestamp());
-        s.setStatus(ACTIVE);
-        s.setPersistentAlert(sp.getPersistentAlert());
-        s.setLabels(sp.getLabels());
-        return s;
-    }
-
-    private PollSsePayload buildPollSsePayload(Signal signal, Poll poll) {
-        return PollSsePayload.builder()
-                .signalId(signal.getId())
-                .question(poll.getQuestion())
-                .options(poll.getOptions())
-                .endTimestamp(signal.getEndTimestamp())
-                .anonymous(signal.getAnonymous())
-                .defaultFlag(signal.getDefaultFlag())
-                .defaultOption(signal.getDefaultOption())
-                .persistentAlert(signal.getPersistentAlert())
-                .createdBy(signal.getCreatedBy())
-                .sharedWith(signal.getSharedWith())
-                .labels(signal.getLabels())
-                .build();
-    }
-
-    private void savePollToCache(Signal signal, Poll poll) {
-        String pollKey = cache.buildKey("poll", signal.getId().toString());
-
-        Map<String, Object> pollData = new java.util.HashMap<>();
-        pollData.put("signalId", signal.getId());
-        pollData.put("question", poll.getQuestion());
-        pollData.put("options", poll.getOptions());
-        pollData.put("status", signal.getStatus());
-        pollData.put("createdBy", signal.getCreatedBy());
-        pollData.put("createdOn", signal.getCreatedOn());
-        pollData.put("lastEdited", signal.getLastEdited());
-        pollData.put("anonymous", signal.getAnonymous());
-        pollData.put("endTimestamp", signal.getEndTimestamp());
-        pollData.put("typeOfSignal", signal.getTypeOfSignal());
-        pollData.put("defaultFlag", signal.getDefaultFlag());
-        pollData.put("defaultOption", signal.getDefaultOption());
-        pollData.put("sharedWith", signal.getSharedWith());
-        pollData.put("persistentAlert", signal.getPersistentAlert());
-        pollData.put("labels", signal.getLabels());
-        pollData.put("lastEditedBy", signal.getLastEditedBy());
-
-        cache.hSetAll(pollKey, pollData, cache.getPollTtl());
-
-        for (String userEmail : signal.getSharedWith()) {
-            String userKey = cache.buildKey("user:polls", userEmail);
-            cache.addToSortedSet(userKey, signal.getId(),
-                    signal.getCreatedOn().toEpochMilli(), cache.getPollTtl());
         }
     }
 

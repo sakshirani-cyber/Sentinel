@@ -14,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 import java.time.Instant;
 import java.util.List;
 
@@ -28,7 +27,6 @@ public class LabelServiceImpl implements LabelService {
     @Override
     @Transactional
     public CreateLabelResponse createLabel(LabelCreateDTO dto) {
-
         String normalizedLabel = NormalizationUtils.trimToNull(dto.getLabel());
 
         if (labelRepository.existsByLabel(normalizedLabel)) {
@@ -42,36 +40,36 @@ public class LabelServiceImpl implements LabelService {
 
         labelRepository.save(entity);
 
+        log.info("[LABEL][CREATE] labelId={} | label={}", entity.getId(), normalizedLabel);
+
         return new CreateLabelResponse(entity.getId(), dto.getLocalId());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<LabelResponseDTO> getAllLabels() {
+        List<LabelResponseDTO> labels = labelRepository.findAll()
+                .stream()
+                .map(label -> new LabelResponseDTO(
+                        label.getId(),
+                        label.getLabel(),
+                        label.getDescription(),
+                        label.getColor(),
+                        label.getCreatedAt(),
+                        label.getEditedAt()
+                ))
+                .toList();
 
-        return labelRepository.findAll()
-                        .stream()
-                        .map(label -> new LabelResponseDTO(
-                                label.getId(),
-                                label.getLabel(),
-                                label.getDescription(),
-                                label.getColor(),
-                                label.getCreatedAt(),
-                                label.getEditedAt()
-                        ))
-                        .toList();
+        log.debug("[LABEL][GET_ALL] count={}", labels.size());
+
+        return labels;
     }
 
     @Override
     @Transactional
     public void editLabel(LabelEditDTO dto) {
-
-        Label entity =
-                labelRepository.findById(dto.getId())
-                        .orElseThrow(() -> new CustomException(
-                                "Label not found",
-                                HttpStatus.NOT_FOUND
-                        ));
+        Label entity = labelRepository.findById(dto.getId())
+                .orElseThrow(() -> new CustomException("Label not found", HttpStatus.NOT_FOUND));
 
         String newDescription = NormalizationUtils.trimToNull(dto.getDescription());
         String newColor = dto.getColor().toUpperCase();
@@ -89,14 +87,12 @@ public class LabelServiceImpl implements LabelService {
         }
 
         if (!changed) {
-            throw new CustomException(
-                    "No changes detected",
-                    HttpStatus.BAD_REQUEST
-            );
+            throw new CustomException("No changes detected", HttpStatus.BAD_REQUEST);
         }
 
         entity.setEditedAt(Instant.now());
-
         labelRepository.save(entity);
+
+        log.info("[LABEL][EDIT] labelId={}", dto.getId());
     }
 }

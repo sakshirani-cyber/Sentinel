@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
-import java.util.List;
+
+import static com.sentinel.backend.constant.CacheKeys.SSE_EVENTS;
 
 @Component
 @RequiredArgsConstructor
@@ -19,14 +20,12 @@ public class PollSsePublisher {
     private final RedisCacheService cache;
 
     public <T> void publish(String[] recipients, String eventType, T payload) {
-
         if (recipients == null || recipients.length == 0) {
-            log.warn("[SSE][PUBLISH] No recipients to publish");
+            log.warn("[SSE][PUBLISH] No recipients provided");
             return;
         }
 
         long start = System.currentTimeMillis();
-        int totalRecipients = recipients.length;
         int delivered = 0;
         int offline = 0;
         int failed = 0;
@@ -34,77 +33,51 @@ public class PollSsePublisher {
         SseEvent<T> event = new SseEvent<>(eventType, Instant.now(), payload);
 
         for (String userEmail : recipients) {
-
             SseEmitter emitter = registry.get(userEmail);
 
             if (emitter == null) {
                 offline++;
                 storeEventInRedis(userEmail, event);
-
-                log.debug("[SSE][PUBLISH][OFFLINE] Stored event in Redis | userEmail={} | eventType={}",
-                        userEmail, eventType);
+                log.debug("[SSE][PUBLISH][OFFLINE] userEmail={} | eventType={}", userEmail, eventType);
                 continue;
             }
 
             try {
-                emitter.send(
-                        SseEmitter.event()
-                                .name(eventType)
-                                .data(event)
-                );
+                emitter.send(SseEmitter.event().name(eventType).data(event));
                 delivered++;
-
-                log.debug("[SSE][PUBLISH][DELIVERED] Event sent to online user | userEmail={} | eventType={}",
-                        userEmail, eventType);
-
+                log.debug("[SSE][PUBLISH][DELIVERED] userEmail={} | eventType={}", userEmail, eventType);
             } catch (Exception ex) {
                 failed++;
-
                 registry.remove(userEmail);
-
                 storeEventInRedis(userEmail, event);
-
-                log.warn("[SSE][PUBLISH][FAILED] Delivery failed, stored in Redis | userEmail={} | eventType={} | error={}",
-                        userEmail, eventType, ex.getMessage());
+                log.warn("[SSE][PUBLISH][FAILED] userEmail={} | eventType={} | error={}", userEmail, eventType, ex.getMessage());
             }
         }
 
-        log.info("[SSE][PUBLISH] Event publish completed | eventType={} | totalRecipients={} | " +
-                        "delivered={} | offline={} | failed={} | durationMs={}",
-                eventType, totalRecipients, delivered, offline, failed,
-                System.currentTimeMillis() - start);
+        log.info("[SSE][PUBLISH] eventType={} | total={} | delivered={} | offline={} | failed={} | durationMs={}",
+                eventType, recipients.length, delivered, offline, failed, System.currentTimeMillis() - start);
     }
 
     private <T> void storeEventInRedis(String userEmail, SseEvent<T> event) {
         try {
-            String eventsKey = cache.buildKey("sse:events", userEmail);
-
+            String eventsKey = cache.buildKey(SSE_EVENTS, userEmail);
             cache.leftPush(eventsKey, event, cache.getSseEventsTtl());
-
-            log.debug("[REDIS][STORE] Event stored | userEmail={} | eventType={}",
-                    userEmail, event.getEventType());
-
+            log.debug("[SSE][STORE] userEmail={} | eventType={}", userEmail, event.getEventType());
         } catch (Exception ex) {
-            log.error("[REDIS][STORE][ERROR] Failed to store event | userEmail={} | eventType={} | error={}",
+            // TODO: Implement fallback storage (DB) or alerting for production
+            log.error("[SSE][STORE][ERROR] userEmail={} | eventType={} | error={}",
                     userEmail, event.getEventType(), ex.getMessage());
-
-            // TODO: Critical: Event lost if Redis fails
-            // In production, you might want to:
-            // 1. Try fallback storage (DB)
-            // 2. Alert monitoring system
-            // 3. Queue for manual recovery
         }
     }
 
     public void clearPendingEvents(String userEmail) {
-        String eventsKey = cache.buildKey("sse:events", userEmail);
-        cache.delete(eventsKey);
-        log.info("[SSE][CLEAR] Cleared pending events | userEmail={}", userEmail);
+        cache.delete(cache.buildKey(SSE_EVENTS, userEmail));
+        log.info("[SSE][CLEAR] userEmail={}", userEmail);
     }
 
     public long getPendingEventCount(String userEmail) {
-        String eventsKey = cache.buildKey("sse:events", userEmail);
-        List<Object> events = cache.getList(eventsKey, Object.class);
+        String eventsKey = cache.buildKey(SSE_EVENTS, userEmail);
+        java.util.List<Object> events = cache.getList(eventsKey, Object.class);
         return events != null ? events.size() : 0;
     }
 }

@@ -1,6 +1,8 @@
 package com.sentinel.backend.constant;
 
-public class Queries {
+public final class Queries {
+
+    private Queries() {}
 
     public static final String GET_ROLE_BY_EMAIL_AND_PASSWORD = """
         SELECT role

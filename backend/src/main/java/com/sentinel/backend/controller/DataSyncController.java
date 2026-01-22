@@ -15,21 +15,13 @@ public class DataSyncController {
     private final DataSyncService dataSyncService;
 
     @GetMapping("/data/sync")
-    public void dataSync(@RequestParam String userEmail) {
+    public void syncData(@RequestParam String userEmail) {
+        long start = System.currentTimeMillis();
 
-        long startTime = System.currentTimeMillis();
-
-        log.info(
-                "[CONTROLLER] Manual data sync triggered | userEmail={}",
-                userEmail
-        );
+        log.info("[API][DATA_SYNC] userEmail={}", userEmail);
 
         dataSyncService.syncAndPublish(userEmail);
 
-        log.info(
-                "[CONTROLLER] Manual Data sync completed | userEmail={} | durationMs={}",
-                userEmail,
-                System.currentTimeMillis() - startTime
-        );
+        log.info("[API][DATA_SYNC] userEmail={} | durationMs={}", userEmail, System.currentTimeMillis() - start);
     }
 }

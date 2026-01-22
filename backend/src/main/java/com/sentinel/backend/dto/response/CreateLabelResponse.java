@@ -10,6 +10,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CreateLabelResponse {
-    private Long localId;
     private Long labelId;
+    private Long localId;
 }

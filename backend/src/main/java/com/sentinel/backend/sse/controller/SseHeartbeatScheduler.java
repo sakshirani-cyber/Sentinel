@@ -20,27 +20,21 @@ public class SseHeartbeatScheduler {
 
     @Scheduled(fixedRate = 60000)
     public void sendHeartbeat() {
-
         int activeConnections = registry.size();
+
+        if (activeConnections == 0) {
+            return;
+        }
 
         registry.forEach((userEmail, emitter) -> {
             try {
-                emitter.send(
-                        SseEmitter.event()
-                                .name(HEARTBEAT)
-                                .data(PING)
-                                .comment(KEEP_ALIVE)
-                );
+                emitter.send(SseEmitter.event().name(HEARTBEAT).data(PING).comment(KEEP_ALIVE));
             } catch (Exception ex) {
                 registry.remove(userEmail);
-                log.warn(
-                        "[SSE][HEARTBEAT] Failed | userEmail={} | reason={}",
-                        userEmail,
-                        ex.getMessage()
-                );
+                log.warn("[SSE][HEARTBEAT][FAILED] userEmail={} | error={}", userEmail, ex.getMessage());
             }
         });
 
-        log.debug("[SSE][HEARTBEAT] Sent to {} active connections", activeConnections);
+        log.debug("[SSE][HEARTBEAT] Sent to {} connections", activeConnections);
     }
 }

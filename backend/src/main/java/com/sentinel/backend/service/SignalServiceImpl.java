@@ -19,7 +19,7 @@ import com.sentinel.backend.repository.PollResultRepository;
 import com.sentinel.backend.repository.ScheduledPollRepository;
 import com.sentinel.backend.repository.SignalRepository;
 import com.sentinel.backend.sse.PollSsePublisher;
-import com.sentinel.backend.sse.dto.PollSsePayload;
+import com.sentinel.backend.util.PollCacheHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -43,8 +43,16 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.sentinel.backend.constant.CacheKeys.LOCK_POLL_DELETE_PREFIX;
+import static com.sentinel.backend.constant.CacheKeys.LOCK_POLL_EDIT_PREFIX;
+import static com.sentinel.backend.constant.CacheKeys.LOCK_SIGNAL_CREATE;
+import static com.sentinel.backend.constant.CacheKeys.LOCK_VOTE_PREFIX;
+import static com.sentinel.backend.constant.CacheKeys.POLL;
+import static com.sentinel.backend.constant.CacheKeys.POLL_RESULTS;
+import static com.sentinel.backend.constant.CacheKeys.POLL_RESULTS_CACHED;
+import static com.sentinel.backend.constant.CacheKeys.SCHEDULED_POLL;
+import static com.sentinel.backend.constant.CacheKeys.SIGNAL_ID_COUNTER;
 import static com.sentinel.backend.constant.Constants.ACTIVE;
-import static com.sentinel.backend.constant.Constants.POLL;
 import static com.sentinel.backend.constant.Constants.POLL_CREATED;
 import static com.sentinel.backend.constant.Constants.POLL_DELETED;
 import static com.sentinel.backend.constant.Constants.POLL_EDITED;
@@ -67,6 +75,7 @@ public class SignalServiceImpl implements SignalService {
     private final PollSsePublisher pollSsePublisher;
     private final PollSchedulerService pollSchedulerService;
     private final RedissonClient redissonClient;
+    private final PollCacheHelper pollCacheHelper;
 
     @Override
     public CreatePollResponse createPoll(PollCreateDTO dto) {
@@ -75,16 +84,15 @@ public class SignalServiceImpl implements SignalService {
         dto.validateCommon();
         dto.validatePoll();
 
-        String lockKey = "lock:signal:create";
-        RLock lock = redissonClient.getLock(lockKey);
+        RLock lock = redissonClient.getLock(LOCK_SIGNAL_CREATE);
 
         try {
             lock.lock(5, TimeUnit.SECONDS);
 
-            Long signalId = cache.incr("signal:id:counter");
+            Long signalId = cache.incr(SIGNAL_ID_COUNTER);
             if (signalId == null) {
                 signalId = signalRepository.getNextSignalId();
-                cache.set("signal:id:counter", signalId.toString(), null);
+                cache.set(SIGNAL_ID_COUNTER, signalId.toString(), null);
             }
 
             Signal signal = buildSignal(dto);
@@ -96,14 +104,14 @@ public class SignalServiceImpl implements SignalService {
             poll.setQuestion(dto.getQuestion());
             poll.setOptions(dto.getOptions());
 
-            savePollToCache(signal, poll);
+            pollCacheHelper.savePollToCache(signal, poll);
 
             asyncDbSync.asyncSaveSignal(signal);
             asyncDbSync.asyncSavePoll(poll);
 
-            publish(signal, poll, POLL_CREATED, false);
+            publishPollEvent(signal, poll, POLL_CREATED, false);
 
-            log.info("[SIGNAL][CREATE] signalId={} | localId={} | users={}",
+            log.info("[POLL][CREATE] signalId={} | localId={} | recipientCount={}",
                     signalId, dto.getLocalId(), signal.getSharedWith().length);
 
             return new CreatePollResponse(signalId, dto.getLocalId());
@@ -123,16 +131,15 @@ public class SignalServiceImpl implements SignalService {
         dto.validateCommon();
         dto.validatePoll();
 
-        String lockKey = "lock:signal:create";
-        RLock lock = redissonClient.getLock(lockKey);
+        RLock lock = redissonClient.getLock(LOCK_SIGNAL_CREATE);
 
         try {
             lock.lock(5, TimeUnit.SECONDS);
 
-            Long reservedId = cache.incr("signal:id:counter");
+            Long reservedId = cache.incr(SIGNAL_ID_COUNTER);
             if (reservedId == null) {
                 reservedId = signalRepository.getNextSignalId();
-                cache.set("signal:id:counter", reservedId.toString(), null);
+                cache.set(SIGNAL_ID_COUNTER, reservedId.toString(), null);
             }
 
             ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
@@ -140,12 +147,12 @@ public class SignalServiceImpl implements SignalService {
 
             scheduledPollRepository.save(scheduledPoll);
 
-            String key = cache.buildKey("scheduled_poll", reservedId.toString());
+            String key = cache.buildKey(SCHEDULED_POLL, reservedId.toString());
             cache.set(key, scheduledPoll, cache.getPollTtl());
 
             pollSchedulerService.scheduleTask(scheduledPoll);
 
-            log.info("[SIGNAL][SCHEDULED_CREATE] reservedId={} | scheduledTime={}",
+            log.info("[POLL][SCHEDULE] reservedId={} | scheduledTime={}",
                     reservedId, dto.getScheduledTime());
 
             return new CreatePollResponse(reservedId, dto.getLocalId());
@@ -164,7 +171,7 @@ public class SignalServiceImpl implements SignalService {
         Long signalId = dto.getSignalId();
         String userEmail = dto.getUserEmail();
 
-        String lockKey = "lock:vote:" + signalId + ":" + userEmail;
+        String lockKey = LOCK_VOTE_PREFIX + signalId + ":" + userEmail;
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
@@ -182,13 +189,11 @@ public class SignalServiceImpl implements SignalService {
             result.setTimeOfSubmission(Instant.now());
 
             saveVoteToCache(result);
-
-            String resultsCacheKey = cache.buildKey("cache:poll:results", signalId.toString());
-            cache.delete(resultsCacheKey);
+            invalidatePollResultsCache(signalId);
 
             asyncDbSync.asyncSavePollResult(result);
 
-            log.info("[SIGNAL][VOTE] signalId={} | user={} | option={}",
+            log.info("[POLL][VOTE] signalId={} | user={} | option={}",
                     signalId, userEmail, dto.getSelectedOption());
 
         } finally {
@@ -200,11 +205,11 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     public PollResultDTO getPollResults(Long signalId) {
-
-        String cacheKey = cache.buildKey("cache:poll:results", signalId.toString());
+        String cacheKey = cache.buildKey(POLL_RESULTS_CACHED, signalId.toString());
         PollResultDTO cached = cache.get(cacheKey, PollResultDTO.class);
+
         if (cached != null) {
-            log.info("[SIGNAL][RESULTS][CACHE_HIT] signalId={}", signalId);
+            log.debug("[POLL][RESULTS][CACHE_HIT] signalId={}", signalId);
             return cached;
         }
 
@@ -213,10 +218,9 @@ public class SignalServiceImpl implements SignalService {
         List<PollResult> results = getVotesFromCache(signalId);
 
         PollResultDTO dto = buildPollResults(signal, poll, results);
-
         cache.set(cacheKey, dto, cache.getPollResultsTtl());
 
-        log.info("[SIGNAL][RESULTS] signalId={} | responded={}/{}",
+        log.info("[POLL][RESULTS] signalId={} | responded={}/{}",
                 signalId, dto.getTotalResponded(), dto.getTotalAssigned());
 
         return dto;
@@ -230,7 +234,7 @@ public class SignalServiceImpl implements SignalService {
         dto.validatePoll();
 
         Long signalId = dto.getSignalId();
-        String lockKey = "lock:poll:edit:" + signalId;
+        String lockKey = LOCK_POLL_EDIT_PREFIX + signalId;
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
@@ -254,17 +258,15 @@ public class SignalServiceImpl implements SignalService {
             signal.setPersistentAlert(dto.getPersistentAlert());
             signal.setLabels(dto.getLabels());
 
-            savePollToCache(signal, poll);
-
-            String resultsCacheKey = cache.buildKey("cache:poll:results", signalId.toString());
-            cache.delete(resultsCacheKey);
+            pollCacheHelper.savePollToCache(signal, poll);
+            invalidatePollResultsCache(signalId);
 
             asyncDbSync.asyncUpdateSignal(signal);
             asyncDbSync.asyncUpdatePoll(poll);
 
-            publish(signal, poll, POLL_EDITED, dto.getRepublish());
+            publishPollEvent(signal, poll, POLL_EDITED, dto.getRepublish());
 
-            log.info("[SIGNAL][EDIT] signalId={} | republish={}", signalId, dto.getRepublish());
+            log.info("[POLL][EDIT] signalId={} | republish={}", signalId, dto.getRepublish());
 
         } finally {
             if (lock.isHeldByCurrentThread()) {
@@ -288,8 +290,6 @@ public class SignalServiceImpl implements SignalService {
                         HttpStatus.NOT_FOUND
                 ));
 
-        Instant oldScheduledTime = scheduledPoll.getScheduledTime();
-
         scheduledPoll.setQuestion(dto.getQuestion());
         scheduledPoll.setOptions(dto.getOptions());
         scheduledPoll.setAnonymous(dto.getAnonymous());
@@ -303,17 +303,17 @@ public class SignalServiceImpl implements SignalService {
 
         scheduledPollRepository.save(scheduledPoll);
 
-        String key = cache.buildKey("scheduled_poll", dto.getSignalId().toString());
+        String key = cache.buildKey(SCHEDULED_POLL, dto.getSignalId().toString());
         cache.set(key, scheduledPoll, cache.getPollTtl());
 
         pollSchedulerService.rescheduleTask(scheduledPoll);
 
-        log.info("[SIGNAL][SCHEDULED_EDIT] reservedId={}", dto.getSignalId());
+        log.info("[POLL][SCHEDULE_EDIT] reservedId={}", dto.getSignalId());
     }
 
     @Override
     public void deleteSignal(Long signalId) {
-        String lockKey = "lock:poll:delete:" + signalId;
+        String lockKey = LOCK_POLL_DELETE_PREFIX + signalId;
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
@@ -321,9 +321,9 @@ public class SignalServiceImpl implements SignalService {
 
             Signal signal = getPollSignalFromCache(signalId);
 
-            cache.delete(cache.buildKey("poll", signalId.toString()));
-            cache.delete(cache.buildKey("poll:results", signalId.toString()));
-            cache.delete(cache.buildKey("cache:poll:results", signalId.toString()));
+            cache.delete(cache.buildKey(POLL, signalId.toString()));
+            cache.delete(cache.buildKey(POLL_RESULTS, signalId.toString()));
+            invalidatePollResultsCache(signalId);
 
             asyncDbSync.asyncDeletePollResults(signalId);
             asyncDbSync.asyncDeletePoll(signalId);
@@ -331,7 +331,7 @@ public class SignalServiceImpl implements SignalService {
 
             pollSsePublisher.publish(signal.getSharedWith(), POLL_DELETED, signalId);
 
-            log.info("[SIGNAL][DELETE] signalId={}", signalId);
+            log.info("[POLL][DELETE] signalId={}", signalId);
 
         } finally {
             if (lock.isHeldByCurrentThread()) {
@@ -352,11 +352,9 @@ public class SignalServiceImpl implements SignalService {
 
         pollSchedulerService.cancelTask(scheduledPoll.getId());
         scheduledPollRepository.delete(scheduledPoll);
+        cache.delete(cache.buildKey(SCHEDULED_POLL, signalId.toString()));
 
-        // Delete from cache
-        cache.delete(cache.buildKey("scheduled_poll", signalId.toString()));
-
-        log.info("[SIGNAL][SCHEDULED_DELETE] reservedId={}", signalId);
+        log.info("[POLL][SCHEDULE_DELETE] reservedId={}", signalId);
     }
 
     @Override
@@ -373,39 +371,12 @@ public class SignalServiceImpl implements SignalService {
         }
     }
 
-    private void savePollToCache(Signal signal, Poll poll) {
-        String pollKey = cache.buildKey("poll", signal.getId().toString());
-
-        Map<String, Object> pollData = new HashMap<>();
-        pollData.put("signalId", signal.getId());
-        pollData.put("question", poll.getQuestion());
-        pollData.put("options", poll.getOptions());
-        pollData.put("status", signal.getStatus());
-        pollData.put("createdBy", signal.getCreatedBy());
-        pollData.put("createdOn", signal.getCreatedOn());
-        pollData.put("lastEdited", signal.getLastEdited());
-        pollData.put("anonymous", signal.getAnonymous());
-        pollData.put("endTimestamp", signal.getEndTimestamp());
-        pollData.put("typeOfSignal", signal.getTypeOfSignal());
-        pollData.put("defaultFlag", signal.getDefaultFlag());
-        pollData.put("defaultOption", signal.getDefaultOption());
-        pollData.put("sharedWith", signal.getSharedWith());
-        pollData.put("persistentAlert", signal.getPersistentAlert());
-        pollData.put("labels", signal.getLabels());
-        pollData.put("lastEditedBy", signal.getLastEditedBy());
-
-        cache.hSetAll(pollKey, pollData, cache.getPollTtl());
-
-        for (String userEmail : signal.getSharedWith()) {
-            String userKey = cache.buildKey("user:polls", userEmail);
-            cache.addToSortedSet(userKey, signal.getId(),
-                    signal.getCreatedOn().toEpochMilli(), cache.getPollTtl());
-        }
+    private void invalidatePollResultsCache(Long signalId) {
+        cache.delete(cache.buildKey(POLL_RESULTS_CACHED, signalId.toString()));
     }
 
     private void saveVoteToCache(PollResult result) {
-        String voteKey = cache.buildKey("poll:results",
-                result.getId().getSignalId().toString());
+        String voteKey = cache.buildKey(POLL_RESULTS, result.getId().getSignalId().toString());
 
         Map<String, Object> voteData = new HashMap<>();
         voteData.put("selectedOption", result.getSelectedOption());
@@ -417,7 +388,7 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private Signal getPollSignalFromCache(Long signalId) {
-        String key = cache.buildKey("poll", signalId.toString());
+        String key = cache.buildKey(POLL, signalId.toString());
         Map<String, Object> data = cache.hGetAll(key);
 
         if (data.isEmpty()) {
@@ -428,28 +399,28 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private Signal getActivePollSignalFromCache(Long signalId, String userEmail) {
-        Signal s = getPollSignalFromCache(signalId);
+        Signal signal = getPollSignalFromCache(signalId);
 
-        if (!ACTIVE.equals(s.getStatus())) {
+        if (!ACTIVE.equals(signal.getStatus())) {
             throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
         }
-        if (!Arrays.asList(s.getSharedWith()).contains(userEmail)) {
+        if (!Arrays.asList(signal.getSharedWith()).contains(userEmail)) {
             throw new CustomException("User not assigned", HttpStatus.BAD_REQUEST);
         }
-        return s;
+        return signal;
     }
 
     private Signal getEditablePollSignalFromCache(Long signalId) {
-        Signal s = getPollSignalFromCache(signalId);
+        Signal signal = getPollSignalFromCache(signalId);
 
-        if (!ACTIVE.equals(s.getStatus())) {
+        if (!ACTIVE.equals(signal.getStatus())) {
             throw new CustomException("Poll completed", HttpStatus.BAD_REQUEST);
         }
-        return s;
+        return signal;
     }
 
     private Poll getPollFromCache(Long signalId) {
-        String key = cache.buildKey("poll", signalId.toString());
+        String key = cache.buildKey(POLL, signalId.toString());
         Map<String, Object> data = cache.hGetAll(key);
 
         if (data.isEmpty()) {
@@ -464,7 +435,7 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private List<PollResult> getVotesFromCache(Long signalId) {
-        String key = cache.buildKey("poll:results", signalId.toString());
+        String key = cache.buildKey(POLL_RESULTS, signalId.toString());
         Map<String, Object> votes = cache.hGetAll(key);
 
         if (votes.isEmpty()) {
@@ -489,17 +460,17 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private Signal getPollSignalFromDB(Long signalId) {
-        Signal s = signalRepository.findById(signalId)
+        Signal signal = signalRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
 
-        if (!POLL.equalsIgnoreCase(s.getTypeOfSignal())) {
+        if (!com.sentinel.backend.constant.Constants.POLL.equalsIgnoreCase(signal.getTypeOfSignal())) {
             throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
         }
 
         Poll poll = getPollFromDB(signalId);
-        savePollToCache(s, poll);
+        pollCacheHelper.savePollToCache(signal, poll);
 
-        return s;
+        return signal;
     }
 
     private Poll getPollFromDB(Long signalId) {
@@ -512,59 +483,59 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private Signal mapToSignal(Map<String, Object> data) {
-        Signal s = new Signal();
-        s.setId(((Number) data.get("signalId")).longValue());
-        s.setCreatedBy((String) data.get("createdBy"));
-        s.setCreatedOn((Instant) data.get("createdOn"));
-        s.setLastEdited((Instant) data.get("lastEdited"));
-        s.setAnonymous((Boolean) data.get("anonymous"));
-        s.setEndTimestamp((Instant) data.get("endTimestamp"));
-        s.setTypeOfSignal((String) data.get("typeOfSignal"));
-        s.setDefaultFlag((Boolean) data.get("defaultFlag"));
-        s.setDefaultOption((String) data.get("defaultOption"));
-        s.setSharedWith((String[]) data.get("sharedWith"));
-        s.setStatus((String) data.get("status"));
-        s.setLastEditedBy((String) data.get("lastEditedBy"));
-        s.setPersistentAlert((Boolean) data.get("persistentAlert"));
-        s.setLabels((String[]) data.get("labels"));
-        return s;
+        Signal signal = new Signal();
+        signal.setId(((Number) data.get("signalId")).longValue());
+        signal.setCreatedBy((String) data.get("createdBy"));
+        signal.setCreatedOn((Instant) data.get("createdOn"));
+        signal.setLastEdited((Instant) data.get("lastEdited"));
+        signal.setAnonymous((Boolean) data.get("anonymous"));
+        signal.setEndTimestamp((Instant) data.get("endTimestamp"));
+        signal.setTypeOfSignal((String) data.get("typeOfSignal"));
+        signal.setDefaultFlag((Boolean) data.get("defaultFlag"));
+        signal.setDefaultOption((String) data.get("defaultOption"));
+        signal.setSharedWith((String[]) data.get("sharedWith"));
+        signal.setStatus((String) data.get("status"));
+        signal.setLastEditedBy((String) data.get("lastEditedBy"));
+        signal.setPersistentAlert((Boolean) data.get("persistentAlert"));
+        signal.setLabels((String[]) data.get("labels"));
+        return signal;
     }
 
     private Signal buildSignal(PollCreateDTO dto) {
-        Signal s = new Signal();
-        s.setCreatedBy(dto.getCreatedBy());
-        s.setAnonymous(dto.getAnonymous());
-        s.setTypeOfSignal(POLL);
-        s.setSharedWith(dto.getSharedWith());
-        s.setDefaultFlag(dto.getDefaultFlag());
-        s.setDefaultOption(dto.getDefaultOption());
-        s.setEndTimestamp(dto.getEndTimestampUtc());
-        s.setStatus(ACTIVE);
-        s.setPersistentAlert(dto.getPersistentAlert());
-        s.setLabels(dto.getLabels());
-        s.setCreatedOn(Instant.now());
-        return s;
+        Signal signal = new Signal();
+        signal.setCreatedBy(dto.getCreatedBy());
+        signal.setAnonymous(dto.getAnonymous());
+        signal.setTypeOfSignal(com.sentinel.backend.constant.Constants.POLL);
+        signal.setSharedWith(dto.getSharedWith());
+        signal.setDefaultFlag(dto.getDefaultFlag());
+        signal.setDefaultOption(dto.getDefaultOption());
+        signal.setEndTimestamp(dto.getEndTimestampUtc());
+        signal.setStatus(ACTIVE);
+        signal.setPersistentAlert(dto.getPersistentAlert());
+        signal.setLabels(dto.getLabels());
+        signal.setCreatedOn(Instant.now());
+        return signal;
     }
 
     private ScheduledPoll buildScheduledPoll(PollCreateDTO dto) {
-        ScheduledPoll sp = new ScheduledPoll();
-        sp.setQuestion(dto.getQuestion());
-        sp.setOptions(dto.getOptions());
-        sp.setCreatedBy(dto.getCreatedBy());
-        sp.setAnonymous(dto.getAnonymous());
-        sp.setSharedWith(dto.getSharedWith());
-        sp.setDefaultFlag(dto.getDefaultFlag());
-        sp.setDefaultOption(dto.getDefaultOption());
-        sp.setScheduledTime(dto.getScheduledTime());
-        sp.setEndTimestamp(dto.getEndTimestampUtc());
-        sp.setPersistentAlert(dto.getPersistentAlert());
-        sp.setLabels(dto.getLabels());
-        return sp;
+        ScheduledPoll scheduledPoll = new ScheduledPoll();
+        scheduledPoll.setQuestion(dto.getQuestion());
+        scheduledPoll.setOptions(dto.getOptions());
+        scheduledPoll.setCreatedBy(dto.getCreatedBy());
+        scheduledPoll.setAnonymous(dto.getAnonymous());
+        scheduledPoll.setSharedWith(dto.getSharedWith());
+        scheduledPoll.setDefaultFlag(dto.getDefaultFlag());
+        scheduledPoll.setDefaultOption(dto.getDefaultOption());
+        scheduledPoll.setScheduledTime(dto.getScheduledTime());
+        scheduledPoll.setEndTimestamp(dto.getEndTimestampUtc());
+        scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
+        scheduledPoll.setLabels(dto.getLabels());
+        return scheduledPoll;
     }
 
     private void handleRepublishOrUnshare(PollEditDTO dto, Signal signal) {
         if (Boolean.TRUE.equals(dto.getRepublish())) {
-            String votesKey = cache.buildKey("poll:results", dto.getSignalId().toString());
+            String votesKey = cache.buildKey(POLL_RESULTS, dto.getSignalId().toString());
             cache.delete(votesKey);
             asyncDbSync.asyncDeletePollResults(dto.getSignalId());
             return;
@@ -574,32 +545,20 @@ public class SignalServiceImpl implements SignalService {
         removedUsers.removeAll(Arrays.asList(dto.getSharedWith()));
 
         if (!removedUsers.isEmpty()) {
-            String votesKey = cache.buildKey("poll:results", dto.getSignalId().toString());
+            String votesKey = cache.buildKey(POLL_RESULTS, dto.getSignalId().toString());
             for (String user : removedUsers) {
                 cache.hSet(votesKey, user, null);
             }
-            // DB sync
             pollResultRepository.deleteBySignalIdAndUserEmails(dto.getSignalId(), removedUsers);
         }
     }
 
-    private void publish(Signal signal, Poll poll, String event, boolean republish) {
-        PollSsePayload payload = PollSsePayload.builder()
-                .signalId(signal.getId())
-                .question(poll.getQuestion())
-                .options(poll.getOptions())
-                .endTimestamp(signal.getEndTimestamp())
-                .anonymous(signal.getAnonymous())
-                .defaultFlag(signal.getDefaultFlag())
-                .defaultOption(signal.getDefaultOption())
-                .persistentAlert(signal.getPersistentAlert())
-                .createdBy(signal.getCreatedBy())
-                .sharedWith(signal.getSharedWith())
-                .labels(signal.getLabels())
-                .republish(republish)
-                .build();
-
-        pollSsePublisher.publish(signal.getSharedWith(), event, payload);
+    private void publishPollEvent(Signal signal, Poll poll, String event, boolean republish) {
+        pollSsePublisher.publish(
+                signal.getSharedWith(),
+                event,
+                pollCacheHelper.buildPollSsePayload(signal, poll, republish)
+        );
     }
 
     private PollResultDTO buildPollResults(Signal signal, Poll poll, List<PollResult> results) {
@@ -618,26 +577,26 @@ public class SignalServiceImpl implements SignalService {
             optionVotes.put(opt, new ArrayList<>());
         });
 
-        for (PollResult r : results) {
+        for (PollResult result : results) {
             UserVoteDTO vote = new UserVoteDTO(
-                    r.getId().getUserEmail(),
-                    resolveResponseText(r),
-                    r.getTimeOfSubmission()
+                    result.getId().getUserEmail(),
+                    resolveResponseText(result),
+                    result.getTimeOfSubmission()
             );
 
-            if (r.getSelectedOption() != null) {
-                if (!activeOptions.contains(r.getSelectedOption())) {
+            if (result.getSelectedOption() != null) {
+                if (!activeOptions.contains(result.getSelectedOption())) {
                     removedOptions
-                            .computeIfAbsent(r.getSelectedOption(), k -> new ArrayList<>())
+                            .computeIfAbsent(result.getSelectedOption(), k -> new ArrayList<>())
                             .add(vote);
-                    removedOptionCounts.compute(r.getSelectedOption(), (k, v) -> v == null ? 1 : v + 1);
+                    removedOptionCounts.compute(result.getSelectedOption(), (k, v) -> v == null ? 1 : v + 1);
                 } else {
-                    optionCounts.compute(r.getSelectedOption(), (k, v) -> v + 1);
-                    optionVotes.get(r.getSelectedOption()).add(vote);
+                    optionCounts.compute(result.getSelectedOption(), (k, v) -> v + 1);
+                    optionVotes.get(result.getSelectedOption()).add(vote);
                 }
-            } else if (hasText(r.getReason())) {
-                reasonResponses.put(r.getId().getUserEmail(), r.getReason());
-                anonymousReasonTexts.add(r.getReason());
+            } else if (hasText(result.getReason())) {
+                reasonResponses.put(result.getId().getUserEmail(), result.getReason());
+                anonymousReasonTexts.add(result.getReason());
             } else {
                 defaultResponses.add(vote);
             }
@@ -684,9 +643,9 @@ public class SignalServiceImpl implements SignalService {
         return dto;
     }
 
-    private String resolveResponseText(PollResult r) {
-        if (r.getSelectedOption() != null) return r.getSelectedOption();
-        if (r.getDefaultResponse() != null) return r.getDefaultResponse();
-        return r.getReason();
+    private String resolveResponseText(PollResult result) {
+        if (result.getSelectedOption() != null) return result.getSelectedOption();
+        if (result.getDefaultResponse() != null) return result.getDefaultResponse();
+        return result.getReason();
     }
 }

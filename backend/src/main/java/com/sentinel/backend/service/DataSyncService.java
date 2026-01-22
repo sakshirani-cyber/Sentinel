@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.List;
 
-import static com.sentinel.backend.constant.Constants.DATA_SYNC;
+import static com.sentinel.backend.constant.CacheKeys.DATA_SYNC;
 
 @Service
 @RequiredArgsConstructor
@@ -25,51 +25,39 @@ public class DataSyncService {
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
 
     public void syncAndPublish(String userEmail) {
+        long start = System.currentTimeMillis();
 
-        long startTime = System.currentTimeMillis();
-
-        log.info("[SERVICE][DATA_SYNC] Data sync triggered | userEmail={}", userEmail);
-
-        String cacheKey = cache.buildKey("data_sync", userEmail);
+        String cacheKey = cache.buildKey(DATA_SYNC, userEmail);
         List<DataSyncDTO> result = cache.get(cacheKey,
                 new com.fasterxml.jackson.core.type.TypeReference<List<DataSyncDTO>>() {});
 
         if (result != null) {
-            log.info("[SERVICE][DATA_SYNC][CACHE_HIT] Using cached data | userEmail={} | recordCount={} | durationMs={}",
-                    userEmail, result.size(), System.currentTimeMillis() - startTime);
+            log.info("[DATA_SYNC][CACHE_HIT] userEmail={} | recordCount={} | durationMs={}",
+                    userEmail, result.size(), System.currentTimeMillis() - start);
 
-            pollSsePublisher.publish(new String[]{userEmail}, DATA_SYNC, result);
+            pollSsePublisher.publish(new String[]{userEmail}, com.sentinel.backend.constant.Constants.DATA_SYNC, result);
             return;
         }
 
-        log.info("[SERVICE][DATA_SYNC][CACHE_MISS] Fetching from database | userEmail={}", userEmail);
+        log.debug("[DATA_SYNC][CACHE_MISS] userEmail={}", userEmail);
 
         long dbStart = System.currentTimeMillis();
         result = dataSyncRepository.syncData(userEmail);
         long dbDuration = System.currentTimeMillis() - dbStart;
 
-        log.info("[SERVICE][DATA_SYNC][DB_FETCH] Database fetch completed | userEmail={} | " +
-                        "recordCount={} | dbDurationMs={}",
-                userEmail, result != null ? result.size() : 0, dbDuration);
-
         if (result != null && !result.isEmpty()) {
             cache.set(cacheKey, result, CACHE_TTL);
-            log.debug("[SERVICE][DATA_SYNC][CACHE_SET] Cached result | userEmail={} | ttl={}min",
-                    userEmail, CACHE_TTL.toMinutes());
         }
 
-        pollSsePublisher.publish(new String[]{userEmail}, DATA_SYNC, result);
+        pollSsePublisher.publish(new String[]{userEmail}, com.sentinel.backend.constant.Constants.DATA_SYNC, result);
 
-        log.info("[SERVICE][DATA_SYNC] Data sync completed | userEmail={} | recordCount={} | " +
-                        "totalDurationMs={} | dbDurationMs={}",
-                userEmail, result != null ? result.size() : 0,
-                System.currentTimeMillis() - startTime, dbDuration);
+        log.info("[DATA_SYNC] userEmail={} | recordCount={} | dbDurationMs={} | totalDurationMs={}",
+                userEmail, result != null ? result.size() : 0, dbDuration, System.currentTimeMillis() - start);
     }
 
     public void invalidateCache(String userEmail) {
-        String cacheKey = cache.buildKey("data_sync", userEmail);
-        cache.delete(cacheKey);
-        log.debug("[SERVICE][DATA_SYNC][CACHE_INVALIDATE] Cache invalidated | userEmail={}", userEmail);
+        cache.delete(cache.buildKey(DATA_SYNC, userEmail));
+        log.debug("[DATA_SYNC][CACHE_INVALIDATE] userEmail={}", userEmail);
     }
 
     public void invalidateCache(String[] userEmails) {
@@ -81,7 +69,6 @@ public class DataSyncService {
             invalidateCache(userEmail);
         }
 
-        log.debug("[SERVICE][DATA_SYNC][CACHE_INVALIDATE] Cache invalidated for {} users",
-                userEmails.length);
+        log.debug("[DATA_SYNC][CACHE_INVALIDATE] userCount={}", userEmails.length);
     }
 }
