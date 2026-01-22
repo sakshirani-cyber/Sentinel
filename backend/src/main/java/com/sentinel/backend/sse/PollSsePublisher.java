@@ -104,7 +104,7 @@ public class PollSsePublisher {
 
     public long getPendingEventCount(String userEmail) {
         String eventsKey = cache.buildKey("sse:events", userEmail);
-        List<?> events = cache.getList(eventsKey, Object.class);
+        List<Object> events = cache.getList(eventsKey, Object.class);
         return events != null ? events.size() : 0;
     }
 }

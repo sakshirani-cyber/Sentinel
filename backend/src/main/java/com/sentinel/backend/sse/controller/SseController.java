@@ -1,5 +1,6 @@
 package com.sentinel.backend.sse.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.sentinel.backend.cache.RedisCacheService;
 import com.sentinel.backend.sse.SseEmitterRegistry;
 import com.sentinel.backend.sse.dto.SseEvent;
@@ -73,7 +74,7 @@ public class SseController {
     private void deliverPendingEvents(String userEmail, SseEmitter emitter) {
 
         String eventsKey = cache.buildKey("sse:events", userEmail);
-        List<SseEvent<?>> events = cache.getList(eventsKey, SseEvent.class);
+        List<SseEvent<Object>> events = cache.getList(eventsKey, new TypeReference<List<SseEvent<Object>>>() {});
 
         if (events == null || events.isEmpty()) {
             log.debug("[SSE][DELIVER] No pending events found | userEmail={}", userEmail);
@@ -89,7 +90,7 @@ public class SseController {
 
         int deliveredCount = 0;
 
-        for (SseEvent<?> event : events) {
+        for (SseEvent<Object> event : events) {
             try {
                 emitter.send(
                         SseEmitter.event()

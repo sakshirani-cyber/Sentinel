@@ -49,8 +49,8 @@ public class RedisConfiguration {
     @Bean(destroyMethod = "shutdown")
     public ClientResources clientResources() {
         return DefaultClientResources.builder()
-                .ioThreadPoolSize(4)
-                .computationThreadPoolSize(4)
+                .ioThreadPoolSize(16)
+                .computationThreadPoolSize(8)
                 .build();
     }
 
