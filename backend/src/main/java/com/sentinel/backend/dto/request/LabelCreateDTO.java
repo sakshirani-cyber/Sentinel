@@ -22,17 +22,9 @@ public class LabelCreateDTO {
     @Size(max = 100, message = "Label cannot exceed 100 characters")
     private String label;
 
-
     @NotBlank(message = "Description is required")
     @Size(max = 500, message = "Description cannot exceed 500 characters")
     private String description;
-
-    @NotBlank(message = "Color is required")
-    @Pattern(
-            regexp = "^#[0-9A-Fa-f]{6}$",
-            message = "Color must be a valid hex value (e.g. #FF0000)"
-    )
-    private String color;
 
     private Long localId;
 }

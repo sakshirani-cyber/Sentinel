@@ -36,7 +36,6 @@ public class LabelServiceImpl implements LabelService {
         Label entity = new Label();
         entity.setLabel(normalizedLabel);
         entity.setDescription(NormalizationUtils.trimToNull(dto.getDescription()));
-        entity.setColor(dto.getColor().toUpperCase());
 
         labelRepository.save(entity);
 
@@ -54,7 +53,6 @@ public class LabelServiceImpl implements LabelService {
                         label.getId(),
                         label.getLabel(),
                         label.getDescription(),
-                        label.getColor(),
                         label.getCreatedAt(),
                         label.getEditedAt()
                 ))
@@ -72,17 +70,11 @@ public class LabelServiceImpl implements LabelService {
                 .orElseThrow(() -> new CustomException("Label not found", HttpStatus.NOT_FOUND));
 
         String newDescription = NormalizationUtils.trimToNull(dto.getDescription());
-        String newColor = dto.getColor().toUpperCase();
 
         boolean changed = false;
 
         if (!newDescription.equals(entity.getDescription())) {
             entity.setDescription(newDescription);
-            changed = true;
-        }
-
-        if (!newColor.equals(entity.getColor())) {
-            entity.setColor(newColor);
             changed = true;
         }
 

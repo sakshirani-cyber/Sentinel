@@ -16,7 +16,6 @@ public class LabelResponseDTO {
     private Long id;
     private String label;
     private String description;
-    private String color;
     private Instant createdAt;
     private Instant editedAt;
 }

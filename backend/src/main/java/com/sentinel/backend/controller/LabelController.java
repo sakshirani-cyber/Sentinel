@@ -32,7 +32,7 @@ public class LabelController {
     public ResponseEntity<ApiResponse<CreateLabelResponse>> createLabel(@RequestBody @Valid LabelCreateDTO dto) {
         long start = System.currentTimeMillis();
 
-        log.info("[API][LABEL][CREATE] label={} | color={}", dto.getLabel(), dto.getColor());
+        log.info("[API][LABEL][CREATE] label={}", dto.getLabel());
 
         CreateLabelResponse response = labelService.createLabel(dto);
 
