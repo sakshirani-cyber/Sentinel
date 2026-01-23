@@ -41,12 +41,12 @@ export default function AuthPage({ onLogin, error, success }: AuthPageProps) {
                 <div className="hidden md:block">
                     <div className="space-y-6">
                         <div className="flex items-center gap-4 mb-8">
-                            <div className="relative shadow-2xl rounded-full ring-4 ring-ribbit-dry-sage/30">
-                                <RibbitLogo size={80} />
+                            <div className="relative">
+                                <RibbitLogo size={80} variant="animated" />
                             </div>
                             <div>
-                                <h1 className="text-3xl font-bold text-ribbit-hunter-green tracking-tight">Ribbit</h1>
-                                <p className="text-ribbit-pine-teal/70">Signal with Nature's Clarity</p>
+                                <h1 className="text-3xl font-bold text-foreground tracking-tight">Ribbit</h1>
+                                <p className="text-foreground-secondary">Signal with Nature's Clarity</p>
                             </div>
                         </div>
 
@@ -99,12 +99,10 @@ export default function AuthPage({ onLogin, error, success }: AuthPageProps) {
                         {/* Header */}
                         <div className="relative p-8 border-b border-ribbit-fern/20 bg-ribbit-dry-sage/30">
                             <div className="md:hidden flex items-center gap-3 mb-6">
-                                <div className="shadow-lg rounded-full ring-2 ring-ribbit-fern/30">
-                                    <RibbitLogo size={56} />
-                                </div>
+                                <RibbitLogo size={56} variant="animated" />
                                 <div>
-                                    <h1 className="text-2xl font-bold text-ribbit-hunter-green">Ribbit</h1>
-                                    <p className="text-sm text-ribbit-pine-teal/70">Signal Management</p>
+                                    <h1 className="text-2xl font-bold text-foreground">Ribbit</h1>
+                                    <p className="text-sm text-foreground-secondary">Signal Management</p>
                                 </div>
                             </div>
                             <h2 className="text-xl font-semibold text-ribbit-hunter-green mb-2">Welcome back</h2>

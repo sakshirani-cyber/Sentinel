@@ -196,8 +196,8 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ribbit-dust-grey dark:bg-ribbit-pine-teal">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-ribbit-fern/30 border-t-ribbit-fern rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-ribbit-pine-teal dark:text-ribbit-dust-grey font-medium">Loading Ribbit...</p>
+          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-foreground-secondary font-medium">Loading Ribbit...</p>
         </div>
       </div>
     );
