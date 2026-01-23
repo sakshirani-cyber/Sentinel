@@ -44,22 +44,22 @@ export default function SchedulingStep({ formData, updateFormData, onValidationC
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/20 flex items-center justify-center mx-auto mb-4">
-          <Calendar className="w-8 h-8 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+        <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center mx-auto mb-4">
+          <Calendar className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           When is the deadline?
         </h2>
-        <p className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-foreground-secondary">
           Set when responses are due and optionally schedule for later
         </p>
       </div>
 
       {/* Deadline Input */}
       <div className="space-y-3">
-        <label className="flex items-center gap-2 text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
-          <Clock className="w-4 h-4" />
-          Response Deadline <span className="text-red-500">*</span>
+        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <Clock className="w-4 h-4 text-primary" />
+          Response Deadline <span className="text-destructive">*</span>
         </label>
         <input
           type="datetime-local"
@@ -68,23 +68,23 @@ export default function SchedulingStep({ formData, updateFormData, onValidationC
           min={getMinDateTime()}
           className={`
             w-full px-4 py-3 rounded-xl
-            bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30
+            bg-input-background dark:bg-input
             border-2 transition-all duration-200
-            text-ribbit-pine-teal dark:text-ribbit-dust-grey
+            text-foreground
             focus:outline-none focus:ring-4
             ${!isDeadlineValid() && formData.deadline
-              ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-              : 'border-ribbit-fern/30 dark:border-ribbit-dry-sage/20 focus:border-ribbit-fern focus:ring-ribbit-fern/20'
+              ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
+              : 'border-border hover:border-foreground-muted focus:border-primary focus:ring-ring'
             }
           `}
         />
         {!isDeadlineValid() && formData.deadline && (
-          <p className="flex items-center gap-1.5 text-sm text-red-500">
+          <p className="flex items-center gap-1.5 text-sm text-destructive">
             <AlertCircle className="w-4 h-4" />
             Deadline must be in the future
           </p>
         )}
-        <p className="text-xs text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
+        <p className="text-xs text-foreground-muted">
           Reminders will be sent at 60, 30, 15, and 1 minute before deadline
         </p>
       </div>
@@ -130,10 +130,8 @@ export default function SchedulingStep({ formData, updateFormData, onValidationC
             ${formData.isScheduled ? 'bg-ribbit-fern' : 'bg-ribbit-dry-sage/50 dark:bg-ribbit-hunter-green/50'}
           `}>
             <div
-              className={`
-                absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform
-                ${formData.isScheduled ? 'translate-x-6' : 'translate-x-1'}
-              `}
+              className="absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+              style={{ transform: formData.isScheduled ? 'translateX(1.5rem)' : 'translateX(0.25rem)' }}
             />
           </div>
         </div>

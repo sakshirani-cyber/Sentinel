@@ -42,7 +42,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
             <SettingsRow
               label="Role"
               value={
-                <span className={`font-medium ${user.isPublisher ? 'text-ribbit-fern' : ''}`}>
+                <span className={`font-medium ${user.isPublisher ? 'text-primary' : ''}`}>
                   {user.isPublisher ? 'Publisher' : 'Consumer'}
                 </span>
               }
@@ -72,11 +72,11 @@ export default function SettingsPage({ user }: SettingsPageProps) {
                   }
                 }}
                 className={`
-                  px-4 py-2 rounded-lg font-medium text-sm
+                  px-4 py-2.5 rounded-xl font-medium text-sm
                   transition-all duration-200
                   ${theme === t
-                    ? 'bg-ribbit-hunter-green text-ribbit-dust-grey shadow-md'
-                    : 'bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/30 text-ribbit-pine-teal dark:text-ribbit-dust-grey hover:bg-ribbit-dry-sage/50 dark:hover:bg-ribbit-hunter-green/50'
+                    ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_15px_rgba(0,255,194,0.3)]'
+                    : 'bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary border border-border'
                   }
                 `}
               >
@@ -117,7 +117,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
           title="Privacy"
           description="Privacy and data settings"
         >
-          <p className="text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+          <p className="text-sm text-foreground-secondary">
             Your data is stored locally on this device. No personal information is shared with external services.
           </p>
         </SettingsSection>
@@ -150,17 +150,17 @@ interface SettingsSectionProps {
 
 function SettingsSection({ icon: Icon, title, description, children }: SettingsSectionProps) {
   return (
-    <div className="bg-ribbit-dry-sage/40 dark:bg-ribbit-hunter-green/40 backdrop-blur-sm border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 rounded-xl p-6">
+    <div className="bg-card dark:bg-card backdrop-blur-sm border border-border rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:border-primary/30">
       {/* Header */}
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-10 h-10 rounded-lg bg-ribbit-hunter-green/10 dark:bg-ribbit-fern/20 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+      <div className="flex items-start gap-4 mb-5">
+        <div className="w-11 h-11 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+          <h3 className="font-semibold text-foreground text-lg">
             {title}
           </h3>
-          <p className="text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+          <p className="text-sm text-foreground-secondary">
             {description}
           </p>
         </div>
@@ -174,9 +174,9 @@ function SettingsSection({ icon: Icon, title, description, children }: SettingsS
 
 function SettingsRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b border-ribbit-fern/10 dark:border-ribbit-dry-sage/10 last:border-0">
-      <span className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">{label}</span>
-      <span className="font-medium text-ribbit-pine-teal dark:text-ribbit-dust-grey">{value}</span>
+    <div className="flex justify-between items-center py-3 border-b border-border last:border-0">
+      <span className="text-foreground-secondary">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }
@@ -193,30 +193,27 @@ function ToggleRow({
   const [enabled, setEnabled] = useState(defaultEnabled);
 
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-3">
       <div>
-        <p className="font-medium text-ribbit-pine-teal dark:text-ribbit-dust-grey">{label}</p>
-        <p className="text-sm text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">{description}</p>
+        <p className="font-medium text-foreground">{label}</p>
+        <p className="text-sm text-foreground-muted">{description}</p>
       </div>
       <button
         onClick={() => setEnabled(!enabled)}
         className={`
           relative inline-flex h-6 w-11 items-center rounded-full
-          transition-colors duration-200
+          transition-all duration-200
           ${enabled 
-            ? 'bg-ribbit-hunter-green' 
-            : 'bg-ribbit-dust-grey dark:bg-ribbit-pine-teal border border-ribbit-fern/30'
+            ? 'bg-primary dark:shadow-[0_0_10px_rgba(0,255,194,0.4)]' 
+            : 'bg-muted'
           }
         `}
         role="switch"
         aria-checked={enabled}
       >
         <span
-          className={`
-            inline-block h-4 w-4 transform rounded-full bg-white shadow-md
-            transition-transform duration-200
-            ${enabled ? 'translate-x-6' : 'translate-x-1'}
-          `}
+          className="inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200"
+          style={{ transform: enabled ? 'translateX(1.25rem)' : 'translateX(0.125rem)' }}
         />
       </button>
     </div>

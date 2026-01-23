@@ -19,6 +19,17 @@ export interface LayoutContextType {
   closeSidebar: () => void;
   toggleSidebar: () => void;
   
+  // Sidebar collapsed state (for desktop) - always collapsed by default
+  isSidebarCollapsed: boolean;
+  toggleSidebarCollapsed: () => void;
+  
+  // Sidebar hover state - expands sidebar on hover
+  isSidebarHovered: boolean;
+  setIsSidebarHovered: (hovered: boolean) => void;
+  
+  // Computed: sidebar should show expanded (hovered or pinned open)
+  isSidebarExpanded: boolean;
+  
   // Create Signal panel state
   isCreatePanelOpen: boolean;
   openCreatePanel: () => void;
@@ -49,6 +60,20 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
   // Sidebar state (primarily for mobile)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
+  // Sidebar collapsed state (for desktop - persisted in localStorage)
+  // When true, sidebar stays expanded always (pinned open)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    // Default to collapsed (true) - show only icons
+    return saved !== 'false';
+  });
+  
+  // Sidebar hover state - expands sidebar temporarily on hover
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  
+  // Computed: sidebar should show expanded content when hovered OR when pinned open (not collapsed)
+  const isSidebarExpanded = isSidebarHovered || !isSidebarCollapsed;
+  
   // Create Signal panel state
   const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
   const [panelHasChanges, setPanelHasChanges] = useState(false);
@@ -57,6 +82,15 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
   const openSidebar = useCallback(() => setIsSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setIsSidebarOpen(false), []);
   const toggleSidebar = useCallback(() => setIsSidebarOpen(prev => !prev), []);
+  
+  // Sidebar collapsed handler (persists to localStorage)
+  const toggleSidebarCollapsed = useCallback(() => {
+    setIsSidebarCollapsed(prev => {
+      const newValue = !prev;
+      localStorage.setItem('sidebar-collapsed', String(newValue));
+      return newValue;
+    });
+  }, []);
 
   // Create Panel handlers
   const openCreatePanel = useCallback(() => {
@@ -83,6 +117,11 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
     openSidebar,
     closeSidebar,
     toggleSidebar,
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
+    isSidebarHovered,
+    setIsSidebarHovered,
+    isSidebarExpanded,
     isCreatePanelOpen,
     openCreatePanel,
     closeCreatePanel,

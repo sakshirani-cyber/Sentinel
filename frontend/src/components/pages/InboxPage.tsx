@@ -11,7 +11,9 @@ interface InboxPageProps {
   polls: Poll[];
   responses: Response[];
   drafts: Record<string, string>;
-  onSelectPoll: (poll: Poll) => void;
+  onSubmitResponse: (pollId: string, value: string) => Promise<void>;
+  onSaveDraft: (pollId: string, value: string) => void;
+  onAnalytics?: (poll: Poll) => void;
 }
 
 /**
@@ -27,7 +29,9 @@ export default function InboxPage({
   polls,
   responses,
   drafts,
-  onSelectPoll,
+  onSubmitResponse,
+  onSaveDraft,
+  onAnalytics,
 }: InboxPageProps) {
   // Filter state
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -205,12 +209,17 @@ export default function InboxPage({
           polls={filteredPolls}
           responses={responses}
           user={user}
+          onAnalytics={onAnalytics}
         />
       ) : (
         <IncompletePolls
           polls={filteredPolls}
           drafts={drafts}
-          onSelectPoll={onSelectPoll}
+          user={user}
+          responses={responses}
+          onSubmitResponse={onSubmitResponse}
+          onSaveDraft={onSaveDraft}
+          onAnalytics={onAnalytics}
         />
       )}
     </div>

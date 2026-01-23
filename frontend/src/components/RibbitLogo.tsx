@@ -3,15 +3,24 @@ import { useEffect, useRef, useState } from 'react';
 interface RibbitLogoProps {
   size?: number;
   className?: string;
+  variant?: 'default' | 'icon' | 'monochrome';
 }
 
 /**
  * RibbitLogo Component
  * 
- * A minimalist, geometric frog logo with eyes that follow the cursor.
- * Uses canvas for smooth animation.
+ * A geometric, modern frog logo with:
+ * - Hexagonal/tessellated abstract design
+ * - Clean layered depth effect
+ * - Gradient using Deep Teal to Charcoal Blue
+ * - Subtle reflection/shine effect
+ * - Eyes that follow the cursor
  */
-export default function RibbitLogo({ size = 80, className = '' }: RibbitLogoProps) {
+export default function RibbitLogo({ 
+  size = 80, 
+  className = '',
+  variant = 'default'
+}: RibbitLogoProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const animationRef = useRef<number>();
@@ -26,7 +35,7 @@ export default function RibbitLogo({ size = 80, className = '' }: RibbitLogoProp
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Draw the frog logo
+  // Draw the geometric frog logo
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -44,17 +53,17 @@ export default function RibbitLogo({ size = 80, className = '' }: RibbitLogoProp
       // Clear canvas
       ctx.clearRect(0, 0, size, size);
 
-      // Earthy Forest Color Palette
-      const fern = '#588157';        // Primary body
-      const hunterGreen = '#3a5a40'; // Darker accent
-      const drySage = '#a3b18a';     // Highlight / light accent
-      const pineTeal = '#344e41';    // Pupils, dark elements
-      const dustGrey = '#dad7cd';    // Eye whites (warm)
-      const white = '#ffffff';       // Highlights
+      // Neon Marsh Color Palette
+      const isDark = document.documentElement.classList.contains('dark');
+      const mint = isDark ? '#151515' : '#F0FDFA';           // Lightest
+      const teal = isDark ? '#00FFC2' : '#0D9488';           // Primary
+      const tealDark = isDark ? '#33FFCE' : '#0F766E';       // Primary hover
+      const slate = isDark ? '#FAFAFA' : '#0F172A';          // Text
+      const charcoal = isDark ? '#0A0A0A' : '#0F172A';       // Darkest
 
       const centerX = size / 2;
       const centerY = size / 2;
-      const frogRadius = size * 0.42;
+      const baseRadius = size * 0.42;
 
       // Calculate eye direction based on mouse position
       const rect = canvas.getBoundingClientRect();
@@ -67,73 +76,151 @@ export default function RibbitLogo({ size = 80, className = '' }: RibbitLogoProp
       const distance = Math.min(Math.sqrt(dx * dx + dy * dy) / 100, 1);
 
       // Eye movement offset (limited)
-      const maxEyeOffset = size * 0.03;
+      const maxEyeOffset = size * 0.025;
       const eyeOffsetX = Math.cos(angle) * maxEyeOffset * distance;
       const eyeOffsetY = Math.sin(angle) * maxEyeOffset * distance;
 
-      // Draw main frog body with gradient for depth
-      const bodyGradient = ctx.createRadialGradient(
-        centerX - frogRadius * 0.3,
-        centerY - frogRadius * 0.3,
+      // === GEOMETRIC HEXAGONAL BODY ===
+      // Create a hexagonal shape with rounded corners
+      const hexRadius = baseRadius;
+      const hexPoints = 6;
+      const cornerRadius = size * 0.08;
+      
+      // Draw main body with gradient
+      const bodyGradient = ctx.createLinearGradient(
+        centerX - hexRadius,
+        centerY - hexRadius,
+        centerX + hexRadius,
+        centerY + hexRadius
+      );
+      bodyGradient.addColorStop(0, teal);
+      bodyGradient.addColorStop(0.5, tealDark);
+      bodyGradient.addColorStop(1, charcoal);
+
+      // Draw rounded hexagon
+      ctx.beginPath();
+      for (let i = 0; i < hexPoints; i++) {
+        const startAngle = (Math.PI / 6) + (i * Math.PI * 2) / hexPoints;
+        const endAngle = (Math.PI / 6) + ((i + 1) * Math.PI * 2) / hexPoints;
+        
+        const x1 = centerX + hexRadius * Math.cos(startAngle);
+        const y1 = centerY + hexRadius * Math.sin(startAngle);
+        const x2 = centerX + hexRadius * Math.cos(endAngle);
+        const y2 = centerY + hexRadius * Math.sin(endAngle);
+        
+        if (i === 0) {
+          ctx.moveTo(x1, y1);
+        }
+        ctx.lineTo(x2, y2);
+      }
+      ctx.closePath();
+      ctx.fillStyle = bodyGradient;
+      ctx.fill();
+
+      // Inner hexagon layer for depth
+      const innerRadius = hexRadius * 0.85;
+      const innerGradient = ctx.createRadialGradient(
+        centerX - innerRadius * 0.3,
+        centerY - innerRadius * 0.3,
         0,
         centerX,
         centerY,
-        frogRadius
+        innerRadius
       );
-      bodyGradient.addColorStop(0, drySage);
-      bodyGradient.addColorStop(0.5, fern);
-      bodyGradient.addColorStop(1, hunterGreen);
-      
+      innerGradient.addColorStop(0, teal);
+      innerGradient.addColorStop(0.6, tealDark);
+      innerGradient.addColorStop(1, charcoal);
+
       ctx.beginPath();
-      ctx.fillStyle = bodyGradient;
-      ctx.arc(centerX, centerY, frogRadius, 0, Math.PI * 2);
+      for (let i = 0; i < hexPoints; i++) {
+        const startAngle = (Math.PI / 6) + (i * Math.PI * 2) / hexPoints;
+        const x = centerX + innerRadius * Math.cos(startAngle);
+        const y = centerY + innerRadius * Math.sin(startAngle);
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+      ctx.fillStyle = innerGradient;
       ctx.fill();
 
-      // Subtle shine overlay
-      const shineGradient = ctx.createRadialGradient(
-        centerX - frogRadius * 0.4,
-        centerY - frogRadius * 0.4,
-        0,
-        centerX - frogRadius * 0.2,
-        centerY - frogRadius * 0.2,
-        frogRadius * 0.6
+      // === REFLECTION SHINE EFFECT ===
+      const shineGradient = ctx.createLinearGradient(
+        centerX - hexRadius,
+        centerY - hexRadius,
+        centerX + hexRadius * 0.5,
+        centerY + hexRadius * 0.5
       );
       shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-      shineGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      shineGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.1)');
+      shineGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
+      
       ctx.beginPath();
+      ctx.ellipse(
+        centerX - hexRadius * 0.2,
+        centerY - hexRadius * 0.25,
+        hexRadius * 0.5,
+        hexRadius * 0.35,
+        -Math.PI / 4,
+        0,
+        Math.PI * 2
+      );
       ctx.fillStyle = shineGradient;
-      ctx.arc(centerX, centerY, frogRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Eye positions - slightly larger, more prominent
-      const eyeSpacing = size * 0.16;
-      const eyeY = centerY - size * 0.04;
-      const eyeRadius = size * 0.13;
-      const pupilRadius = size * 0.06;
+      // === GEOMETRIC EYES ===
+      const eyeSpacing = size * 0.14;
+      const eyeY = centerY - size * 0.06;
+      const eyeRadius = size * 0.11;
+      const pupilRadius = size * 0.055;
 
-      // Left eye white with subtle shadow
-      ctx.beginPath();
-      ctx.fillStyle = dustGrey;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+      // Eye backgrounds - diamond/rhombus shaped
+      const drawDiamondEye = (cx: number, cy: number, radius: number) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - radius);
+        ctx.lineTo(cx + radius * 0.85, cy);
+        ctx.lineTo(cx, cy + radius);
+        ctx.lineTo(cx - radius * 0.85, cy);
+        ctx.closePath();
+      };
+
+      // Left eye white with shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
       ctx.shadowBlur = 4;
       ctx.shadowOffsetY = 2;
-      ctx.arc(centerX - eyeSpacing, eyeY, eyeRadius, 0, Math.PI * 2);
+      drawDiamondEye(centerX - eyeSpacing, eyeY, eyeRadius);
+      ctx.fillStyle = mint;
       ctx.fill();
-      ctx.shadowColor = 'transparent';
+      ctx.restore();
 
       // Right eye white
-      ctx.beginPath();
-      ctx.fillStyle = dustGrey;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
       ctx.shadowBlur = 4;
       ctx.shadowOffsetY = 2;
-      ctx.arc(centerX + eyeSpacing, eyeY, eyeRadius, 0, Math.PI * 2);
+      drawDiamondEye(centerX + eyeSpacing, eyeY, eyeRadius);
+      ctx.fillStyle = mint;
       ctx.fill();
-      ctx.shadowColor = 'transparent';
+      ctx.restore();
 
-      // Left pupil (follows cursor)
+      // Pupils (follow cursor) - circular for contrast
+      const pupilGradient = ctx.createRadialGradient(
+        centerX - eyeSpacing + eyeOffsetX - pupilRadius * 0.3,
+        eyeY + eyeOffsetY - pupilRadius * 0.3,
+        0,
+        centerX - eyeSpacing + eyeOffsetX,
+        eyeY + eyeOffsetY,
+        pupilRadius
+      );
+      pupilGradient.addColorStop(0, charcoal);
+      pupilGradient.addColorStop(1, '#1a252b');
+
+      // Left pupil
       ctx.beginPath();
-      ctx.fillStyle = pineTeal;
       ctx.arc(
         centerX - eyeSpacing + eyeOffsetX,
         eyeY + eyeOffsetY,
@@ -141,11 +228,22 @@ export default function RibbitLogo({ size = 80, className = '' }: RibbitLogoProp
         0,
         Math.PI * 2
       );
+      ctx.fillStyle = pupilGradient;
       ctx.fill();
 
-      // Right pupil (follows cursor)
+      // Right pupil
+      const pupilGradient2 = ctx.createRadialGradient(
+        centerX + eyeSpacing + eyeOffsetX - pupilRadius * 0.3,
+        eyeY + eyeOffsetY - pupilRadius * 0.3,
+        0,
+        centerX + eyeSpacing + eyeOffsetX,
+        eyeY + eyeOffsetY,
+        pupilRadius
+      );
+      pupilGradient2.addColorStop(0, charcoal);
+      pupilGradient2.addColorStop(1, '#1a252b');
+
       ctx.beginPath();
-      ctx.fillStyle = pineTeal;
       ctx.arc(
         centerX + eyeSpacing + eyeOffsetX,
         eyeY + eyeOffsetY,
@@ -153,80 +251,118 @@ export default function RibbitLogo({ size = 80, className = '' }: RibbitLogoProp
         0,
         Math.PI * 2
       );
+      ctx.fillStyle = pupilGradient2;
       ctx.fill();
 
-      // Eye highlights - larger and more prominent
-      const highlightRadius = size * 0.022;
+      // Eye highlights - sharp geometric
+      const highlightSize = size * 0.018;
+      ctx.fillStyle = '#ffffff';
+      
+      // Left eye highlight
       ctx.beginPath();
-      ctx.fillStyle = white;
       ctx.arc(
-        centerX - eyeSpacing + eyeOffsetX - pupilRadius * 0.35,
-        eyeY + eyeOffsetY - pupilRadius * 0.35,
-        highlightRadius,
+        centerX - eyeSpacing + eyeOffsetX - pupilRadius * 0.3,
+        eyeY + eyeOffsetY - pupilRadius * 0.3,
+        highlightSize,
         0,
         Math.PI * 2
       );
       ctx.fill();
 
+      // Right eye highlight
       ctx.beginPath();
-      ctx.fillStyle = white;
       ctx.arc(
-        centerX + eyeSpacing + eyeOffsetX - pupilRadius * 0.35,
-        eyeY + eyeOffsetY - pupilRadius * 0.35,
-        highlightRadius,
+        centerX + eyeSpacing + eyeOffsetX - pupilRadius * 0.3,
+        eyeY + eyeOffsetY - pupilRadius * 0.3,
+        highlightSize,
         0,
         Math.PI * 2
       );
       ctx.fill();
 
-      // Small secondary highlights
-      const smallHighlightRadius = size * 0.01;
-      ctx.beginPath();
+      // Secondary smaller highlights
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.arc(
-        centerX - eyeSpacing + eyeOffsetX + pupilRadius * 0.3,
-        eyeY + eyeOffsetY + pupilRadius * 0.2,
-        smallHighlightRadius,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.arc(
-        centerX + eyeSpacing + eyeOffsetX + pupilRadius * 0.3,
-        eyeY + eyeOffsetY + pupilRadius * 0.2,
-        smallHighlightRadius,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-
-      // Smile - clean geometric arc
-      ctx.beginPath();
-      ctx.strokeStyle = pineTeal;
-      ctx.lineWidth = size * 0.022;
-      ctx.lineCap = 'round';
-      const smileY = centerY + size * 0.14;
-      const smileWidth = size * 0.1;
-      ctx.arc(centerX, smileY - size * 0.02, smileWidth, 0.15 * Math.PI, 0.85 * Math.PI);
-      ctx.stroke();
-
-      // Nostrils - subtle dots
-      const nostrilY = centerY + size * 0.04;
-      const nostrilSpacing = size * 0.045;
-      const nostrilRadius = size * 0.012;
+      const smallHighlight = size * 0.008;
       
       ctx.beginPath();
-      ctx.fillStyle = pineTeal;
-      ctx.arc(centerX - nostrilSpacing, nostrilY, nostrilRadius, 0, Math.PI * 2);
+      ctx.arc(
+        centerX - eyeSpacing + eyeOffsetX + pupilRadius * 0.25,
+        eyeY + eyeOffsetY + pupilRadius * 0.25,
+        smallHighlight,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
 
       ctx.beginPath();
-      ctx.fillStyle = pineTeal;
-      ctx.arc(centerX + nostrilSpacing, nostrilY, nostrilRadius, 0, Math.PI * 2);
+      ctx.arc(
+        centerX + eyeSpacing + eyeOffsetX + pupilRadius * 0.25,
+        eyeY + eyeOffsetY + pupilRadius * 0.25,
+        smallHighlight,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
+
+      // === GEOMETRIC SMILE ===
+      // Triangular/chevron style smile
+      const smileY = centerY + size * 0.12;
+      const smileWidth = size * 0.08;
+      
+      ctx.beginPath();
+      ctx.strokeStyle = charcoal;
+      ctx.lineWidth = size * 0.02;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      // Draw chevron smile
+      ctx.moveTo(centerX - smileWidth, smileY);
+      ctx.lineTo(centerX, smileY + size * 0.025);
+      ctx.lineTo(centerX + smileWidth, smileY);
+      ctx.stroke();
+
+      // === NOSTRILS - Small triangles ===
+      const nostrilY = centerY + size * 0.02;
+      const nostrilSpacing = size * 0.035;
+      const nostrilSize = size * 0.012;
+      
+      ctx.fillStyle = charcoal;
+      
+      // Left nostril
+      ctx.beginPath();
+      ctx.moveTo(centerX - nostrilSpacing, nostrilY - nostrilSize);
+      ctx.lineTo(centerX - nostrilSpacing + nostrilSize, nostrilY + nostrilSize);
+      ctx.lineTo(centerX - nostrilSpacing - nostrilSize, nostrilY + nostrilSize);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right nostril
+      ctx.beginPath();
+      ctx.moveTo(centerX + nostrilSpacing, nostrilY - nostrilSize);
+      ctx.lineTo(centerX + nostrilSpacing + nostrilSize, nostrilY + nostrilSize);
+      ctx.lineTo(centerX + nostrilSpacing - nostrilSize, nostrilY + nostrilSize);
+      ctx.closePath();
+      ctx.fill();
+
+      // === OUTER GLOW/DEPTH RING ===
+      if (variant !== 'monochrome') {
+        ctx.beginPath();
+        for (let i = 0; i < hexPoints; i++) {
+          const angle = (Math.PI / 6) + (i * Math.PI * 2) / hexPoints;
+          const x = centerX + (hexRadius + size * 0.02) * Math.cos(angle);
+          const y = centerY + (hexRadius + size * 0.02) * Math.sin(angle);
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.closePath();
+        ctx.strokeStyle = isDark ? `rgba(0, 255, 194, 0.3)` : `rgba(13, 148, 136, 0.3)`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     };
 
     draw();
@@ -237,12 +373,12 @@ export default function RibbitLogo({ size = 80, className = '' }: RibbitLogoProp
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [size, mousePos]);
+  }, [size, mousePos, variant]);
 
   return (
     <canvas
       ref={canvasRef}
-      className={className}
+      className={`transition-transform duration-200 hover:scale-105 ${className}`}
       style={{
         width: size,
         height: size,

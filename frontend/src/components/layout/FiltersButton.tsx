@@ -114,14 +114,14 @@ export default function FiltersButton({
         onClick={() => setIsOpen(!isOpen)}
         className={`
           flex items-center gap-2 px-3 py-2.5
-          border rounded-lg
-          text-sm
-          focus:outline-none focus:ring-2 focus:ring-ribbit-fern/40 focus:border-ribbit-fern
+          border rounded-xl
+          text-sm font-medium
+          focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary
           transition-all duration-200
           hover:scale-[1.02] active:scale-[0.98]
           ${activeCount > 0
-            ? 'bg-ribbit-hunter-green/20 border-ribbit-hunter-green text-ribbit-hunter-green shadow-sm'
-            : 'bg-ribbit-dry-sage/40 backdrop-blur-sm border-ribbit-fern/30 text-ribbit-pine-teal hover:bg-ribbit-dry-sage/60 dark:bg-ribbit-hunter-green/30 dark:text-ribbit-dust-grey'
+            ? 'bg-primary/10 border-primary text-primary shadow-sm dark:bg-primary/15'
+            : 'bg-secondary border-border text-foreground hover:bg-primary/5 hover:border-primary/30 dark:hover:bg-primary/10'
           }
         `}
         aria-expanded={isOpen}
@@ -129,7 +129,7 @@ export default function FiltersButton({
         <Filter className="w-4 h-4" />
         <span>Filters</span>
         {activeCount > 0 && (
-          <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-ribbit-hunter-green text-ribbit-dust-grey text-xs font-semibold">
+          <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold dark:shadow-[0_0_8px_rgba(0,255,194,0.4)]">
             {activeCount}
           </span>
         )}
@@ -137,13 +137,13 @@ export default function FiltersButton({
 
       {/* Filter Panel - Glassmorphism */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-ribbit-dry-sage/90 backdrop-blur-md rounded-xl shadow-xl border border-ribbit-fern/30 overflow-hidden z-50 animate-fade-in">
+        <div className="absolute right-0 mt-2 w-80 bg-popover/95 dark:bg-popover/95 backdrop-blur-xl rounded-2xl shadow-xl border border-border overflow-hidden z-50 animate-fade-in">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ribbit-fern/20 bg-ribbit-dry-sage/50">
-            <h3 className="font-semibold text-ribbit-hunter-green">Filters</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background/50">
+            <h3 className="font-semibold text-foreground">Filters</h3>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded text-ribbit-fern hover:text-ribbit-hunter-green transition-all hover:scale-110"
+              className="p-1.5 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-primary/10 transition-all"
             >
               <X className="w-4 h-4" />
             </button>
@@ -154,7 +154,7 @@ export default function FiltersButton({
             {/* Labels Filter */}
             {availableLabels.length > 0 && (
               <div>
-                <label className="block text-sm font-semibold text-ribbit-hunter-green mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Labels
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -166,8 +166,8 @@ export default function FiltersButton({
                         px-3 py-1.5 rounded-full text-xs font-medium
                         transition-all duration-200 hover:scale-105
                         ${localFilters.labels.includes(label)
-                          ? 'bg-ribbit-hunter-green text-ribbit-dust-grey shadow-md'
-                          : 'bg-ribbit-dust-grey/60 text-ribbit-pine-teal border border-ribbit-fern/20 hover:border-ribbit-fern/40'
+                          ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_8px_rgba(0,255,194,0.3)]'
+                          : 'bg-muted text-muted-foreground border border-border hover:border-primary/40 hover:text-primary'
                         }
                       `}
                     >
@@ -181,7 +181,7 @@ export default function FiltersButton({
             {/* Publishers Filter */}
             {availablePublishers.length > 0 && (
               <div>
-                <label className="block text-sm font-semibold text-ribbit-hunter-green mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Publishers
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -193,8 +193,8 @@ export default function FiltersButton({
                         px-3 py-1.5 rounded-full text-xs font-medium
                         transition-all duration-200 hover:scale-105
                         ${localFilters.publishers.includes(publisher)
-                          ? 'bg-ribbit-hunter-green text-ribbit-dust-grey shadow-md'
-                          : 'bg-ribbit-dust-grey/60 text-ribbit-pine-teal border border-ribbit-fern/20 hover:border-ribbit-fern/40'
+                          ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_8px_rgba(0,255,194,0.3)]'
+                          : 'bg-muted text-muted-foreground border border-border hover:border-primary/40 hover:text-primary'
                         }
                       `}
                     >
@@ -207,7 +207,7 @@ export default function FiltersButton({
 
             {/* Signal Type Filter */}
             <div>
-              <label className="block text-sm font-semibold text-ribbit-hunter-green mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Signal Type
               </label>
               <div className="flex flex-wrap gap-2">
@@ -219,8 +219,8 @@ export default function FiltersButton({
                       px-3 py-1.5 rounded-full text-xs font-medium
                       transition-all duration-200 hover:scale-105
                       ${localFilters.signalType.includes(type.toLowerCase())
-                        ? 'bg-ribbit-hunter-green text-ribbit-dust-grey shadow-md'
-                        : 'bg-ribbit-dust-grey/60 text-ribbit-pine-teal border border-ribbit-fern/20 hover:border-ribbit-fern/40'
+                        ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_8px_rgba(0,255,194,0.3)]'
+                        : 'bg-muted text-muted-foreground border border-border hover:border-primary/40 hover:text-primary'
                       }
                     `}
                   >
@@ -232,7 +232,7 @@ export default function FiltersButton({
 
             {/* Scheduled Only Toggle */}
             <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-ribbit-hunter-green">
+              <label className="text-sm font-semibold text-foreground">
                 Scheduled Only
               </label>
               <button
@@ -242,37 +242,34 @@ export default function FiltersButton({
                 }))}
                 className={`
                   relative inline-flex h-6 w-11 items-center rounded-full
-                  transition-colors duration-200
+                  transition-all duration-200
                   ${localFilters.scheduledOnly 
-                    ? 'bg-ribbit-hunter-green' 
-                    : 'bg-ribbit-dust-grey border border-ribbit-fern/30'
+                    ? 'bg-primary dark:shadow-[0_0_10px_rgba(0,255,194,0.4)]' 
+                    : 'bg-muted'
                   }
                 `}
                 role="switch"
                 aria-checked={localFilters.scheduledOnly}
               >
                 <span
-                  className={`
-                    inline-block h-4 w-4 transform rounded-full bg-white shadow-md
-                    transition-transform duration-200
-                    ${localFilters.scheduledOnly ? 'translate-x-6' : 'translate-x-1'}
-                  `}
+                  className="inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200"
+                  style={{ transform: localFilters.scheduledOnly ? 'translateX(1.25rem)' : 'translateX(0.125rem)' }}
                 />
               </button>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-ribbit-fern/20 bg-ribbit-dry-sage/50">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-background/50">
             <button
               onClick={handleClear}
-              className="text-sm text-ribbit-fern hover:text-ribbit-hunter-green transition-colors font-medium hover:underline"
+              className="text-sm text-foreground-secondary hover:text-primary transition-colors font-medium hover:underline"
             >
               Clear All
             </button>
             <button
               onClick={handleApply}
-              className="px-4 py-2 bg-ribbit-hunter-green text-ribbit-dust-grey text-sm font-semibold rounded-lg shadow-md hover:bg-[#2f4a35] hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-xl shadow-md hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] transition-all duration-200 dark:hover:shadow-[0_0_20px_rgba(0,255,194,0.3)]"
             >
               Apply Filters
             </button>

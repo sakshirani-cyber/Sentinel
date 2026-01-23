@@ -27,9 +27,6 @@ import {
 // Create Signal Wizard
 import { CreateSignalWizard } from './components/wizard';
 
-// Signal Detail Modal
-import SignalDetail from './components/SignalDetail';
-
 /**
  * Main App Content Component
  * Renders content based on current page from layout context
@@ -53,8 +50,6 @@ function AppContent({
 }) {
   const { currentPage, closeCreatePanel } = useLayout();
   
-  const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
-  
   // Drafts for responses
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('sentinel_drafts');
@@ -69,7 +64,7 @@ function AppContent({
     setDrafts(prev => ({ ...prev, [pollId]: value }));
   };
 
-  // Handle response submission
+  // Handle response submission (now called inline from SignalRow)
   const handleSubmitResponse = async (pollId: string, value: string) => {
     const response = {
       pollId,
@@ -79,7 +74,7 @@ function AppContent({
       isDefault: false
     };
     await onSubmitResponse(response);
-    setSelectedPoll(null);
+    // Clear draft after successful submission
     setDrafts(prev => {
       const newDrafts = { ...prev };
       delete newDrafts[pollId];
@@ -97,7 +92,8 @@ function AppContent({
             polls={polls}
             responses={responses}
             drafts={drafts}
-            onSelectPoll={setSelectedPoll}
+            onSubmitResponse={handleSubmitResponse}
+            onSaveDraft={handleSaveDraft}
           />
         );
 
@@ -142,19 +138,6 @@ function AppContent({
           onClose={closeCreatePanel}
         />
       </CreateSignalPanel>
-
-      {/* Signal Detail Modal (for responding to polls) */}
-      {selectedPoll && (
-        <SignalDetail
-          poll={selectedPoll}
-          draft={drafts[selectedPoll.id]}
-          onSaveDraft={handleSaveDraft}
-          onSubmit={handleSubmitResponse}
-          onClose={() => setSelectedPoll(null)}
-          isPersistentContext={false}
-          userResponse={responses.find(r => r.pollId === selectedPoll.id && r.consumerEmail === user.email)}
-        />
-      )}
     </>
   );
 }

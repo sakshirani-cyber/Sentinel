@@ -18,10 +18,11 @@ interface TopbarProps {
 /**
  * Topbar Component
  * 
- * Global header with:
- * - Logo and app name (left)
- * - Theme toggle, notifications, profile (right)
- * - Hamburger menu for mobile
+ * Award-winning floating header with:
+ * - Transparent glassmorphism background
+ * - Neon Marsh color palette
+ * - Premium micro-interactions
+ * - Smooth theme transitions
  */
 export default function Topbar({ user, incompleteCount = 0, onLogout }: TopbarProps) {
   const { toggleSidebar } = useLayout();
@@ -29,27 +30,29 @@ export default function Topbar({ user, incompleteCount = 0, onLogout }: TopbarPr
   return (
     <header className="ribbit-topbar">
       {/* Left Section */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {/* Mobile Menu Button */}
         <button
           onClick={toggleSidebar}
-          className="md:hidden p-2 rounded-lg text-topbar-foreground/70 hover:text-topbar-foreground hover:bg-topbar-hover transition-all duration-200"
+          className="md:hidden p-2.5 rounded-xl text-foreground-secondary hover:text-foreground hover:bg-primary/10 dark:hover:bg-primary/15 transition-all duration-200 active:scale-95"
           aria-label="Toggle menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <RibbitLogo size={36} />
-          <span className="text-topbar-foreground font-semibold text-lg hidden sm:block tracking-tight">
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
+            <RibbitLogo size={36} />
+          </div>
+          <span className="text-foreground font-bold text-xl hidden sm:block tracking-tight transition-colors dark:text-foreground">
             Ribbit
           </span>
         </div>
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         {/* Theme Toggle */}
         <ThemeToggle />
 

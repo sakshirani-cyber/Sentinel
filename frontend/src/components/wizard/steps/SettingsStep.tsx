@@ -26,13 +26,13 @@ export default function SettingsStep({ formData, updateFormData, onValidationCha
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/20 flex items-center justify-center mx-auto mb-4">
-          <Settings className="w-8 h-8 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+        <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center mx-auto mb-4">
+          <Settings className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Configure signal settings
         </h2>
-        <p className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-foreground-secondary">
           Set defaults and behavior for this signal
         </p>
       </div>
@@ -40,17 +40,17 @@ export default function SettingsStep({ formData, updateFormData, onValidationCha
       {/* Default Response Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
-            Default Response <span className="text-red-500">*</span>
+          <label className="text-sm font-medium text-foreground">
+            Default Response <span className="text-destructive">*</span>
           </label>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
               type="checkbox"
               checked={formData.useCustomDefault}
               onChange={(e) => updateFormData({ useCustomDefault: e.target.checked })}
-              className="w-4 h-4 rounded border-ribbit-fern/30 text-ribbit-fern focus:ring-ribbit-fern/20"
+              className="w-4 h-4 rounded border-border text-primary focus:ring-ring"
             />
-            <span className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">Custom response</span>
+            <span className="text-foreground-secondary">Custom response</span>
           </label>
         </div>
 
@@ -62,11 +62,12 @@ export default function SettingsStep({ formData, updateFormData, onValidationCha
             placeholder="e.g., No response recorded"
             className="
               w-full px-4 py-3 rounded-xl
-              bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30
-              border-2 border-ribbit-fern/30 dark:border-ribbit-dry-sage/20
-              text-ribbit-pine-teal dark:text-ribbit-dust-grey
-              placeholder:text-ribbit-pine-teal/40 dark:placeholder:text-ribbit-dust-grey/40
-              focus:outline-none focus:ring-4 focus:border-ribbit-fern focus:ring-ribbit-fern/20
+              bg-input-background dark:bg-input
+              border-2 border-border
+              text-foreground
+              placeholder:text-muted-foreground
+              focus:outline-none focus:ring-4 focus:border-primary focus:ring-ring
+              hover:border-foreground-muted
               transition-all duration-200
             "
           />
@@ -77,10 +78,11 @@ export default function SettingsStep({ formData, updateFormData, onValidationCha
               onChange={(e) => updateFormData({ defaultResponse: e.target.value })}
               className="
                 w-full px-4 py-3 pr-10 rounded-xl appearance-none
-                bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30
-                border-2 border-ribbit-fern/30 dark:border-ribbit-dry-sage/20
-                text-ribbit-pine-teal dark:text-ribbit-dust-grey
-                focus:outline-none focus:ring-4 focus:border-ribbit-fern focus:ring-ribbit-fern/20
+                bg-input-background dark:bg-input
+                border-2 border-border
+                text-foreground
+                focus:outline-none focus:ring-4 focus:border-primary focus:ring-ring
+                hover:border-foreground-muted
                 transition-all duration-200
                 cursor-pointer
               "
@@ -92,10 +94,10 @@ export default function SettingsStep({ formData, updateFormData, onValidationCha
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ribbit-pine-teal/50 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted pointer-events-none" />
           </div>
         )}
-        <p className="text-xs text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
+        <p className="text-xs text-foreground-muted">
           This response will be recorded if a recipient doesn't respond before the deadline.
         </p>
       </div>
@@ -201,10 +203,8 @@ function ToggleCard({
         ${checked ? 'bg-ribbit-fern' : 'bg-ribbit-dry-sage/50 dark:bg-ribbit-hunter-green/50'}
       `}>
         <div
-          className={`
-            absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform
-            ${checked ? 'translate-x-6' : 'translate-x-1'}
-          `}
+          className="absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+          style={{ transform: checked ? 'translateX(1.5rem)' : 'translateX(0.25rem)' }}
         />
       </div>
     </div>

@@ -111,6 +111,7 @@ export default function SentPage({
               </h3>
               <ScheduledPolls
                 polls={filteredScheduled}
+                currentUserEmail={user.email}
                 onDeletePoll={onDeletePoll}
                 onUpdatePoll={onUpdatePoll}
               />
@@ -127,6 +128,7 @@ export default function SentPage({
               <PublishedPolls
                 polls={filteredPublished}
                 responses={responses}
+                currentUserEmail={user.email}
                 onDeletePoll={onDeletePoll}
                 onUpdatePoll={onUpdatePoll}
               />
