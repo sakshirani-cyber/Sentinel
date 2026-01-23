@@ -1,3 +1,15 @@
+/**
+ * @deprecated This component is deprecated and will be removed in a future version.
+ * 
+ * The functionality has been migrated to the new Ribbit layout:
+ * - Use RibbitLayout from '@/components/layout' as the main shell
+ * - Navigate to 'inbox' page via sidebar for incomplete signals
+ * - Completed and Analytics tabs will be added as sub-tabs in Phase 2
+ * 
+ * Individual content components (IncompletePolls, CompletedPolls, AnalyticsPolls)
+ * are still in use and are rendered within the new layout.
+ */
+
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { User, Poll, Response } from '../types';
 import { mapResultsToResponses } from '../services/pollService';
@@ -24,6 +36,7 @@ interface ConsumerDashboardProps {
   onPollOpened?: () => void;
 }
 
+/** @deprecated Use RibbitLayout with 'inbox' page instead */
 export default function ConsumerDashboard({
   user,
   polls,

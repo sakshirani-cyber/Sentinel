@@ -1,3 +1,16 @@
+/**
+ * @deprecated This component is deprecated and will be removed in a future version.
+ * 
+ * The functionality has been migrated to the new Ribbit layout:
+ * - Use RibbitLayout from '@/components/layout' as the main shell
+ * - Navigate to 'sent' page via sidebar for published/scheduled polls
+ * - Use CreateSignalPanel for creating new signals
+ * - Navigate to 'labels' page via sidebar for label management
+ * 
+ * Individual content components (PublishedPolls, ScheduledPolls, CreatePoll)
+ * are still in use and are rendered within the new layout.
+ */
+
 import { useState } from 'react';
 import { User, Poll, Response } from '../App';
 import { PlusCircle, List, LogOut, Settings, Tag, CalendarClock } from 'lucide-react';
@@ -19,6 +32,7 @@ interface PublisherDashboardProps {
   onManageLabels: () => void;
 }
 
+/** @deprecated Use RibbitLayout with 'sent' page instead */
 export default function PublisherDashboard({
   user,
   polls,

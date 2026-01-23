@@ -1,44 +1,51 @@
 import { Poll } from '../../types';
-import SignalCard from '../SignalCard';
-import { CheckCircle } from 'lucide-react';
+import { SignalListItem, EmptyState } from '../signals';
 
 interface IncompletePollsProps {
-    polls: Poll[];
-    drafts: Record<string, string>;
-    onSelectPoll: (poll: Poll) => void;
+  polls: Poll[];
+  drafts: Record<string, string>;
+  onSelectPoll: (poll: Poll) => void;
 }
 
+/**
+ * IncompletePolls Component
+ * 
+ * Displays pending signals sorted by nearest deadline.
+ * Uses the new Ribbit design system components.
+ */
 export default function IncompletePolls({ polls, drafts, onSelectPoll }: IncompletePollsProps) {
-    if (polls.length === 0) {
-        return (
-            <div className="text-center py-16">
-                <div className="w-20 h-20 bg-mono-accent/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-10 h-10 text-mono-accent" />
-                </div>
-                <h3 className="text-mono-text mb-2">All Caught Up!</h3>
-                <p className="text-mono-text/60">
-                    You don't have any pending signals at the moment
-                </p>
-            </div>
-        );
-    }
+  if (polls.length === 0) {
+    return <EmptyState type="inbox" />;
+  }
 
-    return (
-        <div className="space-y-4">
-            <div className="mb-6">
-                <h2 className="text-mono-text mb-2">Pending Signals</h2>
-                <p className="text-mono-text/60">
-                    Signals are sorted by nearest deadline first
-                </p>
-            </div>
-            {polls.map(poll => (
-                <SignalCard
-                    key={poll.id}
-                    poll={poll}
-                    hasDraft={!!drafts[poll.id]}
-                    onClick={() => onSelectPoll(poll)}
-                />
-            ))}
-        </div>
-    );
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {/* Header */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-1">
+          Pending Signals
+        </h2>
+        <p className="text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+          Sorted by nearest deadline first
+        </p>
+      </div>
+
+      {/* Signal List */}
+      <div className="space-y-3">
+        {polls.map((poll, index) => (
+          <div
+            key={poll.id}
+            style={{ animationDelay: `${index * 50}ms` }}
+            className="animate-fade-in-up"
+          >
+            <SignalListItem
+              poll={poll}
+              hasDraft={!!drafts[poll.id]}
+              onClick={() => onSelectPoll(poll)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

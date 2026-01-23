@@ -1,6 +1,6 @@
 import { Poll, Response } from '../types';
 import type { Worksheet, Fill } from 'exceljs';
-import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download } from 'lucide-react';
+import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download, Shield, BarChart3, PieChart } from 'lucide-react';
 import LabelText from './LabelText';
 import LabelPill from './LabelPill';
 import { useState, useEffect } from 'react';
@@ -39,7 +39,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
     fetchLabels();
   }, []);
 
-  // Fetch fresh analytics from backend (for all polls to get accurate counts)
+  // Fetch fresh analytics from backend
   useEffect(() => {
     const fetchBackendResults = async () => {
       if (poll.cloudSignalId && (window as any).electron?.backend) {
@@ -60,9 +60,6 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
   }, [poll.cloudSignalId]);
 
   const totalConsumers = fetchedAnalyticsData?.totalAssigned ?? poll.consumers.length;
-  // Local response calc
-
-
 
   const submittedResponses = responses.filter(r => !r.isDefault && !r.skipReason);
   const defaultResponses = responses.filter(r => r.isDefault);
@@ -79,7 +76,6 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
   const defaultsCount = fetchedAnalyticsData?.defaultCount ?? defaultResponses.length;
 
-  // For anonymous polls, we use fetched reasons if available, otherwise fallback to local DB poll data
   const effectiveAnonymousReasons = fetchedAnalyticsData?.anonymousReasons || poll.anonymousReasons;
 
   const anonymousSkipped = (poll.anonymityMode === 'anonymous' && effectiveAnonymousReasons)
@@ -93,9 +89,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
     : [];
 
   const localSkipped = responses.filter(r => r.skipReason);
-
   const skippedResponses = anonymousSkipped.length > 0 ? anonymousSkipped : localSkipped;
-
   const skippedCount = fetchedAnalyticsData?.reasonCount ?? skippedResponses.length;
 
   const currentOptionTexts = new Set(poll.options.map(o => o.text));
@@ -130,19 +124,19 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
     try {
       const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'Sentinel App';
+      workbook.creator = 'Ribbit App';
       workbook.created = new Date();
 
-      // Style constants
       const headerFill: Fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFFFFF00' } // Yellow
+        fgColor: { argb: 'FF588157' } // Fern color
       };
       const headerFont = {
         name: 'Arial',
         sz: 11,
-        bold: true
+        bold: true,
+        color: { argb: 'FFFFFFFF' }
       };
 
       const applyHeaderStyle = (sheet: Worksheet) => {
@@ -159,7 +153,6 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         });
       };
 
-      // --- Sheet 1: Summary ---
       const summarySheet = workbook.addWorksheet('Summary');
       summarySheet.columns = [
         { header: 'Metric', key: 'metric', width: 30 },
@@ -176,7 +169,6 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
       ]);
       applyHeaderStyle(summarySheet);
 
-      // --- Sheet 2: Distribution ---
       const distSheet = workbook.addWorksheet('Distribution');
       distSheet.columns = [
         { header: 'Option', key: 'option', width: 30 },
@@ -199,7 +191,6 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
       distSheet.addRows(distributionData);
       applyHeaderStyle(distSheet);
 
-      // --- Sheet 3: Individual Responses ---
       const responsesSheet = workbook.addWorksheet('Responses');
       responsesSheet.columns = [
         { header: 'Consumer Email', key: 'email', width: 40 },
@@ -219,7 +210,6 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
       responsesSheet.addRows(responsesData);
       applyHeaderStyle(responsesSheet);
 
-      // Generate buffer and save
       const buffer = await workbook.xlsx.writeBuffer();
       const fileName = `poll_analytics_${poll.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -231,14 +221,26 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
     }
   };
 
+  // Calculate max count for scaling bars
+  const maxCount = Math.max(...Object.values(responseCounts), 1);
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-ribbit-dust-grey dark:bg-ribbit-pine-teal rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 animate-scale-in">
+        
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-mono-primary/10 bg-mono-primary/5">
-          <div>
-            <h2 className="text-mono-text mb-1 text-lg font-medium">Poll Analytics</h2>
-            <div className="text-mono-text/70 text-sm mt-1 break-all max-w-full" style={{ wordBreak: 'break-all' }}>
+        <div className="flex-shrink-0 flex items-start justify-between p-6 border-b border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/50">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-ribbit-fern/20 dark:bg-ribbit-dry-sage/20 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Signal Analytics</h2>
+                <p className="text-sm text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">Response breakdown and distribution</p>
+              </div>
+            </div>
+            <div className="text-ribbit-pine-teal dark:text-ribbit-dust-grey font-medium">
               <LabelText text={poll.question} labels={labels} />
             </div>
             {poll.labels && poll.labels.length > 0 && (
@@ -247,19 +249,19 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-4">
             {canExport && (
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-3 py-1.5 bg-mono-primary text-mono-bg rounded-lg hover:bg-mono-accent hover:text-mono-primary transition-colors text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-ribbit-hunter-green hover:bg-[#2f4a35] text-ribbit-dust-grey rounded-xl transition-all text-sm font-medium shadow-md hover:shadow-lg"
               >
                 <Download className="w-4 h-4" />
-                Export CSV
+                Export
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-2 text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/10 rounded-lg transition-colors"
+              className="p-2 text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 hover:text-ribbit-hunter-green dark:hover:text-ribbit-dry-sage hover:bg-ribbit-dry-sage/50 dark:hover:bg-ribbit-hunter-green/50 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -267,82 +269,84 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="flex-1 overflow-y-auto p-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                <span className="text-sm text-blue-900">Total Consumers</span>
-              </div>
-              <p className="text-blue-900">{totalConsumers}</p>
-            </div>
-
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-sm text-green-900">Response Rate</span>
-              </div>
-              <p className="text-green-900">{responseRate.toFixed(1)}%</p>
-            </div>
-
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-5 h-5 text-purple-600" />
-                <span className="text-sm text-purple-900">Submitted</span>
-              </div>
-              <p className="text-purple-900">{submittedCount}</p>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <XCircle className="w-5 h-5 text-amber-600" />
-                <span className="text-sm text-amber-900">System Defaults</span>
-              </div>
-              <p className="text-amber-900">{defaultsCount}</p>
-            </div>
-
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <XCircle className="w-5 h-5 text-red-600" />
-                <span className="text-sm text-red-900">Skipped</span>
-              </div>
-              <p className="text-red-900">{skippedCount}</p>
-            </div>
+            <SummaryCard
+              icon={Users}
+              label="Total Recipients"
+              value={totalConsumers}
+              color="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+              iconColor="text-blue-600 dark:text-blue-400"
+            />
+            <SummaryCard
+              icon={TrendingUp}
+              label="Response Rate"
+              value={`${responseRate.toFixed(1)}%`}
+              color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+              iconColor="text-emerald-600 dark:text-emerald-400"
+            />
+            <SummaryCard
+              icon={CheckCircle}
+              label="Submitted"
+              value={submittedCount}
+              color="bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/30 text-ribbit-hunter-green dark:text-ribbit-dry-sage"
+              iconColor="text-ribbit-fern dark:text-ribbit-dry-sage"
+            />
+            <SummaryCard
+              icon={Clock}
+              label="System Defaults"
+              value={defaultsCount}
+              color="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+              iconColor="text-amber-600 dark:text-amber-400"
+            />
+            <SummaryCard
+              icon={XCircle}
+              label="Skipped"
+              value={skippedCount}
+              color="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+              iconColor="text-red-600 dark:text-red-400"
+            />
           </div>
 
           {/* Response Distribution */}
           <div className="mb-8">
-            <h3 className="text-slate-900 mb-4">Response Distribution</h3>
-            <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-4">
+              <PieChart className="w-5 h-5 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+              <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Response Distribution</h3>
+            </div>
+            <div className="bg-white dark:bg-ribbit-hunter-green/40 rounded-xl border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 p-4 space-y-4">
               {Object.entries(responseCounts).map(([option, count]) => {
                 const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
+                const barWidth = (count / maxCount) * 100;
                 const isDefaultOption = option === poll.defaultResponse;
                 const isRemoved = !currentOptionTexts.has(option) && !isDefaultOption;
 
                 return (
                   <div key={option} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-700 flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-ribbit-pine-teal dark:text-ribbit-dust-grey flex items-center gap-2 min-w-0 flex-1 font-medium">
                         <LabelText text={option} labels={labels} />
                         {isDefaultOption && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
+                          <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">
                             Default
                           </span>
                         )}
-                        {!currentOptionTexts.has(option) && !isDefaultOption && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-xs border border-slate-200">
+                        {isRemoved && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 rounded-full text-xs border border-ribbit-fern/10">
                             <Archive className="w-3 h-3" />
                             Removed
                           </span>
                         )}
                       </span>
-                      <span className="text-slate-600">{count} ({percentage.toFixed(1)}%)</span>
+                      <span className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70 font-medium ml-4">
+                        {count} <span className="text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">({percentage.toFixed(1)}%)</span>
+                      </span>
                     </div>
-                    <div className="w-full bg-mono-primary/10 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 rounded-full h-3 overflow-hidden">
                       <div
-                        className="bg-mono-accent h-full transition-all duration-500"
-                        style={{ width: `${percentage}%` }}
+                        className="bg-gradient-to-r from-ribbit-fern to-ribbit-hunter-green dark:from-ribbit-dry-sage dark:to-ribbit-fern h-full rounded-full transition-all duration-500"
+                        style={{ width: `${barWidth}%` }}
                       />
                     </div>
                   </div>
@@ -353,48 +357,48 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
           {/* Individual Responses (only if not anonymous) */}
           {poll.anonymityMode === 'record' && (
-            <div>
-              <h3 className="text-slate-900 mb-4">Individual Responses</h3>
-              <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-4">Individual Responses</h3>
+              <div className="bg-white dark:bg-ribbit-hunter-green/40 rounded-xl border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-slate-100 border-b border-slate-200">
+                    <thead className="bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/60 border-b border-ribbit-fern/20 dark:border-ribbit-dry-sage/20">
                       <tr>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Consumer</th>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Response</th>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Status</th>
-                        <th className="text-left px-4 py-3 text-sm text-slate-700">Submitted At</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Consumer</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Response</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Status</th>
+                        <th className="text-left px-4 py-3 text-sm font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Submitted At</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-ribbit-fern/10 dark:divide-ribbit-dry-sage/10">
                       {responses.length > 0 ? (
                         responses.map((response: any, index: number) => (
-                          <tr key={index} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 text-sm text-slate-900">
+                          <tr key={index} className="hover:bg-ribbit-dry-sage/10 dark:hover:bg-ribbit-fern/10 transition-colors">
+                            <td className="px-4 py-3 text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
                               {response.consumerEmail}
                             </td>
-                            <td className="px-4 py-3 text-sm text-slate-700">
+                            <td className="px-4 py-3 text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
                               <LabelText text={response.response} labels={labels} />
                             </td>
                             <td className="px-4 py-3">
                               {response.isDefault ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-medium">
                                   <Clock className="w-3 h-3" />
                                   Default
                                 </span>
                               ) : response.skipReason ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs font-medium">
                                   <XCircle className="w-3 h-3" />
                                   Skipped
                                 </span>
                               ) : (
                                 <div className="flex flex-col gap-1 items-start">
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-medium">
                                     <CheckCircle className="w-3 h-3" />
                                     Submitted
                                   </span>
                                   {!currentOptionTexts.has(response.response) && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-xs">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ribbit-dry-sage/30 text-ribbit-pine-teal/60 rounded-full text-xs">
                                       <Archive className="w-3 h-3" />
                                       Removed Option
                                     </span>
@@ -402,14 +406,14 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                                 </div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">
+                            <td className="px-4 py-3 text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
                               {formatDateTime(response.submittedAt)}
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                          <td colSpan={4} className="px-4 py-8 text-center text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
                             No responses yet
                           </td>
                         </tr>
@@ -422,17 +426,17 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
               {/* Pending Consumers */}
               {poll.consumers.length > responses.length && (
                 <div className="mt-6">
-                  <h4 className="text-slate-700 mb-3">
+                  <h4 className="text-ribbit-hunter-green dark:text-ribbit-dry-sage font-medium mb-3">
                     Pending Responses ({poll.consumers.length - responses.length})
                   </h4>
-                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                  <div className="bg-white dark:bg-ribbit-hunter-green/40 rounded-xl border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 p-4">
                     <div className="flex flex-wrap gap-2">
                       {poll.consumers
                         .filter(email => !responses.some(r => r.consumerEmail === email))
                         .map(email => (
                           <span
                             key={email}
-                            className="px-3 py-1 bg-white border border-slate-300 text-slate-700 rounded-full text-sm"
+                            className="px-3 py-1 bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 text-ribbit-pine-teal dark:text-ribbit-dust-grey rounded-full text-sm border border-ribbit-fern/10 dark:border-ribbit-dry-sage/10"
                           >
                             {email}
                           </span>
@@ -446,10 +450,10 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
           {/* Anonymous Mode Message */}
           {poll.anonymityMode === 'anonymous' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
-              <Shield className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-              <h4 className="text-blue-900 mb-2">Anonymous Poll</h4>
-              <p className="text-sm text-blue-700">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 text-center mb-8">
+              <Shield className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-3" />
+              <h4 className="text-blue-900 dark:text-blue-300 font-semibold mb-2">Anonymous Poll</h4>
+              <p className="text-sm text-blue-700 dark:text-blue-400">
                 Individual responses are anonymous. Only aggregate data and masked skip reasons are shown.
               </p>
             </div>
@@ -457,25 +461,25 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
           {/* Skipped Responses with Reasons */}
           {skippedResponses.length > 0 && (
-            <div className="mt-8">
-              <h3 className="text-slate-900 mb-4">Skipped with Reasons</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-4">Skipped with Reasons</h3>
               <div className="space-y-3">
                 {skippedResponses.map((response: any, index: number) => (
                   <div
                     key={index}
-                    className="bg-red-50 border border-red-200 rounded-lg p-4"
+                    className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <span className="text-sm text-red-900">
+                      <span className="text-sm font-medium text-red-900 dark:text-red-300">
                         {poll.anonymityMode === 'anonymous' ? 'Anonymous User' : response.consumerEmail}
                       </span>
                       {response.submittedAt && (
-                        <span className="text-xs text-red-600">
+                        <span className="text-xs text-red-600 dark:text-red-400">
                           {formatDateTime(response.submittedAt)}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-red-700 italic">"{response.skipReason}"</p>
+                    <p className="text-sm text-red-700 dark:text-red-400 italic">"{response.skipReason}"</p>
                   </div>
                 ))}
               </div>
@@ -484,10 +488,10 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-mono-primary/10 bg-mono-bg">
+        <div className="flex-shrink-0 p-6 border-t border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/50">
           <button
             onClick={onClose}
-            className="w-full bg-mono-primary text-mono-bg py-3 rounded-xl hover:bg-mono-accent hover:text-mono-primary transition-all font-medium shadow-lg"
+            className="w-full bg-ribbit-hunter-green hover:bg-[#2f4a35] text-ribbit-dust-grey py-3 rounded-xl transition-all font-medium shadow-lg hover:shadow-xl"
           >
             Close Analytics
           </button>
@@ -497,20 +501,27 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
   );
 }
 
-function Shield({ className }: { className?: string }) {
+// Summary Card Component
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  iconColor,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: string | number;
+  color: string;
+  iconColor: string;
+}) {
   return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-      />
-    </svg>
+    <div className={`${color} border rounded-xl p-4`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={`w-5 h-5 ${iconColor}`} />
+        <span className="text-sm">{label}</span>
+      </div>
+      <p className="text-2xl font-bold">{value}</p>
+    </div>
   );
 }

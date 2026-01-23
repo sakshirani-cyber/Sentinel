@@ -1,3 +1,14 @@
+/**
+ * @deprecated This component is deprecated and will be removed in a future version.
+ * Use the new Ribbit layout components instead:
+ * - Topbar from '@/components/layout' for the header
+ * - ProfileMenu from '@/components/layout' for user menu
+ * - Sidebar from '@/components/layout' for navigation
+ * 
+ * The new layout provides a consistent experience across all pages with
+ * persistent sidebar navigation and a unified topbar.
+ */
+
 import { useState } from 'react';
 import { User } from '../../types';
 import logo from '../../assets/logo.png';
@@ -10,6 +21,7 @@ interface DashboardHeaderProps {
     onLogout: () => void;
 }
 
+/** @deprecated Use Topbar from '@/components/layout' instead */
 export default function DashboardHeader({ user, incompleteCount, onSwitchMode, onLogout }: DashboardHeaderProps) {
     const [showSettings, setShowSettings] = useState(false);
 
