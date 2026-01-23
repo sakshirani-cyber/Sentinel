@@ -172,8 +172,4 @@ public class PollSchedulerService {
             }
         }
     }
-
-    public int getScheduledTaskCount() {
-        return scheduledTasks.size();
-    }
 }

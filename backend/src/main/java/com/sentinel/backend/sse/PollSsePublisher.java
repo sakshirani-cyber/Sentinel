@@ -69,15 +69,4 @@ public class PollSsePublisher {
                     userEmail, event.getEventType(), ex.getMessage());
         }
     }
-
-    public void clearPendingEvents(String userEmail) {
-        cache.delete(cache.buildKey(SSE_EVENTS, userEmail));
-        log.info("[SSE][CLEAR] userEmail={}", userEmail);
-    }
-
-    public long getPendingEventCount(String userEmail) {
-        String eventsKey = cache.buildKey(SSE_EVENTS, userEmail);
-        java.util.List<Object> events = cache.getList(eventsKey, Object.class);
-        return events != null ? events.size() : 0;
-    }
 }

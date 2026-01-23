@@ -17,8 +17,6 @@ public interface PollResultRepository extends JpaRepository<PollResult, PollResu
 
     List<PollResult> findByIdSignalId(Long signalId);
 
-    void deleteByIdSignalId(Long signalId);
-
     @Modifying
     @Query(
             value = DELETE_BY_SIGNAL_ID_AND_USER_EMAILS,

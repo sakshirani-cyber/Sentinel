@@ -54,21 +54,4 @@ public class DataSyncService {
         log.info("[DATA_SYNC] userEmail={} | recordCount={} | dbDurationMs={} | totalDurationMs={}",
                 userEmail, result != null ? result.size() : 0, dbDuration, System.currentTimeMillis() - start);
     }
-
-    public void invalidateCache(String userEmail) {
-        cache.delete(cache.buildKey(DATA_SYNC, userEmail));
-        log.debug("[DATA_SYNC][CACHE_INVALIDATE] userEmail={}", userEmail);
-    }
-
-    public void invalidateCache(String[] userEmails) {
-        if (userEmails == null || userEmails.length == 0) {
-            return;
-        }
-
-        for (String userEmail : userEmails) {
-            invalidateCache(userEmail);
-        }
-
-        log.debug("[DATA_SYNC][CACHE_INVALIDATE] userCount={}", userEmails.length);
-    }
 }
