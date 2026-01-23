@@ -42,6 +42,7 @@ public class PollCacheHelper {
         pollData.put("persistentAlert", signal.getPersistentAlert());
         pollData.put("labels", signal.getLabels());
         pollData.put("lastEditedBy", signal.getLastEditedBy());
+        pollData.put("title", signal.getTitle());
 
         cache.hSetAll(pollKey, pollData, cache.getPollTtl());
 
@@ -66,6 +67,7 @@ public class PollCacheHelper {
         signal.setPersistentAlert(scheduledPoll.getPersistentAlert());
         signal.setLabels(scheduledPoll.getLabels());
         signal.setCreatedOn(Instant.now());
+        signal.setTitle(scheduledPoll.getTitle());
         return signal;
     }
 
@@ -92,6 +94,7 @@ public class PollCacheHelper {
                 .sharedWith(signal.getSharedWith())
                 .labels(signal.getLabels())
                 .republish(republish)
+                .title(signal.getTitle())
                 .build();
     }
 }

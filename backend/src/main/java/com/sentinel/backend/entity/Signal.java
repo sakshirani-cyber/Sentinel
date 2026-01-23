@@ -57,4 +57,7 @@ public class Signal {
 
     @Column(name = "labels", columnDefinition = "text[]")
     private String[] labels;
+
+    @Column(name = "title", nullable = false)
+    private String title;
 }

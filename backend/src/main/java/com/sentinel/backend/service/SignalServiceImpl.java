@@ -257,6 +257,7 @@ public class SignalServiceImpl implements SignalService {
             signal.setEndTimestamp(dto.getEndTimestampUtc());
             signal.setPersistentAlert(dto.getPersistentAlert());
             signal.setLabels(dto.getLabels());
+            signal.setTitle(dto.getTitle());
 
             pollCacheHelper.savePollToCache(signal, poll);
             invalidatePollResultsCache(signalId);
@@ -300,6 +301,7 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setEndTimestamp(dto.getEndTimestampUtc());
         scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
         scheduledPoll.setLabels(dto.getLabels());
+        scheduledPoll.setTitle(dto.getTitle());
 
         scheduledPollRepository.save(scheduledPoll);
 
@@ -498,6 +500,7 @@ public class SignalServiceImpl implements SignalService {
         signal.setLastEditedBy((String) data.get("lastEditedBy"));
         signal.setPersistentAlert((Boolean) data.get("persistentAlert"));
         signal.setLabels((String[]) data.get("labels"));
+        signal.setTitle((String) data.get("title"));
         return signal;
     }
 
@@ -514,6 +517,7 @@ public class SignalServiceImpl implements SignalService {
         signal.setPersistentAlert(dto.getPersistentAlert());
         signal.setLabels(dto.getLabels());
         signal.setCreatedOn(Instant.now());
+        signal.setTitle(dto.getTitle());
         return signal;
     }
 
@@ -530,6 +534,7 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setEndTimestamp(dto.getEndTimestampUtc());
         scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
         scheduledPoll.setLabels(dto.getLabels());
+        scheduledPoll.setTitle(dto.getTitle());
         return scheduledPoll;
     }
 

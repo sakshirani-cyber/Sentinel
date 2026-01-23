@@ -21,6 +21,7 @@ public class DataSyncRepository {
                 DATA_SYNC_SQL,
                 (rs, rowNum) -> new DataSyncDTO(
                         rs.getLong("signal_id"),
+                        rs.getString("title"),
                         rs.getString("question"),
                         (String[]) rs.getArray("options").getArray(),
                         rs.getString("status"),

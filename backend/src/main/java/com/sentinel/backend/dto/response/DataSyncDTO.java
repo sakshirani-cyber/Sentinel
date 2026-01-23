@@ -14,6 +14,7 @@ import java.time.Instant;
 public class DataSyncDTO {
 
     private Long signalId;
+    private String title;
     private String question;
     private String[] options;
     private String status;

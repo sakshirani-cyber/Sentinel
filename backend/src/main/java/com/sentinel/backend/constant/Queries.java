@@ -14,6 +14,7 @@ public final class Queries {
     public static final String DATA_SYNC_SQL = """
         SELECT
             s.id              AS signal_id,
+            s.title,
             p.question,
             p.options,
             s.status,
