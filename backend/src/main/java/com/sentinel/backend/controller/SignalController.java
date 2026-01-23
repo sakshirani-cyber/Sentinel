@@ -39,125 +39,87 @@ public class SignalController {
     @PostMapping("/create/poll")
     public ResponseEntity<ApiResponse<CreatePollResponse>> createPoll(@RequestBody @Valid PollCreateDTO dto) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][POLL][CREATE] createdBy={} | recipientCount={}",
-                dto.getCreatedBy(), dto.getSharedWith() != null ? dto.getSharedWith().length : 0);
-
         CreatePollResponse response = signalService.createPoll(dto);
-
-        log.info("[API][POLL][CREATE] signalId={} | durationMs={}", response.getSignalId(), System.currentTimeMillis() - start);
-
+        log.info("[API][POLL][CREATE] signalId={} | createdBy={} | recipientCount={} | durationMs={}",
+                response.getSignalId(), dto.getCreatedBy(),
+                dto.getSharedWith() != null ? dto.getSharedWith().length : 0, System.currentTimeMillis() - start);
         return ResponseEntity.ok(ApiResponse.success(CREATED, response));
     }
 
     @PostMapping("/create/poll/scheduled")
     public ResponseEntity<ApiResponse<CreatePollResponse>> createScheduledPoll(@RequestBody @Valid PollCreateDTO dto) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][POLL][SCHEDULE] createdBy={} | scheduledTime={}", dto.getCreatedBy(), dto.getScheduledTime());
-
         CreatePollResponse response = signalService.createScheduledPoll(dto);
-
-        log.info("[API][POLL][SCHEDULE] reservedId={} | durationMs={}", response.getSignalId(), System.currentTimeMillis() - start);
-
+        log.info("[API][POLL][SCHEDULE] reservedId={} | createdBy={} | scheduledTime={} | durationMs={}",
+                response.getSignalId(), dto.getCreatedBy(), dto.getScheduledTime(), System.currentTimeMillis() - start);
         return ResponseEntity.ok(ApiResponse.success(CREATED, response));
     }
 
     @PostMapping("/poll/response")
     public ResponseEntity<ApiResponse<Void>> submitVote(@RequestBody @Valid PollSubmitDTO dto) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][POLL][VOTE] signalId={} | user={}", dto.getSignalId(), dto.getUserEmail());
-
         signalService.submitOrUpdateVote(dto);
-
-        log.info("[API][POLL][VOTE] signalId={} | durationMs={}", dto.getSignalId(), System.currentTimeMillis() - start);
-
+        log.info("[API][POLL][VOTE] signalId={} | user={} | durationMs={}",
+                dto.getSignalId(), dto.getUserEmail(), System.currentTimeMillis() - start);
         return ResponseEntity.ok(ApiResponse.success(SAVED, null));
     }
 
     @GetMapping("/{signalId}/poll/results")
     public ResponseEntity<ApiResponse<PollResultDTO>> getPollResults(@PathVariable Long signalId) {
         long start = System.currentTimeMillis();
-
-        log.debug("[API][POLL][RESULTS] signalId={}", signalId);
-
         PollResultDTO dto = signalService.getPollResults(signalId);
-
         log.info("[API][POLL][RESULTS] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
-
         return ResponseEntity.ok(ApiResponse.success(SUCCESS, dto));
     }
 
     @PutMapping("/poll/edit")
     public ResponseEntity<ApiResponse<Void>> editPoll(@RequestBody @Valid PollEditDTO dto) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][POLL][EDIT] signalId={} | editor={}", dto.getSignalId(), dto.getLastEditedBy());
-
         signalService.editSignal(dto);
-
-        log.info("[API][POLL][EDIT] signalId={} | durationMs={}", dto.getSignalId(), System.currentTimeMillis() - start);
-
+        log.info("[API][POLL][EDIT] signalId={} | editor={} | durationMs={}",
+                dto.getSignalId(), dto.getLastEditedBy(), System.currentTimeMillis() - start);
         return ResponseEntity.ok(ApiResponse.success(EDITED, null));
     }
 
     @PutMapping("/poll/edit/scheduled")
     public ResponseEntity<ApiResponse<Void>> editScheduledPoll(@RequestBody @Valid PollEditDTO dto) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][POLL][SCHEDULE_EDIT] reservedId={} | editor={}", dto.getSignalId(), dto.getLastEditedBy());
-
         signalService.editScheduledSignal(dto);
-
-        log.info("[API][POLL][SCHEDULE_EDIT] reservedId={} | durationMs={}", dto.getSignalId(), System.currentTimeMillis() - start);
-
+        log.info("[API][POLL][SCHEDULE_EDIT] reservedId={} | editor={} | durationMs={}",
+                dto.getSignalId(), dto.getLastEditedBy(), System.currentTimeMillis() - start);
         return ResponseEntity.ok(ApiResponse.success(EDITED, null));
     }
 
     @DeleteMapping("/{signalId}")
     public ResponseEntity<ApiResponse<Void>> deletePoll(@PathVariable Long signalId) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][POLL][DELETE] signalId={}", signalId);
-
         signalService.deleteSignal(signalId);
-
         log.info("[API][POLL][DELETE] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
-
         return ResponseEntity.ok(ApiResponse.success(DELETED, null));
     }
 
     @DeleteMapping("/scheduled/{signalId}")
     public ResponseEntity<ApiResponse<Void>> deleteScheduledPoll(@PathVariable Long signalId) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][POLL][SCHEDULE_DELETE] reservedId={}", signalId);
-
         signalService.deleteScheduledSignal(signalId);
-
         log.info("[API][POLL][SCHEDULE_DELETE] reservedId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
-
         return ResponseEntity.ok(ApiResponse.success(DELETED, null));
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<String>> login(@RequestParam String userEmail, @RequestParam String password) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][AUTH][LOGIN] userEmail={}", userEmail);
-
         String role = signalService.login(userEmail, password);
 
         if (role == null) {
-            log.warn("[API][AUTH][LOGIN] Failed | userEmail={}", userEmail);
+            log.warn("[API][AUTH][LOGIN] userEmail={} | result=FAILED | durationMs={}",
+                    userEmail, System.currentTimeMillis() - start);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.failure("Invalid userEmail or password"));
         }
 
-        log.info("[API][AUTH][LOGIN] Success | userEmail={} | role={} | durationMs={}",
+        log.info("[API][AUTH][LOGIN] userEmail={} | role={} | result=SUCCESS | durationMs={}",
                 userEmail, role, System.currentTimeMillis() - start);
-
         return ResponseEntity.ok(ApiResponse.success(SUCCESS, role));
     }
 }

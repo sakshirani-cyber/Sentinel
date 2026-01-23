@@ -39,19 +39,18 @@ public class DataSyncService {
             return;
         }
 
-        log.debug("[DATA_SYNC][CACHE_MISS] userEmail={}", userEmail);
+        log.info("[DATA_SYNC][CACHE_MISS] userEmail={} | fallback=DB", userEmail);
 
-        long dbStart = System.currentTimeMillis();
         result = dataSyncRepository.syncData(userEmail);
-        long dbDuration = System.currentTimeMillis() - dbStart;
 
         if (result != null && !result.isEmpty()) {
             cache.set(cacheKey, result, CACHE_TTL);
+            log.debug("[DATA_SYNC][CACHE_WRITE] userEmail={} | recordCount={}", userEmail, result.size());
         }
 
         pollSsePublisher.publish(new String[]{userEmail}, com.sentinel.backend.constant.Constants.DATA_SYNC, result);
 
-        log.info("[DATA_SYNC] userEmail={} | recordCount={} | dbDurationMs={} | totalDurationMs={}",
-                userEmail, result != null ? result.size() : 0, dbDuration, System.currentTimeMillis() - start);
+        log.info("[DATA_SYNC] userEmail={} | source=DB | recordCount={} | totalDurationMs={}",
+                userEmail, result != null ? result.size() : 0, System.currentTimeMillis() - start);
     }
 }

@@ -2,6 +2,7 @@ package com.sentinel.backend.repository;
 
 import com.sentinel.backend.dto.response.DataSyncDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -11,13 +12,15 @@ import static com.sentinel.backend.constant.Queries.DATA_SYNC_SQL;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class DataSyncRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
     public List<DataSyncDTO> syncData(String userEmail) {
+        long start = System.currentTimeMillis();
 
-        return jdbcTemplate.query(
+        List<DataSyncDTO> result = jdbcTemplate.query(
                 DATA_SYNC_SQL,
                 (rs, rowNum) -> new DataSyncDTO(
                         rs.getLong("signal_id"),
@@ -46,5 +49,10 @@ public class DataSyncRepository {
                 userEmail,
                 userEmail
         );
+
+        log.info("[DATA_SYNC][DB_HIT] userEmail={} | recordCount={} | durationMs={}",
+                userEmail, result.size(), System.currentTimeMillis() - start);
+
+        return result;
     }
 }

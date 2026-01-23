@@ -31,37 +31,25 @@ public class LabelController {
     @PostMapping("/create/label")
     public ResponseEntity<ApiResponse<CreateLabelResponse>> createLabel(@RequestBody @Valid LabelCreateDTO dto) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][LABEL][CREATE] label={}", dto.getLabel());
-
         CreateLabelResponse response = labelService.createLabel(dto);
-
-        log.info("[API][LABEL][CREATE] labelId={} | durationMs={}", response.getLabelId(), System.currentTimeMillis() - start);
-
+        log.info("[API][LABEL][CREATE] labelId={} | label={} | durationMs={}",
+                response.getLabelId(), dto.getLabel(), System.currentTimeMillis() - start);
         return ResponseEntity.ok(ApiResponse.success(CREATED, response));
     }
 
     @GetMapping("/labels")
     public ResponseEntity<ApiResponse<List<LabelResponseDTO>>> getAllLabels() {
         long start = System.currentTimeMillis();
-
         List<LabelResponseDTO> labels = labelService.getAllLabels();
-
         log.info("[API][LABEL][GET_ALL] count={} | durationMs={}", labels.size(), System.currentTimeMillis() - start);
-
         return ResponseEntity.ok(ApiResponse.success(SUCCESS, labels));
     }
 
     @PostMapping("/edit/label")
     public ResponseEntity<ApiResponse<Void>> editLabel(@RequestBody @Valid LabelEditDTO dto) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][LABEL][EDIT] labelId={}", dto.getId());
-
         labelService.editLabel(dto);
-
         log.info("[API][LABEL][EDIT] labelId={} | durationMs={}", dto.getId(), System.currentTimeMillis() - start);
-
         return ResponseEntity.ok(ApiResponse.success(EDITED, null));
     }
 }

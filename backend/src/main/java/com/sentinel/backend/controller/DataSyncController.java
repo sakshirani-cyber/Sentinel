@@ -17,11 +17,7 @@ public class DataSyncController {
     @GetMapping("/data/sync")
     public void syncData(@RequestParam String userEmail) {
         long start = System.currentTimeMillis();
-
-        log.info("[API][DATA_SYNC] userEmail={}", userEmail);
-
         dataSyncService.syncAndPublish(userEmail);
-
         log.info("[API][DATA_SYNC] userEmail={} | durationMs={}", userEmail, System.currentTimeMillis() - start);
     }
 }

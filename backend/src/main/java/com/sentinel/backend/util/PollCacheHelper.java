@@ -6,6 +6,7 @@ import com.sentinel.backend.entity.ScheduledPoll;
 import com.sentinel.backend.entity.Signal;
 import com.sentinel.backend.sse.dto.PollSsePayload;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -18,11 +19,13 @@ import static com.sentinel.backend.constant.Constants.ACTIVE;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class PollCacheHelper {
 
     private final RedisCacheService cache;
 
     public void savePollToCache(Signal signal, Poll poll) {
+        long start = System.currentTimeMillis();
         String pollKey = cache.buildKey(POLL, signal.getId().toString());
 
         Map<String, Object> pollData = new HashMap<>();
@@ -51,6 +54,9 @@ public class PollCacheHelper {
             cache.addToSortedSet(userKey, signal.getId(),
                     signal.getCreatedOn().toEpochMilli(), cache.getPollTtl());
         }
+
+        log.info("[POLL][CACHE_WRITE] signalId={} | recipientCount={} | durationMs={}",
+                signal.getId(), signal.getSharedWith().length, System.currentTimeMillis() - start);
     }
 
     public Signal buildSignalFromScheduledPoll(ScheduledPoll scheduledPoll) {

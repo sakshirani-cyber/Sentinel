@@ -60,81 +60,106 @@ public class RedisCacheService {
 
     @CircuitBreaker(name = "redis", fallbackMethod = "setFallback")
     public void set(String key, Object value, Duration ttl) {
+        long start = System.currentTimeMillis();
         if (ttl != null) {
             masterTemplate.opsForValue().set(key, value, ttl);
         } else {
             masterTemplate.opsForValue().set(key, value);
         }
+        log.debug("[CACHE][WRITE] operation=SET | key={} | durationMs={}", key, System.currentTimeMillis() - start);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "hSetFallback")
     public void hSet(String key, String field, Object value) {
+        long start = System.currentTimeMillis();
         masterTemplate.opsForHash().put(key, field, value);
+        log.debug("[CACHE][WRITE] operation=HSET | key={} | field={} | durationMs={}", key, field, System.currentTimeMillis() - start);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "hSetAllFallback")
     public void hSetAll(String key, Map<String, Object> values, Duration ttl) {
+        long start = System.currentTimeMillis();
         masterTemplate.opsForHash().putAll(key, values);
         if (ttl != null) {
             masterTemplate.expire(key, ttl);
         }
+        log.debug("[CACHE][WRITE] operation=HSET_ALL | key={} | fieldCount={} | durationMs={}", key, values.size(), System.currentTimeMillis() - start);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "incrFallback")
     public Long incr(String key) {
-        return masterTemplate.opsForValue().increment(key);
+        long start = System.currentTimeMillis();
+        Long result = masterTemplate.opsForValue().increment(key);
+        log.debug("[CACHE][WRITE] operation=INCR | key={} | newValue={} | durationMs={}", key, result, System.currentTimeMillis() - start);
+        return result;
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "addToSortedSetFallback")
     public void addToSortedSet(String key, Object value, double score, Duration ttl) {
+        long start = System.currentTimeMillis();
         masterTemplate.opsForZSet().add(key, value, score);
         if (ttl != null) {
             masterTemplate.expire(key, ttl);
         }
+        log.debug("[CACHE][WRITE] operation=ZADD | key={} | durationMs={}", key, System.currentTimeMillis() - start);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "deleteFallback")
     public void delete(String key) {
+        long start = System.currentTimeMillis();
         masterTemplate.delete(key);
+        log.debug("[CACHE][DELETE] key={} | durationMs={}", key, System.currentTimeMillis() - start);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "deleteMultipleFallback")
     public void deleteMultiple(Collection<String> keys) {
         if (keys != null && !keys.isEmpty()) {
+            long start = System.currentTimeMillis();
             masterTemplate.delete(keys);
+            log.debug("[CACHE][DELETE_MULTI] count={} | durationMs={}", keys.size(), System.currentTimeMillis() - start);
         }
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "leftPushFallback")
     public void leftPush(String key, Object value, Duration ttl) {
+        long start = System.currentTimeMillis();
         masterTemplate.opsForList().leftPush(key, value);
         if (ttl != null) {
             masterTemplate.expire(key, ttl);
         }
+        log.debug("[CACHE][WRITE] operation=LPUSH | key={} | durationMs={}", key, System.currentTimeMillis() - start);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "getFallback")
     public <T> T get(String key, Class<T> clazz) {
+        long start = System.currentTimeMillis();
         Object value = slaveTemplate.opsForValue().get(key);
         if (value == null) {
+            log.debug("[CACHE][READ] operation=GET | key={} | result=MISS | durationMs={}", key, System.currentTimeMillis() - start);
             return null;
         }
+        log.debug("[CACHE][READ] operation=GET | key={} | result=HIT | durationMs={}", key, System.currentTimeMillis() - start);
         return objectMapper.convertValue(value, clazz);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "getTypeRefFallback")
     public <T> T get(String key, TypeReference<T> typeRef) {
+        long start = System.currentTimeMillis();
         Object value = slaveTemplate.opsForValue().get(key);
         if (value == null) {
+            log.debug("[CACHE][READ] operation=GET | key={} | result=MISS | durationMs={}", key, System.currentTimeMillis() - start);
             return null;
         }
+        log.debug("[CACHE][READ] operation=GET | key={} | result=HIT | durationMs={}", key, System.currentTimeMillis() - start);
         return objectMapper.convertValue(value, typeRef);
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "hGetAllFallback")
     public Map<String, Object> hGetAll(String key) {
+        long start = System.currentTimeMillis();
         Map<Object, Object> rawMap = slaveTemplate.opsForHash().entries(key);
         if (rawMap == null || rawMap.isEmpty()) {
+            log.debug("[CACHE][READ] operation=HGETALL | key={} | result=MISS | durationMs={}", key, System.currentTimeMillis() - start);
             return Map.of();
         }
 
@@ -142,13 +167,16 @@ public class RedisCacheService {
         for (Map.Entry<Object, Object> entry : rawMap.entrySet()) {
             result.put(entry.getKey().toString(), entry.getValue());
         }
+        log.debug("[CACHE][READ] operation=HGETALL | key={} | result=HIT | fieldCount={} | durationMs={}", key, result.size(), System.currentTimeMillis() - start);
         return result;
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "getListFallback")
     public <T> List<T> getList(String key, Class<T> clazz) {
+        long start = System.currentTimeMillis();
         List<Object> rawList = slaveTemplate.opsForList().range(key, 0, -1);
         if (rawList == null || rawList.isEmpty()) {
+            log.debug("[CACHE][READ] operation=LRANGE | key={} | result=MISS | durationMs={}", key, System.currentTimeMillis() - start);
             return new ArrayList<>();
         }
 
@@ -158,16 +186,20 @@ public class RedisCacheService {
                 result.add(objectMapper.convertValue(item, clazz));
             }
         }
+        log.debug("[CACHE][READ] operation=LRANGE | key={} | result=HIT | count={} | durationMs={}", key, result.size(), System.currentTimeMillis() - start);
         return result;
     }
 
     @CircuitBreaker(name = "redis", fallbackMethod = "getListTypeRefFallback")
     public <T> List<T> getList(String key, TypeReference<List<T>> typeRef) {
+        long start = System.currentTimeMillis();
         List<Object> rawList = slaveTemplate.opsForList().range(key, 0, -1);
         if (rawList == null || rawList.isEmpty()) {
+            log.debug("[CACHE][READ] operation=LRANGE | key={} | result=MISS | durationMs={}", key, System.currentTimeMillis() - start);
             return new ArrayList<>();
         }
 
+        log.debug("[CACHE][READ] operation=LRANGE | key={} | result=HIT | count={} | durationMs={}", key, rawList.size(), System.currentTimeMillis() - start);
         return objectMapper.convertValue(rawList, typeRef);
     }
 

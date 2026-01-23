@@ -29,8 +29,6 @@ public class SseController {
     public SseEmitter connect(@RequestParam String userEmail) {
         long start = System.currentTimeMillis();
 
-        log.info("[SSE][CONNECT] userEmail={}", userEmail);
-
         SseEmitter emitter = new SseEmitter(0L);
         registry.add(userEmail, emitter);
 
@@ -52,41 +50,42 @@ public class SseController {
         try {
             emitter.send(SseEmitter.event().name(CONNECTED).data("SSE connected"));
             deliverPendingEvents(userEmail, emitter);
+            log.info("[SSE][CONNECT] userEmail={} | activeConnections={} | durationMs={}",
+                    userEmail, registry.size(), System.currentTimeMillis() - start);
         } catch (Exception ex) {
             log.error("[SSE][CONNECT][ERROR] userEmail={} | error={}", userEmail, ex.getMessage());
             registry.remove(userEmail);
             emitter.completeWithError(ex);
         }
 
-        log.info("[SSE][CONNECT] userEmail={} | durationMs={}", userEmail, System.currentTimeMillis() - start);
-
         return emitter;
     }
 
     private void deliverPendingEvents(String userEmail, SseEmitter emitter) {
+        long start = System.currentTimeMillis();
         String eventsKey = cache.buildKey(SSE_EVENTS, userEmail);
         List<SseEvent<Object>> events = cache.getList(eventsKey, new TypeReference<List<SseEvent<Object>>>() {});
 
         if (events == null || events.isEmpty()) {
-            log.debug("[SSE][DELIVER] No pending events | userEmail={}", userEmail);
+            log.debug("[SSE][PENDING][CACHE_MISS] userEmail={} | durationMs={}", userEmail, System.currentTimeMillis() - start);
             return;
         }
 
-        log.info("[SSE][DELIVER] Found {} pending events | userEmail={}", events.size(), userEmail);
+        log.info("[SSE][PENDING][CACHE_HIT] userEmail={} | eventCount={} | durationMs={}",
+                userEmail, events.size(), System.currentTimeMillis() - start);
 
         if (registry.get(userEmail) == null) {
             log.warn("[SSE][DELIVER] Emitter removed before delivery | userEmail={}", userEmail);
             return;
         }
 
+        long deliverStart = System.currentTimeMillis();
         int deliveredCount = 0;
 
         for (SseEvent<Object> event : events) {
             try {
                 emitter.send(SseEmitter.event().name(event.getEventType()).data(event));
                 deliveredCount++;
-                log.debug("[SSE][DELIVER] Event {}/{} delivered | userEmail={} | eventType={}",
-                        deliveredCount, events.size(), userEmail, event.getEventType());
             } catch (Exception ex) {
                 log.error("[SSE][DELIVER][ERROR] Failed at event {}/{} | userEmail={} | error={}",
                         deliveredCount + 1, events.size(), userEmail, ex.getMessage());
@@ -97,7 +96,8 @@ public class SseController {
 
         if (deliveredCount == events.size()) {
             cache.delete(eventsKey);
-            log.info("[SSE][DELIVER] All {} events delivered and cleared | userEmail={}", deliveredCount, userEmail);
+            log.info("[SSE][DELIVER] userEmail={} | delivered={} | deliveryDurationMs={} | totalDurationMs={}",
+                    userEmail, deliveredCount, System.currentTimeMillis() - deliverStart, System.currentTimeMillis() - start);
         }
     }
 }

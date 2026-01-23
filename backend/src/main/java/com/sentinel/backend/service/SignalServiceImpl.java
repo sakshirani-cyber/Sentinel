@@ -205,13 +205,17 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     public PollResultDTO getPollResults(Long signalId) {
+        long start = System.currentTimeMillis();
         String cacheKey = cache.buildKey(POLL_RESULTS_CACHED, signalId.toString());
         PollResultDTO cached = cache.get(cacheKey, PollResultDTO.class);
 
         if (cached != null) {
-            log.debug("[POLL][RESULTS][CACHE_HIT] signalId={}", signalId);
+            log.info("[POLL][RESULTS][CACHE_HIT] signalId={} | responded={}/{} | durationMs={}",
+                    signalId, cached.getTotalResponded(), cached.getTotalAssigned(), System.currentTimeMillis() - start);
             return cached;
         }
+
+        log.debug("[POLL][RESULTS][CACHE_MISS] signalId={} | fetching from source", signalId);
 
         Signal signal = getPollSignalFromCache(signalId);
         Poll poll = getPollFromCache(signalId);
@@ -220,8 +224,8 @@ public class SignalServiceImpl implements SignalService {
         PollResultDTO dto = buildPollResults(signal, poll, results);
         cache.set(cacheKey, dto, cache.getPollResultsTtl());
 
-        log.info("[POLL][RESULTS] signalId={} | responded={}/{}",
-                signalId, dto.getTotalResponded(), dto.getTotalAssigned());
+        log.info("[POLL][RESULTS][BUILT] signalId={} | responded={}/{} | durationMs={}",
+                signalId, dto.getTotalResponded(), dto.getTotalAssigned(), System.currentTimeMillis() - start);
 
         return dto;
     }
@@ -375,9 +379,11 @@ public class SignalServiceImpl implements SignalService {
 
     private void invalidatePollResultsCache(Long signalId) {
         cache.delete(cache.buildKey(POLL_RESULTS_CACHED, signalId.toString()));
+        log.debug("[POLL][CACHE_INVALIDATE] signalId={}", signalId);
     }
 
     private void saveVoteToCache(PollResult result) {
+        long start = System.currentTimeMillis();
         String voteKey = cache.buildKey(POLL_RESULTS, result.getId().getSignalId().toString());
 
         Map<String, Object> voteData = new HashMap<>();
@@ -387,16 +393,21 @@ public class SignalServiceImpl implements SignalService {
         voteData.put("timeOfSubmission", result.getTimeOfSubmission());
 
         cache.hSet(voteKey, result.getId().getUserEmail(), voteData);
+        log.debug("[VOTE][CACHE_WRITE] signalId={} | user={} | durationMs={}",
+                result.getId().getSignalId(), result.getId().getUserEmail(), System.currentTimeMillis() - start);
     }
 
     private Signal getPollSignalFromCache(Long signalId) {
+        long start = System.currentTimeMillis();
         String key = cache.buildKey(POLL, signalId.toString());
         Map<String, Object> data = cache.hGetAll(key);
 
         if (data.isEmpty()) {
+            log.info("[SIGNAL][CACHE_MISS] signalId={} | durationMs={} | fallback=DB", signalId, System.currentTimeMillis() - start);
             return getPollSignalFromDB(signalId);
         }
 
+        log.info("[SIGNAL][CACHE_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
         return mapToSignal(data);
     }
 
@@ -422,10 +433,12 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private Poll getPollFromCache(Long signalId) {
+        long start = System.currentTimeMillis();
         String key = cache.buildKey(POLL, signalId.toString());
         Map<String, Object> data = cache.hGetAll(key);
 
         if (data.isEmpty()) {
+            log.info("[POLL][CACHE_MISS] signalId={} | durationMs={} | fallback=DB", signalId, System.currentTimeMillis() - start);
             return getPollFromDB(signalId);
         }
 
@@ -433,14 +446,17 @@ public class SignalServiceImpl implements SignalService {
         poll.setSignalId(signalId);
         poll.setQuestion((String) data.get("question"));
         poll.setOptions((String[]) data.get("options"));
+        log.info("[POLL][CACHE_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
         return poll;
     }
 
     private List<PollResult> getVotesFromCache(Long signalId) {
+        long start = System.currentTimeMillis();
         String key = cache.buildKey(POLL_RESULTS, signalId.toString());
         Map<String, Object> votes = cache.hGetAll(key);
 
         if (votes.isEmpty()) {
+            log.info("[VOTES][CACHE_MISS] signalId={} | durationMs={} | fallback=DB", signalId, System.currentTimeMillis() - start);
             return getVotesFromDB(signalId);
         }
 
@@ -458,16 +474,20 @@ public class SignalServiceImpl implements SignalService {
             results.add(result);
         }
 
+        log.info("[VOTES][CACHE_HIT] signalId={} | voteCount={} | durationMs={}", signalId, results.size(), System.currentTimeMillis() - start);
         return results;
     }
 
     private Signal getPollSignalFromDB(Long signalId) {
+        long start = System.currentTimeMillis();
         Signal signal = signalRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
 
         if (!com.sentinel.backend.constant.Constants.POLL.equalsIgnoreCase(signal.getTypeOfSignal())) {
             throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
         }
+
+        log.info("[SIGNAL][DB_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
 
         Poll poll = getPollFromDB(signalId);
         pollCacheHelper.savePollToCache(signal, poll);
@@ -476,12 +496,18 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private Poll getPollFromDB(Long signalId) {
-        return pollRepository.findById(signalId)
+        long start = System.currentTimeMillis();
+        Poll poll = pollRepository.findById(signalId)
                 .orElseThrow(() -> new CustomException("Poll not found", HttpStatus.NOT_FOUND));
+        log.info("[POLL][DB_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
+        return poll;
     }
 
     private List<PollResult> getVotesFromDB(Long signalId) {
-        return pollResultRepository.findByIdSignalId(signalId);
+        long start = System.currentTimeMillis();
+        List<PollResult> results = pollResultRepository.findByIdSignalId(signalId);
+        log.info("[VOTES][DB_HIT] signalId={} | voteCount={} | durationMs={}", signalId, results.size(), System.currentTimeMillis() - start);
+        return results;
     }
 
     private Signal mapToSignal(Map<String, Object> data) {
