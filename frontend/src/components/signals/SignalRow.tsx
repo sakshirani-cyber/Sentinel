@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Poll, Response } from '../../types';
 import SignalRowActions from './SignalRowActions';
 import SignalRowHeader from './SignalRowHeader';
@@ -58,6 +59,8 @@ export default function SignalRow({
   loadingAnalytics = false,
 }: SignalRowProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Determine if current user is the creator of this signal
   const isCreator = poll.publisherEmail.toLowerCase() === currentUserEmail.toLowerCase();
@@ -84,6 +87,29 @@ export default function SignalRow({
     setIsExpanded(!isExpanded);
   };
 
+  // Delete confirmation handlers
+  const handleDeleteClick = () => {
+    console.log('[SignalRow] Delete button clicked for poll:', poll.id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    console.log('[SignalRow] Confirming delete for poll:', poll.id);
+    try {
+      await onDelete?.(poll.id);
+      console.log('[SignalRow] Delete completed for poll:', poll.id);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    console.log('[SignalRow] Delete cancelled for poll:', poll.id);
+    setShowDeleteConfirm(false);
+  };
+
   return (
     <div
       className={`
@@ -105,6 +131,81 @@ export default function SignalRow({
       )}
 
       <div className="p-4">
+        {/* Inline Delete Confirmation - Appears at top of card */}
+        {showDeleteConfirm && (
+          <div 
+            className="
+              mb-4 p-4 rounded-xl
+              bg-card-solid dark:bg-card-solid
+              border border-destructive/30 dark:border-destructive/40
+              shadow-lg
+              animate-fade-in
+            "
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Warning Header */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 dark:bg-destructive/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-foreground dark:text-foreground">
+                  Are you sure?
+                </h3>
+                <p className="text-xs text-foreground-muted dark:text-foreground-muted">
+                  This is a permanent action
+                </p>
+              </div>
+            </div>
+
+            {/* Warning Message */}
+            <p className="text-sm text-foreground-muted dark:text-foreground-muted mb-4 bg-secondary dark:bg-muted p-3 rounded-lg border border-border">
+              Deleting this signal will permanently remove it from both local and cloud storage. All responses will be deleted. This action cannot be undone.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+                className="
+                  flex-1 px-4 py-2
+                  bg-muted dark:bg-secondary
+                  text-foreground dark:text-foreground
+                  rounded-lg font-medium text-sm
+                  hover:bg-muted/80 dark:hover:bg-secondary/80
+                  transition-colors
+                  disabled:opacity-50
+                "
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="
+                  flex-1 px-4 py-2
+                  bg-destructive hover:bg-destructive/90
+                  text-destructive-foreground
+                  rounded-lg font-medium text-sm
+                  transition-colors
+                  flex items-center justify-center gap-2
+                  disabled:opacity-50
+                "
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Main Row: Actions + Header */}
         <div className="flex items-start gap-3">
           {/* Left Side: Action Buttons */}
@@ -115,7 +216,7 @@ export default function SignalRow({
             viewMode={viewMode}
             onAnalytics={onAnalytics}
             onEdit={onEdit}
-            onDelete={onDelete}
+            onDeleteClick={onDelete ? handleDeleteClick : undefined}
             loadingAnalytics={loadingAnalytics}
           />
 

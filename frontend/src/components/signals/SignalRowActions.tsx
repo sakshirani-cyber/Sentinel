@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { BarChart3, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { BarChart3, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Poll } from '../../types';
 
 interface SignalRowActionsProps {
@@ -9,7 +8,7 @@ interface SignalRowActionsProps {
   viewMode: 'inbox' | 'sent';
   onAnalytics?: (poll: Poll) => void;
   onEdit?: (poll: Poll) => void;
-  onDelete?: (pollId: string) => void;
+  onDeleteClick?: () => void;
   loadingAnalytics?: boolean;
 }
 
@@ -20,6 +19,8 @@ interface SignalRowActionsProps {
  * - Analytics: Visible to all users
  * - Edit: Only for creator, non-completed signals
  * - Delete: Only for creator, non-completed signals (direct button, no dropdown)
+ * 
+ * Note: Delete confirmation is handled by parent SignalRow component
  */
 export default function SignalRowActions({
   poll,
@@ -28,12 +29,9 @@ export default function SignalRowActions({
   viewMode,
   onAnalytics,
   onEdit,
-  onDelete,
+  onDeleteClick,
   loadingAnalytics = false,
 }: SignalRowActionsProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
   // Only show publisher actions in 'sent' view mode for creator
   const showPublisherActions = isCreator && viewMode === 'sent' && !isCompleted;
 
@@ -50,26 +48,7 @@ export default function SignalRowActions({
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log('[SignalRowActions] Delete button clicked for poll:', poll.id);
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDeleting(true);
-    console.log('[SignalRowActions] Confirming delete for poll:', poll.id);
-    try {
-      await onDelete?.(poll.id);
-      console.log('[SignalRowActions] Delete completed for poll:', poll.id);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
-    }
-  };
-
-  const cancelDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log('[SignalRowActions] Delete cancelled for poll:', poll.id);
-    setShowDeleteConfirm(false);
+    onDeleteClick?.();
   };
 
   return (
@@ -116,7 +95,7 @@ export default function SignalRowActions({
       )}
 
       {/* Delete Button - Only for creator, non-completed (direct button, no dropdown) */}
-      {showPublisherActions && onDelete && (
+      {showPublisherActions && onDeleteClick && (
         <button
           onClick={handleDeleteClick}
           className="
@@ -131,84 +110,6 @@ export default function SignalRowActions({
         >
           <Trash2 className="w-4 h-4" />
         </button>
-      )}
-
-      {/* Delete Confirmation Dialog - Opaque background */}
-      {showDeleteConfirm && (
-        <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-          onClick={cancelDelete}
-        >
-          <div 
-            className="
-              bg-card-solid dark:bg-card-solid
-              rounded-xl shadow-2xl
-              p-6 max-w-sm w-full mx-4
-              border border-border dark:border-border
-              animate-scale-in
-            "
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Warning Icon */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-destructive/10 dark:bg-destructive/20 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-6 h-6 text-destructive" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-foreground dark:text-foreground">
-                  Are you sure?
-                </h3>
-                <p className="text-sm text-foreground-muted dark:text-foreground-muted">
-                  This is a permanent action
-                </p>
-              </div>
-            </div>
-
-            <p className="text-sm text-foreground-muted dark:text-foreground-muted mb-6 bg-secondary dark:bg-muted p-3 rounded-lg border border-border">
-              Deleting this signal will permanently remove it from both local and cloud storage. All responses will be deleted. This action cannot be undone.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={cancelDelete}
-                disabled={isDeleting}
-                className="
-                  flex-1 px-4 py-2.5
-                  bg-muted dark:bg-secondary
-                  text-foreground dark:text-foreground
-                  rounded-lg font-medium
-                  hover:bg-muted/80 dark:hover:bg-secondary/80
-                  transition-colors
-                  disabled:opacity-50
-                "
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={isDeleting}
-                className="
-                  flex-1 px-4 py-2.5
-                  bg-destructive hover:bg-destructive/90
-                  text-destructive-foreground
-                  rounded-lg font-medium
-                  transition-colors
-                  flex items-center justify-center gap-2
-                  disabled:opacity-50
-                "
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
