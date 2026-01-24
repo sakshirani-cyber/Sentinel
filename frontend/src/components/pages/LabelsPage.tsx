@@ -23,7 +23,7 @@ export default function LabelsPage({ user, polls }: LabelsPageProps) {
         subtitle="Organize your signals with custom labels"
         icon={Tag}
         action={
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 rounded-full text-sm text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/20 rounded-full text-sm text-primary">
             <Sparkles className="w-4 h-4" />
             <span>Auto-detection enabled</span>
           </div>
@@ -31,17 +31,17 @@ export default function LabelsPage({ user, polls }: LabelsPageProps) {
       />
 
       {/* Description Card */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-ribbit-dry-sage/20 to-ribbit-fern/10 dark:from-ribbit-hunter-green/40 dark:to-ribbit-fern/20 rounded-xl border border-ribbit-fern/20 dark:border-ribbit-dry-sage/10">
+      <div className="mb-6 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-border">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-ribbit-fern/20 dark:bg-ribbit-dry-sage/20 flex items-center justify-center flex-shrink-0">
-            <Tag className="w-5 h-5 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+            <Tag className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-1">
+            <h3 className="font-medium text-foreground mb-1">
               How Labels Work
             </h3>
-            <p className="text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
-              Create custom labels to categorize your signals. Use <code className="px-1.5 py-0.5 bg-ribbit-dust-grey/50 dark:bg-ribbit-pine-teal/30 rounded text-xs">#labelname</code> in your signal questions and they'll be automatically detected and applied.
+            <p className="text-sm text-foreground-secondary">
+              Create custom labels to categorize your signals. Use <code className="px-1.5 py-0.5 bg-muted rounded text-xs">#labelname</code> in your signal questions and they'll be automatically detected and applied.
             </p>
           </div>
         </div>

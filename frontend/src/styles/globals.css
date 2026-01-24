@@ -344,6 +344,18 @@
   --mono-bg: var(--neon-black);
   --mono-text: var(--neon-light-text);
 
+  /* Legacy ribbit mappings for dark mode - Updated for proper contrast */
+  --ribbit-dust-grey: var(--neon-light-text);
+  --ribbit-dry-sage: var(--neon-cyan);
+  --ribbit-fern: var(--neon-cyan);
+  --ribbit-hunter-green: var(--neon-cyan);
+  --ribbit-pine-teal: var(--neon-black);
+  --ribbit-ash-grey: var(--neon-dark-surface);
+  --ribbit-muted-teal: var(--neon-cyan);
+  --ribbit-deep-teal: var(--neon-cyan);
+  --ribbit-slate-grey: var(--neon-cyan-bright);
+  --ribbit-charcoal: var(--neon-light-text);
+
   /* Sidebar - Dark mode with neon accents */
   --sidebar-bg: rgba(15, 15, 15, 0.95);
   --sidebar-foreground: var(--neon-light-text);
@@ -383,17 +395,17 @@
   --color-neon-coral: var(--neon-coral);
   --color-neon-black: var(--neon-black);
 
-  /* Legacy compatibility tokens */
-  --color-ribbit-dust-grey: var(--neon-mint);
-  --color-ribbit-dry-sage: var(--neon-teal);
-  --color-ribbit-fern: var(--neon-teal);
-  --color-ribbit-hunter-green: var(--neon-teal-dark);
-  --color-ribbit-pine-teal: var(--neon-slate);
-  --color-ribbit-ash-grey: var(--neon-mint);
-  --color-ribbit-muted-teal: var(--neon-teal);
-  --color-ribbit-deep-teal: var(--neon-teal);
-  --color-ribbit-slate-grey: var(--neon-teal-dark);
-  --color-ribbit-charcoal: var(--neon-slate);
+  /* Legacy compatibility tokens - reference CSS variables that change in dark mode */
+  --color-ribbit-dust-grey: var(--ribbit-dust-grey);
+  --color-ribbit-dry-sage: var(--ribbit-dry-sage);
+  --color-ribbit-fern: var(--ribbit-fern);
+  --color-ribbit-hunter-green: var(--ribbit-hunter-green);
+  --color-ribbit-pine-teal: var(--ribbit-pine-teal);
+  --color-ribbit-ash-grey: var(--ribbit-ash-grey);
+  --color-ribbit-muted-teal: var(--ribbit-muted-teal);
+  --color-ribbit-deep-teal: var(--ribbit-deep-teal);
+  --color-ribbit-slate-grey: var(--ribbit-slate-grey);
+  --color-ribbit-charcoal: var(--ribbit-charcoal);
 
   /* Semantic Colors */
   --color-background: var(--background);
