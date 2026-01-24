@@ -216,7 +216,7 @@ export default function InboxPage({
         availableLabels={availableLabels}
         availablePublishers={availablePublishers}
         showFilters={true}
-        isPublisher={user.isPublisher}
+        isPublisher={false}
       />
 
       {/* Poll List */}

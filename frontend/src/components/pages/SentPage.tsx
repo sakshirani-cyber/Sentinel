@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Poll, Response, User } from '../../types';
-import { PageHeader, StatusFilterCards } from '../layout';
-import type { StatusFilter } from '../layout';
+import { PageHeader, StatusFilterCards, SearchFilterRow, defaultFilterState } from '../layout';
+import type { StatusFilter, SortOption, FilterState } from '../layout';
 import PublishedPolls from '../PublishedPolls';
 import ScheduledPolls from '../ScheduledPolls';
 import { EmptyState } from '../signals';
@@ -29,7 +29,11 @@ export default function SentPage({
   onDeletePoll,
   onUpdatePoll,
 }: SentPageProps) {
+  // Filter state
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('deadline');
+  const [filters, setFilters] = useState<FilterState>(defaultFilterState);
 
   // Filter polls by publisher
   const userPolls = useMemo(() => 
@@ -55,18 +59,116 @@ export default function SentPage({
     draft: scheduledPolls.length,
   }), [userPolls.length, activePolls.length, scheduledPolls.length]);
 
+  // Available filter options
+  const availableLabels = useMemo(() => {
+    const labels = new Set<string>();
+    userPolls.forEach(p => {
+      p.labels?.forEach((l: string) => labels.add(l));
+    });
+    return Array.from(labels);
+  }, [userPolls]);
+
+  const availableConsumers = useMemo(() => {
+    const consumers = new Set<string>();
+    userPolls.forEach(p => {
+      p.consumers?.forEach((c: string) => consumers.add(c));
+    });
+    return Array.from(consumers).slice(0, 10); // Limit to first 10 for performance
+  }, [userPolls]);
+
+  // Apply search, sort, and filters
+  const applyFilters = useCallback((pollList: Poll[]) => {
+    let result = [...pollList];
+
+    // Search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(p =>
+        p.question?.toLowerCase().includes(query) ||
+        p.labels?.some((l: string) => l.toLowerCase().includes(query)) ||
+        p.consumers?.some((c: string) => c.toLowerCase().includes(query))
+      );
+    }
+
+    // Label filter
+    if (filters.labels.length > 0) {
+      result = result.filter(p =>
+        p.labels?.some((l: string) => filters.labels.includes(l))
+      );
+    }
+
+    // Date range filter (based on deadline)
+    if (filters.dateRange.start || filters.dateRange.end) {
+      result = result.filter(p => {
+        const deadline = new Date(p.deadline);
+        
+        if (filters.dateRange.start) {
+          const startDate = new Date(filters.dateRange.start);
+          startDate.setHours(0, 0, 0, 0);
+          if (deadline < startDate) return false;
+        }
+        
+        if (filters.dateRange.end) {
+          const endDate = new Date(filters.dateRange.end);
+          endDate.setHours(23, 59, 59, 999);
+          if (deadline > endDate) return false;
+        }
+        
+        return true;
+      });
+    }
+
+    // Scheduled only filter
+    if (filters.scheduledOnly) {
+      result = result.filter(p => p.status === 'scheduled');
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortOption) {
+        case 'newest':
+          return new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime();
+        case 'oldest':
+          return new Date(a.publishedAt || 0).getTime() - new Date(b.publishedAt || 0).getTime();
+        case 'deadline':
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        case 'title':
+          return (a.question || '').localeCompare(b.question || '');
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [searchQuery, sortOption, filters]);
+
   // Get filtered polls based on status
   const { filteredPublished, filteredScheduled } = useMemo(() => {
+    let published: Poll[];
+    let scheduled: Poll[];
+
     switch (statusFilter) {
       case 'incomplete': // Published
-        return { filteredPublished: activePolls, filteredScheduled: [] };
+        published = activePolls;
+        scheduled = [];
+        break;
       case 'draft': // Scheduled
-        return { filteredPublished: [], filteredScheduled: scheduledPolls };
+        published = [];
+        scheduled = scheduledPolls;
+        break;
       case 'all':
       default:
-        return { filteredPublished: activePolls, filteredScheduled: scheduledPolls };
+        published = activePolls;
+        scheduled = scheduledPolls;
+        break;
     }
-  }, [statusFilter, activePolls, scheduledPolls]);
+
+    // Apply search, sort, and filters
+    return {
+      filteredPublished: applyFilters(published),
+      filteredScheduled: applyFilters(scheduled),
+    };
+  }, [statusFilter, activePolls, scheduledPolls, applyFilters]);
 
   const hasNoSignals = filteredPublished.length === 0 && filteredScheduled.length === 0;
 
@@ -87,18 +189,35 @@ export default function SentPage({
         showDraft={true}
       />
 
+      {/* Search, Filter, Sort Row */}
+      <SearchFilterRow
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search your signals..."
+        sortValue={sortOption}
+        onSortChange={setSortOption}
+        filters={filters}
+        onFiltersChange={setFilters}
+        availableLabels={availableLabels}
+        availablePublishers={availableConsumers}
+        showFilters={true}
+        isPublisher={true}
+      />
+
       {/* Signal Lists */}
       {hasNoSignals ? (
         <EmptyState
           type="sent"
-          action={{
+          title={searchQuery ? 'No Results Found' : undefined}
+          description={searchQuery ? 'Try adjusting your search or filters.' : undefined}
+          action={!searchQuery ? {
             label: 'Create Signal',
             onClick: () => {
               // Trigger create panel - this will be handled via layout context
               const event = new CustomEvent('ribbit:openCreatePanel');
               window.dispatchEvent(event);
             },
-          }}
+          } : undefined}
         />
       ) : (
         <div className="space-y-8">
