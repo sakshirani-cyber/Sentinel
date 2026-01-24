@@ -54,10 +54,10 @@ export default function PageHeader({
             onClick={openCreatePanel}
             className="
               flex items-center gap-2 px-4 py-2.5
-              bg-ribbit-fern text-white rounded-lg
+              bg-primary text-primary-foreground rounded-lg
               font-medium text-sm
               shadow-md hover:shadow-lg
-              hover:bg-ribbit-hunter-green
+              hover:opacity-90
               active:scale-[0.98]
               transition-all duration-200
             "

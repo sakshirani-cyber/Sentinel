@@ -9,6 +9,8 @@ import { ListChecks, Plus, X, GripVertical, AlertCircle } from 'lucide-react';
  * - Minimum 2 options required
  * - Maximum 10 options
  * - Duplicate detection
+ * 
+ * Uses semantic CSS variables for consistent light/dark mode theming.
  */
 export default function OptionsStep({ formData, updateFormData, onValidationChange }: StepProps) {
   const [touched, setTouched] = useState(false);
@@ -49,13 +51,13 @@ export default function OptionsStep({ formData, updateFormData, onValidationChan
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/20 flex items-center justify-center mx-auto mb-4">
-          <ListChecks className="w-8 h-8 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+        <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center mx-auto mb-4">
+          <ListChecks className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           What are the answer options?
         </h2>
-        <p className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-foreground-secondary">
           Add between 2-10 options for recipients to choose from
         </p>
       </div>
@@ -68,12 +70,12 @@ export default function OptionsStep({ formData, updateFormData, onValidationChan
             className="flex items-center gap-2 group animate-fade-in"
           >
             {/* Drag Handle (visual only for now) */}
-            <div className="p-1 text-ribbit-pine-teal/30 dark:text-ribbit-dust-grey/30 cursor-grab">
+            <div className="p-1 text-muted-foreground/50 cursor-grab hover:text-muted-foreground transition-colors">
               <GripVertical className="w-4 h-4" />
             </div>
 
             {/* Option Number */}
-            <span className="w-6 h-6 rounded-full bg-ribbit-dry-sage/50 dark:bg-ribbit-hunter-green/50 flex items-center justify-center text-xs font-medium text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+            <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
               {index + 1}
             </span>
 
@@ -86,11 +88,12 @@ export default function OptionsStep({ formData, updateFormData, onValidationChan
               placeholder={`Option ${index + 1}`}
               className="
                 flex-1 px-4 py-3 rounded-xl
-                bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30
-                border-2 border-ribbit-fern/30 dark:border-ribbit-dry-sage/20
-                text-ribbit-pine-teal dark:text-ribbit-dust-grey
-                placeholder:text-ribbit-pine-teal/40 dark:placeholder:text-ribbit-dust-grey/40
-                focus:outline-none focus:ring-4 focus:border-ribbit-fern focus:ring-ribbit-fern/20
+                bg-input-background dark:bg-input
+                border-2 border-border
+                text-foreground
+                placeholder:text-muted-foreground
+                focus:outline-none focus:ring-4 focus:border-primary focus:ring-ring
+                hover:border-foreground-muted
                 transition-all duration-200
               "
             />
@@ -99,7 +102,15 @@ export default function OptionsStep({ formData, updateFormData, onValidationChan
             {formData.options.length > 2 && (
               <button
                 onClick={() => handleRemoveOption(index)}
-                className="p-2 rounded-lg text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
+                className="
+                  p-2 rounded-lg 
+                  text-destructive/70 
+                  hover:text-destructive 
+                  hover:bg-destructive/10 
+                  transition-all duration-200 
+                  opacity-0 group-hover:opacity-100
+                  focus:opacity-100
+                "
                 aria-label="Remove option"
               >
                 <X className="w-5 h-5" />
@@ -115,19 +126,20 @@ export default function OptionsStep({ formData, updateFormData, onValidationChan
         disabled={formData.options.length >= 10}
         className="
           w-full flex items-center justify-center gap-2 px-4 py-3
-          border-2 border-dashed border-ribbit-fern/30 dark:border-ribbit-dry-sage/20
+          border-2 border-dashed border-border
           rounded-xl
-          text-ribbit-fern dark:text-ribbit-dry-sage
-          hover:bg-ribbit-dry-sage/20 dark:hover:bg-ribbit-fern/10
-          hover:border-ribbit-fern dark:hover:border-ribbit-dry-sage
+          text-primary
+          hover:bg-primary/5 dark:hover:bg-primary/10
+          hover:border-primary/50
           transition-all duration-200
           disabled:opacity-50 disabled:cursor-not-allowed
+          focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background
         "
       >
         <Plus className="w-5 h-5" />
-        <span>Add Option</span>
+        <span className="font-medium">Add Option</span>
         {formData.options.length >= 10 && (
-          <span className="text-xs text-ribbit-pine-teal/50">(maximum reached)</span>
+          <span className="text-xs text-muted-foreground">(maximum reached)</span>
         )}
       </button>
 
@@ -135,13 +147,13 @@ export default function OptionsStep({ formData, updateFormData, onValidationChan
       {touched && (
         <div className="space-y-2">
           {validOptionsCount < 2 && (
-            <div className="flex items-center gap-2 text-sm text-red-500">
+            <div className="flex items-center gap-2 text-sm text-destructive font-medium">
               <AlertCircle className="w-4 h-4" />
               <span>At least 2 options are required</span>
             </div>
           )}
           {hasDuplicates() && (
-            <div className="flex items-center gap-2 text-sm text-red-500">
+            <div className="flex items-center gap-2 text-sm text-destructive font-medium">
               <AlertCircle className="w-4 h-4" />
               <span>Duplicate options are not allowed</span>
             </div>
@@ -151,8 +163,8 @@ export default function OptionsStep({ formData, updateFormData, onValidationChan
 
       {/* Counter */}
       <div className="text-center">
-        <span className={`text-sm ${
-          validOptionsCount < 2 ? 'text-red-500' : 'text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50'
+        <span className={`text-sm font-medium ${
+          validOptionsCount < 2 ? 'text-destructive' : 'text-muted-foreground'
         }`}>
           {validOptionsCount} of 10 options used
         </span>

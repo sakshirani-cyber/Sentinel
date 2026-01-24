@@ -39,6 +39,8 @@ interface CreateSignalWizardProps {
  * - Step-by-step validation
  * - Back/Next navigation
  * - Progress indicator
+ * 
+ * Uses semantic CSS variables for consistent light/dark mode theming.
  */
 export default function CreateSignalWizard({
   user,
@@ -164,7 +166,7 @@ export default function CreateSignalWizard({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-background">
       {/* Step Indicator */}
       <div className="flex-shrink-0 px-6 pt-6">
         <WizardStepIndicator
@@ -181,20 +183,29 @@ export default function CreateSignalWizard({
       </div>
 
       {/* Navigation Footer */}
-      <div className="flex-shrink-0 px-6 py-4 border-t border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 bg-ribbit-dust-grey/50 dark:bg-ribbit-pine-teal/50">
+      <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-secondary dark:bg-muted">
         <div className="flex items-center justify-between">
           {/* Back Button */}
           <button
             onClick={goBack}
             disabled={!canGoBack || isSubmitting}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-ribbit-pine-teal dark:text-ribbit-dust-grey hover:bg-ribbit-dry-sage/30 dark:hover:bg-ribbit-hunter-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="
+              flex items-center gap-2 px-4 py-2.5 rounded-xl 
+              text-sm font-medium 
+              text-foreground-secondary
+              hover:bg-muted dark:hover:bg-secondary 
+              hover:text-foreground
+              transition-all duration-200
+              disabled:opacity-50 disabled:cursor-not-allowed
+              focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background
+            "
           >
             <ChevronLeft className="w-4 h-4" />
             Back
           </button>
 
           {/* Step Counter */}
-          <span className="text-sm text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
+          <span className="text-sm text-muted-foreground font-medium">
             Step {currentStep + 1} of {STEPS.length}
           </span>
 
@@ -204,13 +215,14 @@ export default function CreateSignalWizard({
             disabled={!canGoNext || isSubmitting}
             className={`
               flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
-              transition-all shadow-md
+              transition-all duration-200 shadow-md
+              focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background
               ${isLastStep
-                ? 'bg-ribbit-hunter-green text-ribbit-dust-grey hover:bg-[#2f4a35]'
-                : 'bg-ribbit-fern text-white hover:bg-ribbit-hunter-green'
+                ? 'bg-success text-white hover:bg-success/90 dark:shadow-[0_4px_20px_rgba(16,185,129,0.25)]'
+                : 'bg-primary text-primary-foreground hover:bg-primary-hover dark:shadow-[0_4px_20px_rgba(0,255,194,0.2)]'
               }
               hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
-              disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
+              disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-md
             `}
           >
             {isSubmitting ? (

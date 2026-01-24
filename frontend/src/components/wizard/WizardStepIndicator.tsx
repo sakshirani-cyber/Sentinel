@@ -20,6 +20,8 @@ interface WizardStepIndicatorProps {
  * - Visual step indicators
  * - Completion checkmarks
  * - Clickable navigation (for completed steps)
+ * 
+ * Uses semantic CSS variables for consistent light/dark mode theming.
  */
 export default function WizardStepIndicator({
   steps,
@@ -31,12 +33,16 @@ export default function WizardStepIndicator({
     <div className="mb-8">
       {/* Progress Bar */}
       <div className="relative">
-        <div className="absolute top-4 left-0 right-0 h-0.5 bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/30" />
+        {/* Background Track */}
+        <div className="absolute top-4 left-0 right-0 h-0.5 bg-border" />
+        
+        {/* Progress Fill */}
         <div 
-          className="absolute top-4 left-0 h-0.5 bg-ribbit-fern dark:bg-ribbit-dry-sage transition-all duration-500"
+          className="absolute top-4 left-0 h-0.5 bg-primary transition-all duration-500"
           style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
         />
         
+        {/* Step Buttons */}
         <div className="relative flex justify-between">
           {steps.map((step, index) => {
             const isCompleted = completedSteps.has(index);
@@ -51,6 +57,7 @@ export default function WizardStepIndicator({
                 disabled={!isClickable}
                 className={`
                   flex flex-col items-center group
+                  focus:outline-none
                   ${isClickable ? 'cursor-pointer' : 'cursor-default'}
                 `}
               >
@@ -61,12 +68,12 @@ export default function WizardStepIndicator({
                     font-semibold text-sm
                     transition-all duration-300
                     ${isCompleted
-                      ? 'bg-ribbit-fern text-white shadow-md'
+                      ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_2px_10px_rgba(0,255,194,0.3)]'
                       : isCurrent
-                        ? 'bg-ribbit-hunter-green text-ribbit-dust-grey shadow-lg scale-110'
-                        : 'bg-ribbit-dry-sage/50 dark:bg-ribbit-hunter-green/50 text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50'
+                        ? 'bg-primary text-primary-foreground shadow-lg scale-110 dark:shadow-[0_4px_15px_rgba(0,255,194,0.4)]'
+                        : 'bg-muted text-muted-foreground'
                     }
-                    ${isClickable ? 'hover:scale-110' : ''}
+                    ${isClickable ? 'hover:scale-110 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background' : ''}
                   `}
                 >
                   {isCompleted ? (
@@ -82,10 +89,10 @@ export default function WizardStepIndicator({
                     className={`
                       text-xs font-medium transition-colors
                       ${isCurrent
-                        ? 'text-ribbit-hunter-green dark:text-ribbit-dry-sage'
+                        ? 'text-foreground'
                         : isCompleted
-                          ? 'text-ribbit-fern dark:text-ribbit-dry-sage'
-                          : 'text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50'
+                          ? 'text-primary'
+                          : 'text-muted-foreground'
                       }
                     `}
                   >
@@ -100,10 +107,10 @@ export default function WizardStepIndicator({
 
       {/* Current Step Info - Mobile */}
       <div className="sm:hidden mt-4 text-center">
-        <p className="text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+        <p className="text-sm font-semibold text-foreground">
           Step {currentStep + 1}: {steps[currentStep]?.title}
         </p>
-        <p className="text-xs text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-xs text-muted-foreground">
           {steps[currentStep]?.description}
         </p>
       </div>

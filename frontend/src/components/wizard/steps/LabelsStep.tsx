@@ -16,6 +16,8 @@ interface Label {
  * Select labels to organize the signal:
  * - Auto-detected labels from question text
  * - Manual label selection
+ * 
+ * Uses semantic CSS variables for consistent light/dark mode theming.
  */
 export default function LabelsStep({ formData, updateFormData, onValidationChange }: StepProps) {
   const [availableLabels, setAvailableLabels] = useState<Label[]>([]);
@@ -73,13 +75,13 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/20 flex items-center justify-center mx-auto mb-4">
-          <Tag className="w-8 h-8 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+        <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center mx-auto mb-4">
+          <Tag className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Add labels to organize
         </h2>
-        <p className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-foreground-secondary">
           Labels help categorize and filter your signals
         </p>
       </div>
@@ -87,22 +89,20 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
       {/* Auto-detected Labels */}
       {uniqueDetectedLabels.length > 0 && (
         <div className="space-y-3">
-          <label className="text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage flex items-center gap-2">
-            <Check className="w-4 h-4 text-ribbit-fern" />
+          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <Check className="w-4 h-4 text-success" />
             Auto-detected from your text
           </label>
           <div className="flex flex-wrap gap-2">
             {uniqueDetectedLabels.map(labelName => {
-              const labelObj = availableLabels.find(l => stripLabelMarkers(l.name) === labelName);
-              
               return (
                 <span
                   key={labelName}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-ribbit-fern/10 text-ribbit-fern border border-ribbit-fern/30"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary/10 dark:bg-primary/15 text-primary border border-primary/30"
                 >
                   <Tag className="w-3.5 h-3.5" />
                   {parseLabelName(labelName)}
-                  <span className="ml-1 w-5 h-5 rounded-full bg-ribbit-fern text-white text-xs flex items-center justify-center">
+                  <span className="ml-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-semibold">
                     {detectedLabels.filter(l => l === labelName).length}
                   </span>
                 </span>
@@ -115,20 +115,20 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
       {/* Manually Added Labels */}
       {manualLabels.length > 0 && (
         <div className="space-y-3">
-          <label className="text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+          <label className="text-sm font-medium text-foreground">
             Manually added
           </label>
           <div className="flex flex-wrap gap-2">
             {manualLabels.map(labelName => (
               <span
                 key={labelName}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/40 text-ribbit-hunter-green dark:text-ribbit-dry-sage border border-ribbit-fern/20"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary dark:bg-muted text-foreground border border-border"
               >
-                <Tag className="w-3.5 h-3.5" />
+                <Tag className="w-3.5 h-3.5 text-primary" />
                 {parseLabelName(labelName)}
                 <button
                   onClick={() => handleRemoveLabel(labelName)}
-                  className="ml-1 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 transition-colors"
+                  className="ml-1 p-0.5 rounded-full hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -140,7 +140,7 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
 
       {/* Available Labels */}
       <div className="space-y-3">
-        <label className="text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+        <label className="text-sm font-medium text-foreground">
           Add more labels
         </label>
         {unselectedLabels.length > 0 ? (
@@ -149,16 +149,26 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
               <button
                 key={label.id}
                 onClick={() => handleAddLabel(label.name)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30 text-ribbit-pine-teal dark:text-ribbit-dust-grey border border-ribbit-fern/20 hover:border-ribbit-fern/50 hover:bg-ribbit-dry-sage/30 transition-all group"
+                className="
+                  inline-flex items-center gap-1.5 px-3 py-1.5 
+                  rounded-full text-sm font-medium 
+                  bg-secondary dark:bg-muted 
+                  text-foreground-secondary
+                  border border-border 
+                  hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 
+                  hover:text-foreground
+                  transition-all duration-200 group
+                  focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background
+                "
                 title={label.description}
               >
-                <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-primary" />
                 {parseLabelName(label.name)}
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50 italic">
+          <p className="text-sm text-muted-foreground italic">
             {availableLabels.length === 0
               ? 'No labels available. Create labels in the Labels page.'
               : 'All available labels are selected.'}
@@ -167,11 +177,11 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
       </div>
 
       {/* Summary */}
-      <div className="p-4 rounded-xl bg-ribbit-dry-sage/20 dark:bg-ribbit-fern/10 border border-ribbit-fern/20">
-        <p className="text-sm text-ribbit-hunter-green dark:text-ribbit-dry-sage">
-          <span className="font-medium">{allSelectedLabels.length}</span> label{allSelectedLabels.length !== 1 ? 's' : ''} selected
+      <div className="p-4 rounded-xl bg-primary/5 dark:bg-primary/10 border border-primary/20">
+        <p className="text-sm text-foreground">
+          <span className="font-semibold">{allSelectedLabels.length}</span> label{allSelectedLabels.length !== 1 ? 's' : ''} selected
           {uniqueDetectedLabels.length > 0 && (
-            <span className="text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">
+            <span className="text-muted-foreground">
               {' '}({uniqueDetectedLabels.length} auto-detected)
             </span>
           )}
@@ -179,7 +189,7 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
       </div>
 
       {/* Skip Note */}
-      <p className="text-center text-xs text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
+      <p className="text-center text-xs text-muted-foreground">
         Labels are optional. You can skip this step if you don't need to categorize this signal.
       </p>
     </div>

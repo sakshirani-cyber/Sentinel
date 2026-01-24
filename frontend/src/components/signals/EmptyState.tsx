@@ -118,9 +118,9 @@ export default function EmptyState({
           onClick={action.onClick}
           className="
             px-5 py-2.5 rounded-lg font-medium
-            bg-ribbit-hunter-green text-ribbit-dust-grey
+            bg-primary text-primary-foreground
             shadow-md hover:shadow-lg
-            hover:bg-[#2f4a35] hover:scale-[1.02]
+            hover:opacity-90 hover:scale-[1.02]
             active:scale-[0.98]
             transition-all duration-200
           "

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StepProps } from '../types';
-import { Users, Upload, Check, Search, X, UserPlus } from 'lucide-react';
+import { Users, Upload, Check, X, UserPlus } from 'lucide-react';
+import { CheckboxSimple } from '../../ui/Checkbox';
 
 /**
  * Step 4: Recipients
@@ -9,6 +10,8 @@ import { Users, Upload, Check, Search, X, UserPlus } from 'lucide-react';
  * - Search/filter consumers
  * - Select all / deselect all
  * - Import from Excel/CSV
+ * 
+ * Uses semantic CSS variables for consistent light/dark mode theming.
  */
 export default function RecipientsStep({ formData, updateFormData, onValidationChange }: StepProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,22 +107,30 @@ export default function RecipientsStep({ formData, updateFormData, onValidationC
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/20 flex items-center justify-center mx-auto mb-4">
-          <Users className="w-8 h-8 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+        <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center mx-auto mb-4">
+          <Users className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Who should receive this signal?
         </h2>
-        <p className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-foreground-secondary">
           Select recipients or import from a file
         </p>
       </div>
 
       {/* Import Section */}
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 px-4 py-2.5 bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/30 border border-ribbit-fern/30 rounded-xl cursor-pointer hover:bg-ribbit-dry-sage/50 dark:hover:bg-ribbit-hunter-green/50 transition-all">
-          <Upload className="w-4 h-4 text-ribbit-fern" />
-          <span className="text-sm font-medium text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+        <label className="
+          flex items-center gap-2 px-4 py-2.5 
+          bg-secondary dark:bg-muted 
+          border border-border 
+          rounded-xl cursor-pointer 
+          hover:bg-secondary-hover dark:hover:bg-muted/80 
+          hover:border-primary/40
+          transition-all duration-200
+        ">
+          <Upload className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">
             {isUploading ? 'Processing...' : 'Import Excel/CSV'}
           </span>
           <input
@@ -132,7 +143,7 @@ export default function RecipientsStep({ formData, updateFormData, onValidationC
         </label>
 
         {uploadStats && (
-          <span className="flex items-center gap-1.5 text-sm text-ribbit-fern">
+          <span className="flex items-center gap-1.5 text-sm text-success font-medium">
             <Check className="w-4 h-4" />
             Added {uploadStats.new} new emails
           </span>
@@ -141,29 +152,31 @@ export default function RecipientsStep({ formData, updateFormData, onValidationC
 
       {/* Search & Actions */}
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
+        {/* Search - No search icon, just input with clear button on right */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ribbit-pine-teal/40" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recipients..."
             className="
-              w-full pl-10 pr-4 py-2.5 rounded-xl
-              bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30
-              border-2 border-ribbit-fern/30 dark:border-ribbit-dry-sage/20
-              text-ribbit-pine-teal dark:text-ribbit-dust-grey
-              placeholder:text-ribbit-pine-teal/40
-              focus:outline-none focus:ring-4 focus:border-ribbit-fern focus:ring-ribbit-fern/20
+              w-full h-10 pl-4 pr-10 rounded-xl
+              bg-muted/50 dark:bg-muted/30
+              border border-border
+              text-foreground text-sm
+              placeholder:text-muted-foreground
+              focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-background
+              hover:border-primary/40 hover:bg-muted/70 dark:hover:bg-muted/50
+              transition-all duration-200
             "
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-ribbit-pine-teal/40 hover:text-ribbit-pine-teal"
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
+              aria-label="Clear search"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -172,14 +185,27 @@ export default function RecipientsStep({ formData, updateFormData, onValidationC
         <div className="flex gap-2">
           <button
             onClick={handleSelectAll}
-            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-ribbit-fern/10 text-ribbit-fern hover:bg-ribbit-fern/20 transition-all"
+            className="
+              px-4 py-2.5 rounded-xl text-sm font-medium 
+              bg-primary/10 dark:bg-primary/15 
+              text-primary 
+              hover:bg-primary/20 dark:hover:bg-primary/25 
+              transition-all duration-200
+            "
           >
             Select All
           </button>
           <button
             onClick={handleDeselectAll}
             disabled={formData.consumers.length === 0}
-            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-ribbit-dry-sage/30 text-ribbit-pine-teal hover:bg-ribbit-dry-sage/50 transition-all disabled:opacity-50"
+            className="
+              px-4 py-2.5 rounded-xl text-sm font-medium 
+              bg-secondary dark:bg-muted 
+              text-foreground-secondary
+              hover:bg-secondary-hover dark:hover:bg-muted/80 
+              transition-all duration-200
+              disabled:opacity-50 disabled:cursor-not-allowed
+            "
           >
             Clear
           </button>
@@ -188,55 +214,62 @@ export default function RecipientsStep({ formData, updateFormData, onValidationC
 
       {/* Selected Count */}
       <div className="flex items-center justify-between px-1">
-        <span className="text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
-          {formData.consumers.length} recipient{formData.consumers.length !== 1 ? 's' : ''} selected
+        <span className="text-sm text-foreground-secondary">
+          <span className="font-semibold text-foreground">{formData.consumers.length}</span> recipient{formData.consumers.length !== 1 ? 's' : ''} selected
         </span>
-        <span className="text-xs text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
+        <span className="text-xs text-muted-foreground">
           {filteredConsumers.length} shown
         </span>
       </div>
 
       {/* Consumer List */}
-      <div className="border-2 border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 rounded-xl max-h-64 overflow-y-auto">
+      <div className="border-2 border-border rounded-xl max-h-64 overflow-y-auto bg-card">
         {filteredConsumers.length === 0 ? (
           <div className="p-8 text-center">
-            <UserPlus className="w-8 h-8 text-ribbit-pine-teal/30 mx-auto mb-2" />
-            <p className="text-sm text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
+            <UserPlus className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
               {searchQuery ? 'No recipients match your search' : 'No recipients available'}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-ribbit-fern/10 dark:divide-ribbit-dry-sage/10">
+          <div className="divide-y divide-border">
             {filteredConsumers.map(email => {
               const isSelected = formData.consumers.includes(email);
               const isImported = !availableConsumers.includes(email);
 
               return (
-                <label
+                <div
                   key={email}
+                  onClick={() => handleToggleConsumer(email)}
                   className={`
-                    flex items-center gap-3 px-4 py-3 cursor-pointer transition-all
+                    flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-150
                     ${isSelected
-                      ? 'bg-ribbit-dry-sage/20 dark:bg-ribbit-fern/10'
-                      : 'hover:bg-ribbit-dry-sage/10 dark:hover:bg-ribbit-hunter-green/20'
+                      ? 'bg-primary/5 dark:bg-primary/10'
+                      : 'hover:bg-muted dark:hover:bg-muted/50'
                     }
                   `}
                 >
-                  <input
-                    type="checkbox"
+                  {/* Custom Checkbox */}
+                  <CheckboxSimple
                     checked={isSelected}
                     onChange={() => handleToggleConsumer(email)}
-                    className="w-4 h-4 rounded border-ribbit-fern/30 text-ribbit-fern focus:ring-ribbit-fern/20"
+                    size="md"
                   />
-                  <span className="flex-1 text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+                  
+                  {/* Email */}
+                  <span className={`flex-1 text-sm transition-colors ${
+                    isSelected ? 'text-foreground font-medium' : 'text-foreground-secondary'
+                  }`}>
                     {email}
                   </span>
+                  
+                  {/* Imported Badge */}
                   {isImported && (
-                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-ribbit-fern/10 text-ribbit-fern">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                       Imported
                     </span>
                   )}
-                </label>
+                </div>
               );
             })}
           </div>
@@ -245,7 +278,7 @@ export default function RecipientsStep({ formData, updateFormData, onValidationC
 
       {/* Validation Message */}
       {formData.consumers.length === 0 && (
-        <p className="text-sm text-red-500 text-center">
+        <p className="text-sm text-destructive text-center font-medium">
           Please select at least one recipient
         </p>
       )}

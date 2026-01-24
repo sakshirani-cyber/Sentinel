@@ -22,6 +22,8 @@ import { parseLabelName } from '../../../utils/labelUtils';
  * Final review before publishing:
  * - Summary of all settings
  * - Validation checks
+ * 
+ * Uses semantic CSS variables for consistent light/dark mode theming.
  */
 export default function ReviewStep({ formData, updateFormData, onValidationChange }: StepProps) {
   // Always valid on review step (all validation done in previous steps)
@@ -36,13 +38,13 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-ribbit-fern/20 dark:bg-ribbit-fern/30 flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-ribbit-fern" />
+        <div className="w-16 h-16 rounded-full bg-success/15 dark:bg-success/20 flex items-center justify-center mx-auto mb-4">
+          <Check className="w-8 h-8 text-success" />
         </div>
-        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Ready to publish?
         </h2>
-        <p className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-foreground-secondary">
           Review your signal before sending it out
         </p>
       </div>
@@ -55,11 +57,11 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
           title="Question"
           content={
             <div>
-              <p className="font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+              <p className="font-medium text-foreground">
                 {formData.question}
               </p>
               {formData.description && (
-                <p className="text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {formData.description}
                 </p>
               )}
@@ -75,14 +77,14 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
             <div className="space-y-1.5">
               {validOptions.map((option, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-ribbit-dry-sage/50 dark:bg-ribbit-hunter-green/50 flex items-center justify-center text-xs font-medium">
+                  <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
                     {index + 1}
                   </span>
-                  <span className="text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+                  <span className="text-sm text-foreground-secondary">
                     {option}
                   </span>
                   {option === defaultDisplay && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-ribbit-fern/10 text-ribbit-fern">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                       Default
                     </span>
                   )}
@@ -118,10 +120,10 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
           title={`Recipients (${formData.consumers.length})`}
           content={
             <div className="max-h-24 overflow-y-auto">
-              <p className="text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+              <p className="text-sm text-foreground-secondary">
                 {formData.consumers.slice(0, 5).join(', ')}
                 {formData.consumers.length > 5 && (
-                  <span className="text-ribbit-pine-teal/50">
+                  <span className="text-muted-foreground">
                     {' '}and {formData.consumers.length - 5} more...
                   </span>
                 )}
@@ -137,14 +139,18 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
           content={
             <div className="space-y-1.5 text-sm">
               {formData.isScheduled && formData.scheduleTime && (
-                <p className="text-ribbit-pine-teal dark:text-ribbit-dust-grey">
-                  <span className="text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">Publishes: </span>
-                  {new Date(formData.scheduleTime).toLocaleString()}
+                <p className="text-foreground-secondary">
+                  <span className="text-muted-foreground">Publishes: </span>
+                  <span className="text-foreground font-medium">
+                    {new Date(formData.scheduleTime).toLocaleString()}
+                  </span>
                 </p>
               )}
-              <p className="text-ribbit-pine-teal dark:text-ribbit-dust-grey">
-                <span className="text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">Deadline: </span>
-                {new Date(formData.deadline).toLocaleString()}
+              <p className="text-foreground-secondary">
+                <span className="text-muted-foreground">Deadline: </span>
+                <span className="text-foreground font-medium">
+                  {new Date(formData.deadline).toLocaleString()}
+                </span>
               </p>
             </div>
           }
@@ -160,7 +166,7 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
                 {formData.labels.map(label => (
                   <span
                     key={label}
-                    className="px-2 py-0.5 rounded-full text-xs font-medium bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 text-ribbit-hunter-green dark:text-ribbit-dry-sage"
+                    className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 dark:bg-primary/15 text-primary"
                   >
                     {parseLabelName(label)}
                   </span>
@@ -172,8 +178,8 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
       </div>
 
       {/* Final Note */}
-      <div className="p-4 rounded-xl bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 border border-ribbit-fern/30 text-center">
-        <p className="text-sm text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+      <div className="p-4 rounded-xl bg-success/10 dark:bg-success/15 border border-success/30 text-center">
+        <p className="text-sm text-foreground font-medium">
           {formData.isScheduled
             ? 'Click "Schedule" to queue this signal for later.'
             : 'Click "Publish" to send this signal immediately.'}
@@ -183,7 +189,9 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
   );
 }
 
-// Helper Components
+// ============================================
+// HELPER COMPONENTS
+// ============================================
 
 function ReviewSection({
   icon: Icon,
@@ -195,10 +203,10 @@ function ReviewSection({
   content: React.ReactNode;
 }) {
   return (
-    <div className="p-4 rounded-xl bg-ribbit-dust-grey/30 dark:bg-ribbit-hunter-green/30 border border-ribbit-fern/20">
+    <div className="p-4 rounded-xl bg-secondary dark:bg-muted border border-border">
       <div className="flex items-center gap-2 mb-3">
-        <Icon className="w-4 h-4 text-ribbit-fern" />
-        <h3 className="text-sm font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+        <Icon className="w-4 h-4 text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">
           {title}
         </h3>
       </div>
@@ -215,8 +223,10 @@ function SettingItem({
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-2 text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
-      <Icon className="w-4 h-4 text-ribbit-fern" />
+    <div className="flex items-center gap-2 text-sm text-foreground-secondary">
+      <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+        <Icon className="w-3.5 h-3.5 text-primary" />
+      </div>
       <span>{label}</span>
     </div>
   );

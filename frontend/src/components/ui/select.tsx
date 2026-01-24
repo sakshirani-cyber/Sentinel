@@ -77,11 +77,8 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem]",
-          "bg-popover/95 dark:bg-popover/95 backdrop-blur-xl",
-          "text-popover-foreground border border-border rounded-xl shadow-lg",
-          "dark:shadow-[0_10px_40px_rgba(0,0,0,0.4)]",
-          "origin-(--radix-select-content-transform-origin)",
+          "relative max-h-[300px]",
+          "text-foreground border border-border rounded-xl shadow-lg",
           "overflow-x-hidden overflow-y-auto",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -93,6 +90,12 @@ function SelectContent({
           className,
         )}
         position={position}
+        style={{ 
+          zIndex: 999999,
+          width: 'var(--radix-select-trigger-width)',
+          backgroundColor: 'var(--card-solid)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        }}
         {...props}
       >
         <SelectScrollUpButton />
@@ -100,7 +103,7 @@ function SelectContent({
           className={cn(
             "p-1.5",
             position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1",
+            "w-full scroll-my-1",
           )}
         >
           {children}
@@ -127,7 +130,7 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
-  hideIndicator = false,
+  hideIndicator = true,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Item> & {
   hideIndicator?: boolean;
@@ -136,13 +139,12 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-lg py-2 pr-8 pl-3 text-sm",
+        "relative flex w-full cursor-pointer items-center gap-2 rounded-lg py-2.5 px-3 text-sm",
         "outline-hidden select-none transition-colors duration-150",
-        "focus:bg-primary/10 focus:text-primary dark:focus:bg-primary/15",
-        "[&_svg:not([class*='text-'])]:text-muted-foreground",
+        "hover:bg-muted focus:bg-muted",
+        "data-[state=checked]:bg-primary/10 data-[state=checked]:text-primary",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        hideIndicator && "pr-3",
+        !hideIndicator && "pr-8",
         className,
       )}
       {...props}
