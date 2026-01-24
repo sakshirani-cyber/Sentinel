@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { Poll } from '../types';
 import { Calendar } from 'lucide-react';
-import EditPollModal from './EditPollModal';
 import { SignalRow } from './signals';
+import { useLayout } from './layout/LayoutContext';
 
 interface ScheduledPollsProps {
   polls: Poll[];
@@ -20,9 +19,8 @@ export default function ScheduledPolls({
   polls,
   currentUserEmail,
   onDeletePoll,
-  onUpdatePoll
 }: ScheduledPollsProps) {
-  const [selectedPollForEdit, setSelectedPollForEdit] = useState<Poll | null>(null);
+  const { openEditPanel } = useLayout();
 
   const sortedPolls = [...polls].sort((a, b) => {
     // Sort by scheduled time, soonest first
@@ -48,7 +46,8 @@ export default function ScheduledPolls({
   }
 
   const handleEditClick = (poll: Poll) => {
-    setSelectedPollForEdit(poll);
+    console.log('[ScheduledPolls] Opening edit panel for poll:', poll.id);
+    openEditPanel(poll);
   };
 
   return (
@@ -71,15 +70,6 @@ export default function ScheduledPolls({
           </div>
         ))}
       </div>
-
-      {/* Edit Modal */}
-      {selectedPollForEdit && (
-        <EditPollModal
-          poll={selectedPollForEdit}
-          onUpdate={onUpdatePoll}
-          onClose={() => setSelectedPollForEdit(null)}
-        />
-      )}
     </div>
   );
 }

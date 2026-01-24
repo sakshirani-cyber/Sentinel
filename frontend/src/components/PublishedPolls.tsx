@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Poll, Response } from '../types';
 import { mapResultsToResponses } from '../services/pollService';
 import { BarChart3 } from 'lucide-react';
-import EditPollModal from './EditPollModal';
 import { SignalRow } from './signals';
 import { useLayout } from './layout/LayoutContext';
 
@@ -25,10 +24,8 @@ export default function PublishedPolls({
   responses,
   currentUserEmail,
   onDeletePoll,
-  onUpdatePoll
 }: PublishedPollsProps) {
-  const { openAnalyticsPanel } = useLayout();
-  const [selectedPollForEdit, setSelectedPollForEdit] = useState<Poll | null>(null);
+  const { openAnalyticsPanel, openEditPanel } = useLayout();
   const [loadingAnalyticsPollId, setLoadingAnalyticsPollId] = useState<string | null>(null);
 
   // Sort polls: active first (by deadline), then expired (by most recent)
@@ -80,7 +77,8 @@ export default function PublishedPolls({
   };
 
   const handleEditClick = (poll: Poll) => {
-    setSelectedPollForEdit(poll);
+    console.log('[PublishedPolls] Opening edit panel for poll:', poll.id);
+    openEditPanel(poll);
   };
 
   // Get user response for a poll (if publisher is also a consumer)
@@ -128,14 +126,6 @@ export default function PublishedPolls({
         ))}
       </div>
 
-      {/* Edit Modal */}
-      {selectedPollForEdit && (
-        <EditPollModal
-          poll={selectedPollForEdit}
-          onUpdate={onUpdatePoll}
-          onClose={() => setSelectedPollForEdit(null)}
-        />
-      )}
     </div>
   );
 }

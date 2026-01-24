@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Poll, Response, User } from '../../types';
-import { PageHeader, StatusFilterCards, SearchFilterRow, defaultFilterState } from '../layout';
+import { PageHeader, StatusFilterCards, SearchFilterRow, defaultFilterState, useLayout } from '../layout';
 import type { StatusFilter, SortOption, FilterState } from '../layout';
 import PublishedPolls from '../PublishedPolls';
 import ScheduledPolls from '../ScheduledPolls';
 import { EmptyState } from '../signals';
 import { AnalyticsPanel } from '../analytics';
 import { Pagination } from '../common';
+import EditSignalPanel from '../layout/EditSignalPanel';
 
 interface SentPageProps {
   user: User;
@@ -30,6 +31,9 @@ export default function SentPage({
   onDeletePoll,
   onUpdatePoll,
 }: SentPageProps) {
+  // Get edit panel state from layout context
+  const { isEditPanelOpen, editPollData, closeEditPanel } = useLayout();
+
   // Filter state
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -312,6 +316,15 @@ export default function SentPage({
 
       {/* Analytics Panel (slide-in from right) */}
       <AnalyticsPanel />
+
+      {/* Edit Signal Panel (slide-in from right) */}
+      {isEditPanelOpen && editPollData && (
+        <EditSignalPanel
+          poll={editPollData}
+          onUpdate={onUpdatePoll}
+          onClose={closeEditPanel}
+        />
+      )}
     </div>
   );
 }

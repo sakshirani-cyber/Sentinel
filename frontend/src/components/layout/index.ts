@@ -36,8 +36,9 @@ export { default as SearchFilterRow, defaultFilterState } from './SearchFilterRo
 export type { SortOption } from './SortDropdown';
 export type { FilterState } from './FiltersButton';
 
-// Panel components - sliding panel for create signal
+// Panel components - sliding panels for create/edit signals
 export { default as CreateSignalPanel } from './CreateSignalPanel';
+export { default as EditSignalPanel } from './EditSignalPanel';
 
 // Context - for accessing layout state from child components
 export { LayoutProvider, useLayout } from './LayoutContext';

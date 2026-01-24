@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Edit, MoreVertical, Trash2, Loader2 } from 'lucide-react';
+import { BarChart3, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { Poll } from '../../types';
 
 interface SignalRowActionsProps {
@@ -19,7 +19,7 @@ interface SignalRowActionsProps {
  * Action buttons displayed on the left side of signal rows:
  * - Analytics: Visible to all users
  * - Edit: Only for creator, non-completed signals
- * - More (Delete): Only for creator, non-completed signals
+ * - Delete: Only for creator, non-completed signals (direct button, no dropdown)
  */
 export default function SignalRowActions({
   poll,
@@ -31,8 +31,8 @@ export default function SignalRowActions({
   onDelete,
   loadingAnalytics = false,
 }: SignalRowActionsProps) {
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Only show publisher actions in 'sent' view mode for creator
   const showPublisherActions = isCreator && viewMode === 'sent' && !isCompleted;
@@ -47,31 +47,29 @@ export default function SignalRowActions({
     onEdit?.(poll);
   };
 
-  const handleMoreClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowMoreMenu(!showMoreMenu);
-  };
-
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowMoreMenu(false);
+    console.log('[SignalRowActions] Delete button clicked for poll:', poll.id);
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = (e: React.MouseEvent) => {
+  const confirmDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete?.(poll.id);
-    setShowDeleteConfirm(false);
+    setIsDeleting(true);
+    console.log('[SignalRowActions] Confirming delete for poll:', poll.id);
+    try {
+      await onDelete?.(poll.id);
+      console.log('[SignalRowActions] Delete completed for poll:', poll.id);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   const cancelDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('[SignalRowActions] Delete cancelled for poll:', poll.id);
     setShowDeleteConfirm(false);
-  };
-
-  // Close more menu when clicking outside
-  const handleBlur = () => {
-    setTimeout(() => setShowMoreMenu(false), 150);
   };
 
   return (
@@ -117,102 +115,96 @@ export default function SignalRowActions({
         </button>
       )}
 
-      {/* More Options Button - Only for creator, non-completed */}
+      {/* Delete Button - Only for creator, non-completed (direct button, no dropdown) */}
       {showPublisherActions && onDelete && (
-        <div className="relative" onBlur={handleBlur}>
-          <button
-            onClick={handleMoreClick}
-            className="
-              p-2 rounded-lg
-              text-foreground-muted
-              hover:text-foreground
-              hover:bg-muted
-              transition-all duration-200
-              active:scale-95
-            "
-            title="More Options"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-
-          {/* More Menu Dropdown */}
-          {showMoreMenu && (
-            <div 
-              className="
-                absolute left-0 top-full mt-1 z-50
-                bg-card-solid dark:bg-card-solid
-                border border-border
-                rounded-lg shadow-lg
-                min-w-[140px]
-                animate-fade-in
-              "
-            >
-              <button
-                onClick={handleDeleteClick}
-                className="
-                  w-full flex items-center gap-2 px-3 py-2
-                  text-destructive
-                  hover:bg-destructive/10
-                  rounded-lg
-                  transition-colors
-                  text-sm font-medium
-                "
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          onClick={handleDeleteClick}
+          className="
+            p-2 rounded-lg
+            text-foreground-muted
+            hover:text-destructive
+            hover:bg-destructive/10
+            transition-all duration-200
+            active:scale-95
+          "
+          title="Delete Signal"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog - Opaque background */}
       {showDeleteConfirm && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
           onClick={cancelDelete}
         >
           <div 
             className="
-              bg-card-solid
+              bg-card-solid dark:bg-card-solid
               rounded-xl shadow-2xl
               p-6 max-w-sm w-full mx-4
-              border border-border
+              border border-border dark:border-border
               animate-scale-in
             "
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Delete Signal?
-            </h3>
-            <p className="text-sm text-foreground-muted mb-6">
-              This action cannot be undone. All responses will be permanently deleted.
+            {/* Warning Icon */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-destructive/10 dark:bg-destructive/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground dark:text-foreground">
+                  Are you sure?
+                </h3>
+                <p className="text-sm text-foreground-muted dark:text-foreground-muted">
+                  This is a permanent action
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-foreground-muted dark:text-foreground-muted mb-6 bg-secondary dark:bg-muted p-3 rounded-lg border border-border">
+              Deleting this signal will permanently remove it from both local and cloud storage. All responses will be deleted. This action cannot be undone.
             </p>
+
             <div className="flex gap-3">
               <button
                 onClick={cancelDelete}
+                disabled={isDeleting}
                 className="
                   flex-1 px-4 py-2.5
-                  bg-muted
-                  text-foreground
+                  bg-muted dark:bg-secondary
+                  text-foreground dark:text-foreground
                   rounded-lg font-medium
-                  hover:bg-muted/80
+                  hover:bg-muted/80 dark:hover:bg-secondary/80
                   transition-colors
+                  disabled:opacity-50
                 "
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
+                disabled={isDeleting}
                 className="
                   flex-1 px-4 py-2.5
                   bg-destructive hover:bg-destructive/90
                   text-destructive-foreground
                   rounded-lg font-medium
                   transition-colors
+                  flex items-center justify-center gap-2
+                  disabled:opacity-50
                 "
               >
-                Delete
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </button>
             </div>
           </div>

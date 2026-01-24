@@ -46,6 +46,12 @@ export interface LayoutContextType {
   analyticsResponses: Response[];
   openAnalyticsPanel: (poll: Poll, responses: Response[]) => void;
   closeAnalyticsPanel: () => void;
+  
+  // Edit Signal panel state
+  isEditPanelOpen: boolean;
+  editPollData: Poll | null;
+  openEditPanel: (poll: Poll) => void;
+  closeEditPanel: () => void;
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
@@ -90,6 +96,10 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
   const [isAnalyticsPanelOpen, setIsAnalyticsPanelOpen] = useState(false);
   const [analyticsPoll, setAnalyticsPoll] = useState<Poll | null>(null);
   const [analyticsResponses, setAnalyticsResponses] = useState<Response[]>([]);
+  
+  // Edit Signal panel state
+  const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
+  const [editPollData, setEditPollData] = useState<Poll | null>(null);
 
   // Sidebar handlers
   const openSidebar = useCallback(() => setIsSidebarOpen(true), []);
@@ -133,6 +143,22 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
     }, 300);
   }, []);
 
+  // Edit Panel handlers
+  const openEditPanel = useCallback((poll: Poll) => {
+    console.log('[LayoutContext] Opening edit panel for poll:', poll.id);
+    setEditPollData(poll);
+    setIsEditPanelOpen(true);
+  }, []);
+
+  const closeEditPanel = useCallback(() => {
+    console.log('[LayoutContext] Closing edit panel');
+    setIsEditPanelOpen(false);
+    // Clear data after animation completes
+    setTimeout(() => {
+      setEditPollData(null);
+    }, 300);
+  }, []);
+
   // Navigation handler - closes sidebar on mobile after navigation
   const handleSetCurrentPage = useCallback((page: PageType) => {
     setCurrentPage(page);
@@ -161,6 +187,10 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
     analyticsResponses,
     openAnalyticsPanel,
     closeAnalyticsPanel,
+    isEditPanelOpen,
+    editPollData,
+    openEditPanel,
+    closeEditPanel,
   };
 
   return (

@@ -211,17 +211,33 @@ export default function SignalRowExpanded({
               : selectedValue === option.text;
             const isDisabled = !canRespond;
 
+            const handleOptionClick = () => {
+              if (canRespond) {
+                setSelectedValue(option.text);
+              }
+            };
+
             return (
-              <label
+              <div
                 key={option.id || index}
+                onClick={handleOptionClick}
+                role="button"
+                tabIndex={canRespond ? 0 : -1}
+                onKeyDown={(e) => {
+                  if (canRespond && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleOptionClick();
+                  }
+                }}
                 className={`
-                  flex items-center gap-3 p-3 rounded-lg transition-all duration-200 border
+                  flex items-center gap-3 p-3 rounded-lg border
+                  transition-all duration-200 ease-in-out
                   ${isSelected
-                    ? 'bg-primary/10 dark:bg-primary/20 border-primary'
+                    ? 'bg-primary/15 dark:bg-primary/25 border-primary shadow-sm ring-1 ring-primary/20'
                     : 'bg-card dark:bg-secondary border-border'
                   }
                   ${canRespond 
-                    ? 'cursor-pointer hover:border-primary/50' 
+                    ? 'cursor-pointer hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 active:scale-[0.99]' 
                     : 'cursor-default'
                   }
                   ${isDisabled && !isSelected ? 'opacity-60' : ''}
@@ -229,18 +245,19 @@ export default function SignalRowExpanded({
               >
                 {/* Radio Circle */}
                 <div className={`
-                  w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
-                  transition-colors
+                  w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
+                  transition-all duration-200
                   ${isSelected
-                    ? 'border-primary bg-primary'
-                    : 'border-border'
+                    ? 'border-primary bg-primary scale-110'
+                    : 'border-muted-foreground/40 dark:border-muted-foreground/30'
                   }
                 `}>
                   {isSelected && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                    <div className="w-2 h-2 rounded-full bg-primary-foreground animate-scale-in" />
                   )}
                 </div>
 
+                {/* Hidden radio input for form semantics */}
                 {canRespond && (
                   <input
                     type="radio"
@@ -248,14 +265,15 @@ export default function SignalRowExpanded({
                     value={option.text}
                     checked={selectedValue === option.text}
                     onChange={(e) => setSelectedValue(e.target.value)}
-                    className="hidden"
+                    className="sr-only"
+                    aria-label={option.text}
                   />
                 )}
 
                 <span className={`
-                  flex-1 text-sm transition-colors
+                  flex-1 text-sm transition-all duration-200
                   ${isSelected
-                    ? 'text-primary font-medium'
+                    ? 'text-primary font-semibold'
                     : 'text-foreground'
                   }
                 `}>
@@ -263,10 +281,16 @@ export default function SignalRowExpanded({
                 </span>
 
                 {/* Option letter badge */}
-                <span className="text-xs text-foreground-muted font-mono">
+                <span className={`
+                  text-xs font-mono px-2 py-0.5 rounded transition-all duration-200
+                  ${isSelected
+                    ? 'bg-primary/20 text-primary font-medium'
+                    : 'text-foreground-muted'
+                  }
+                `}>
                   {String.fromCharCode(65 + index)}
                 </span>
-              </label>
+              </div>
             );
           })}
         </div>
@@ -342,60 +366,60 @@ export default function SignalRowExpanded({
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal - Opaque background */}
       {showConfirmation && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50"
           onClick={() => setShowConfirmation(false)}
         >
           <div 
             className="
-              bg-card-solid dark:bg-card-solid
+              bg-background dark:bg-background
               rounded-xl shadow-2xl max-w-md w-full
               overflow-hidden
-              border border-border
+              border border-border dark:border-border
               animate-scale-in
             "
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-6 text-center border-b border-border">
-              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="p-6 text-center border-b border-border bg-card-solid dark:bg-card-solid">
+              <div className="w-14 h-14 bg-primary/15 dark:bg-primary/25 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Send className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-1">
+              <h3 className="text-lg font-semibold text-foreground dark:text-foreground mb-1">
                 Confirm Response
               </h3>
-              <p className="text-sm text-foreground-muted">
+              <p className="text-sm text-foreground-muted dark:text-foreground-muted">
                 Please review your selection
               </p>
             </div>
 
             {/* Selected Response */}
-            <div className="p-6 bg-secondary/30 dark:bg-secondary">
-              <p className="text-xs uppercase tracking-wider text-foreground-muted mb-2">
+            <div className="p-6 bg-secondary dark:bg-muted">
+              <p className="text-xs uppercase tracking-wider text-foreground-muted dark:text-foreground-muted mb-2 font-medium">
                 Your response
               </p>
-              <div className="p-4 bg-card-solid rounded-lg border border-border">
-                <p className="text-primary font-medium">
+              <div className="p-4 bg-card-solid dark:bg-card-solid rounded-lg border border-border dark:border-border shadow-sm">
+                <p className="text-primary font-semibold text-base">
                   {selectedValue}
                 </p>
               </div>
-              <p className="text-xs text-foreground-muted mt-3 text-center">
+              <p className="text-xs text-foreground-muted dark:text-foreground-muted mt-3 text-center">
                 This action cannot be undone
               </p>
             </div>
 
             {/* Modal Actions */}
-            <div className="p-4 flex gap-3 border-t border-border">
+            <div className="p-4 flex gap-3 border-t border-border bg-card-solid dark:bg-card-solid">
               <button
                 onClick={() => setShowConfirmation(false)}
                 className="
                   flex-1 px-4 py-2.5
-                  bg-muted
-                  text-foreground
+                  bg-muted dark:bg-secondary
+                  text-foreground dark:text-foreground
                   rounded-lg font-medium
-                  hover:bg-secondary
+                  hover:bg-muted/80 dark:hover:bg-secondary/80
                   transition-colors
                 "
               >
