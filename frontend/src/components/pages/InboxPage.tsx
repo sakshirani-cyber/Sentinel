@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Poll, Response, User } from '../../types';
 import { PageHeader, StatusFilterCards, SearchFilterRow, defaultFilterState } from '../layout';
 import type { StatusFilter, SortOption, FilterState } from '../layout';
@@ -6,6 +6,7 @@ import IncompletePolls from '../dashboard/IncompletePolls';
 import CompletedPolls from '../dashboard/CompletedPolls';
 import { EmptyState } from '../signals';
 import { AnalyticsPanel } from '../analytics';
+import { Pagination } from '../common';
 
 interface InboxPageProps {
   user: User;
@@ -37,6 +38,10 @@ export default function InboxPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('deadline');
   const [filters, setFilters] = useState<FilterState>(defaultFilterState);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Calculate consumer polls
   const consumerPolls = useMemo(() => {
@@ -183,6 +188,18 @@ export default function InboxPage({
   const isShowingCompleted = statusFilter === 'completed' || 
     (statusFilter === 'all' && incompletePolls.length === 0);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredPolls.length / itemsPerPage);
+  const paginatedPolls = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredPolls.slice(start, start + itemsPerPage);
+  }, [filteredPolls, currentPage, itemsPerPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortOption, filters, itemsPerPage]);
+
   return (
     <div className="animate-fade-in">
       {/* Page Header */}
@@ -227,13 +244,13 @@ export default function InboxPage({
         />
       ) : isShowingCompleted && statusFilter === 'completed' ? (
         <CompletedPolls
-          polls={filteredPolls}
+          polls={paginatedPolls}
           responses={responses}
           user={user}
         />
       ) : (
         <IncompletePolls
-          polls={filteredPolls}
+          polls={paginatedPolls}
           drafts={drafts}
           user={user}
           responses={responses}
@@ -241,6 +258,17 @@ export default function InboxPage({
           onSaveDraft={onSaveDraft}
         />
       )}
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredPolls.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        onItemsPerPageChange={setItemsPerPage}
+        itemsPerPageOptions={[10, 20, 50, 100]}
+      />
 
       {/* Analytics Panel (slide-in from right) */}
       <AnalyticsPanel />

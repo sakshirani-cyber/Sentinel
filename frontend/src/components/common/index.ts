@@ -3,4 +3,5 @@ export { default as LoadingSpinner, LoadingDots, Skeleton, SkeletonCard } from '
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as Breadcrumb, SimpleBreadcrumb } from './Breadcrumb';
 export { default as DateRangePicker } from './DateRangePicker';
+export { default as Pagination } from './Pagination';
 export { ToastProvider, useToast } from './Toast';

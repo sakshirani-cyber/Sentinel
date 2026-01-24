@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Poll, Response, User } from '../../types';
 import { PageHeader, StatusFilterCards, SearchFilterRow, defaultFilterState } from '../layout';
 import type { StatusFilter, SortOption, FilterState } from '../layout';
@@ -6,6 +6,7 @@ import PublishedPolls from '../PublishedPolls';
 import ScheduledPolls from '../ScheduledPolls';
 import { EmptyState } from '../signals';
 import { AnalyticsPanel } from '../analytics';
+import { Pagination } from '../common';
 
 interface SentPageProps {
   user: User;
@@ -34,6 +35,10 @@ export default function SentPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('deadline');
   const [filters, setFilters] = useState<FilterState>(defaultFilterState);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Filter polls by publisher
   const userPolls = useMemo(() => 
@@ -172,6 +177,44 @@ export default function SentPage({
 
   const hasNoSignals = filteredPublished.length === 0 && filteredScheduled.length === 0;
 
+  // Combined total for pagination
+  const totalItems = filteredPublished.length + filteredScheduled.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // Paginate the combined lists (scheduled first, then published)
+  const { paginatedScheduled, paginatedPublished } = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    
+    // Combine: scheduled first, then published
+    const combined = [...filteredScheduled, ...filteredPublished];
+    const paginated = combined.slice(start, end);
+    
+    // Split back into scheduled and published
+    const scheduledCount = filteredScheduled.length;
+    const paginatedSched: Poll[] = [];
+    const paginatedPub: Poll[] = [];
+    
+    paginated.forEach((poll, idx) => {
+      const originalIdx = start + idx;
+      if (originalIdx < scheduledCount) {
+        paginatedSched.push(poll);
+      } else {
+        paginatedPub.push(poll);
+      }
+    });
+    
+    return {
+      paginatedScheduled: paginatedSched,
+      paginatedPublished: paginatedPub,
+    };
+  }, [filteredScheduled, filteredPublished, currentPage, itemsPerPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortOption, filters, itemsPerPage]);
+
   return (
     <div className="animate-fade-in">
       {/* Page Header */}
@@ -222,14 +265,14 @@ export default function SentPage({
       ) : (
         <div className="space-y-8">
           {/* Scheduled Signals */}
-          {filteredScheduled.length > 0 && (
+          {paginatedScheduled.length > 0 && (
             <section>
               <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                 Scheduled
               </h3>
               <ScheduledPolls
-                polls={filteredScheduled}
+                polls={paginatedScheduled}
                 currentUserEmail={user.email}
                 onDeletePoll={onDeletePoll}
                 onUpdatePoll={onUpdatePoll}
@@ -238,14 +281,14 @@ export default function SentPage({
           )}
 
           {/* Published Signals */}
-          {filteredPublished.length > 0 && (
+          {paginatedPublished.length > 0 && (
             <section>
               <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-ribbit-fern"></span>
                 Published
               </h3>
               <PublishedPolls
-                polls={filteredPublished}
+                polls={paginatedPublished}
                 responses={responses}
                 currentUserEmail={user.email}
                 onDeletePoll={onDeletePoll}
@@ -255,6 +298,17 @@ export default function SentPage({
           )}
         </div>
       )}
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        onItemsPerPageChange={setItemsPerPage}
+        itemsPerPageOptions={[10, 20, 50, 100]}
+      />
 
       {/* Analytics Panel (slide-in from right) */}
       <AnalyticsPanel />
