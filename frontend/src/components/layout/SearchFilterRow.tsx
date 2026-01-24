@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import SearchBar from './SearchBar';
 import SortDropdown, { SortOption } from './SortDropdown';
 import { FilterState } from './FiltersButton';
-import { Filter, X, Tag, Users, Clock, CalendarDays, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Filter, X, Tag, Users, CalendarDays, ToggleLeft, ToggleRight, Calendar } from 'lucide-react';
+import DateRangePicker from '../common/DateRangePicker';
 
 interface SearchFilterRowProps {
   // Search
@@ -21,6 +22,9 @@ interface SearchFilterRowProps {
   availableLabels?: string[];
   availablePublishers?: string[];
   showFilters?: boolean;
+  
+  // Publisher-specific options
+  isPublisher?: boolean;
 }
 
 const defaultFilters: FilterState = {
@@ -48,6 +52,7 @@ export default function SearchFilterRow({
   availableLabels = [],
   availablePublishers = [],
   showFilters = true,
+  isPublisher = false,
 }: SearchFilterRowProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<FilterState>(filters || defaultFilters);
@@ -61,8 +66,7 @@ export default function SearchFilterRow({
     filters.labels.length +
     filters.publishers.length +
     (filters.dateRange.start || filters.dateRange.end ? 1 : 0) +
-    filters.signalType.length +
-    (filters.scheduledOnly ? 1 : 0)
+    (isPublisher && filters.scheduledOnly ? 1 : 0)
   ) : 0;
 
   // Calculate menu position - from left of container to right edge of filter button
@@ -158,15 +162,6 @@ export default function SearchFilterRow({
     }));
   };
 
-  const toggleSignalType = (type: string) => {
-    setLocalFilters(prev => ({
-      ...prev,
-      signalType: prev.signalType.includes(type)
-        ? prev.signalType.filter(t => t !== type)
-        : [...prev.signalType, type],
-    }));
-  };
-
   // Mega Menu rendered via Portal to escape stacking context
   const megaMenu = isFiltersOpen && showFilters && filters && onFiltersChange ? createPortal(
     <div 
@@ -186,112 +181,111 @@ export default function SearchFilterRow({
         overflow: 'hidden',
       }}
     >
-      {/* Compact Content - Single Row Layout */}
+      {/* Content - Grid Layout */}
       <div 
         className="p-5"
         style={{ backgroundColor: 'var(--background)' }}
       >
-        <div className="flex items-start gap-6 flex-wrap">
-          
-          {/* Labels Section */}
-          <div className="flex-1 min-w-[140px]">
-            <div className="flex items-center gap-2 mb-3">
-              <Tag className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Labels</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {availableLabels.length > 0 ? (
-                availableLabels.slice(0, 6).map(label => {
-                  const isSelected = localFilters.labels.includes(label);
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => toggleLabel(label)}
-                      style={isSelected ? {
-                        backgroundColor: 'var(--primary)',
-                        color: 'var(--primary-foreground)',
-                        boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
-                      } : {
-                        backgroundColor: 'var(--muted)',
-                        color: 'var(--muted-foreground)',
-                      }}
-                      className={`
-                        px-2.5 py-1 rounded-md text-xs font-medium
-                        transition-all duration-150
-                        ${!isSelected ? 'hover:opacity-80' : ''}
-                      `}
-                    >
-                      {isSelected && <span className="mr-1">✓</span>}
-                      {label}
-                    </button>
-                  );
-                })
-              ) : (
-                <span className="text-xs text-muted-foreground italic">None</span>
-              )}
-            </div>
-          </div>
+        <div className="flex gap-5">
+          {/* Left Column: Filters */}
+          <div className="flex-1 flex flex-col gap-4">
+            {/* Row 1: Labels and Publishers */}
+            <div className="flex items-start gap-6">
+              {/* Labels Section */}
+              <div className="flex-1 min-w-[140px]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Tag className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Labels</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {availableLabels.length > 0 ? (
+                    availableLabels.slice(0, 6).map(label => {
+                      const isSelected = localFilters.labels.includes(label);
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => toggleLabel(label)}
+                          style={isSelected ? {
+                            backgroundColor: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                            boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
+                          } : {
+                            backgroundColor: 'var(--muted)',
+                            color: 'var(--muted-foreground)',
+                          }}
+                          className={`
+                            px-2.5 py-1 rounded-md text-xs font-medium
+                            transition-all duration-150
+                            ${!isSelected ? 'hover:opacity-80' : ''}
+                          `}
+                        >
+                          {isSelected && <span className="mr-1">✓</span>}
+                          {label}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">None</span>
+                  )}
+                </div>
+              </div>
 
-          {/* Divider */}
-          <div className="w-px h-14 bg-border flex-shrink-0 hidden sm:block" />
+              {/* Divider */}
+              <div className="w-px self-stretch bg-border flex-shrink-0 hidden sm:block" />
 
-          {/* Publishers Section */}
-          <div className="flex-1 min-w-[140px]">
-            <div className="flex items-center gap-2 mb-3">
-              <Users className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Publishers</span>
+              {/* Publishers Section */}
+              <div className="flex-1 min-w-[140px]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Publishers</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {availablePublishers.length > 0 ? (
+                    availablePublishers.slice(0, 4).map(publisher => {
+                      const isSelected = localFilters.publishers.includes(publisher);
+                      return (
+                        <button
+                          key={publisher}
+                          onClick={() => togglePublisher(publisher)}
+                          style={isSelected ? {
+                            backgroundColor: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                            boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
+                          } : {
+                            backgroundColor: 'var(--muted)',
+                            color: 'var(--muted-foreground)',
+                          }}
+                          className={`
+                            px-2.5 py-1 rounded-md text-xs font-medium truncate max-w-[140px]
+                            transition-all duration-150
+                            ${!isSelected ? 'hover:opacity-80' : ''}
+                          `}
+                          title={publisher}
+                        >
+                          {isSelected && <span className="mr-1">✓</span>}
+                          {publisher}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">None</span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {availablePublishers.length > 0 ? (
-                availablePublishers.slice(0, 4).map(publisher => {
-                  const isSelected = localFilters.publishers.includes(publisher);
-                  return (
-                    <button
-                      key={publisher}
-                      onClick={() => togglePublisher(publisher)}
-                      style={isSelected ? {
-                        backgroundColor: 'var(--primary)',
-                        color: 'var(--primary-foreground)',
-                        boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
-                      } : {
-                        backgroundColor: 'var(--muted)',
-                        color: 'var(--muted-foreground)',
-                      }}
-                      className={`
-                        px-2.5 py-1 rounded-md text-xs font-medium truncate max-w-[140px]
-                        transition-all duration-150
-                        ${!isSelected ? 'hover:opacity-80' : ''}
-                      `}
-                      title={publisher}
-                    >
-                      {isSelected && <span className="mr-1">✓</span>}
-                      {publisher}
-                    </button>
-                  );
-                })
-              ) : (
-                <span className="text-xs text-muted-foreground italic">None</span>
-              )}
-            </div>
-          </div>
 
-          {/* Divider */}
-          <div className="w-px h-14 bg-border flex-shrink-0 hidden sm:block" />
-
-          {/* Signal Type Section */}
-          <div className="flex-shrink-0">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Type</span>
-            </div>
-            <div className="flex gap-1.5">
-              {['Poll', 'Survey', 'Form'].map(type => {
-                const isSelected = localFilters.signalType.includes(type.toLowerCase());
-                return (
+            {/* Row 2: Scheduled Toggle (Publisher only) */}
+            {isPublisher && (
+              <div className="flex items-start gap-6 pt-2 border-t border-border/50">
+                {/* Scheduled Toggle - Only for publishers */}
+                <div className="flex-shrink-0">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CalendarDays className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Options</span>
+                  </div>
                   <button
-                    key={type}
-                    onClick={() => toggleSignalType(type.toLowerCase())}
-                    style={isSelected ? {
+                    onClick={() => setLocalFilters(prev => ({ ...prev, scheduledOnly: !prev.scheduledOnly }))}
+                    style={localFilters.scheduledOnly ? {
                       backgroundColor: 'var(--primary)',
                       color: 'var(--primary-foreground)',
                       boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
@@ -300,85 +294,64 @@ export default function SearchFilterRow({
                       color: 'var(--muted-foreground)',
                     }}
                     className={`
-                      px-2.5 py-1 rounded-md text-xs font-medium
+                      flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
                       transition-all duration-150
-                      ${!isSelected ? 'hover:opacity-80' : ''}
+                      ${!localFilters.scheduledOnly ? 'hover:opacity-80' : ''}
                     `}
+                    role="switch"
+                    aria-checked={localFilters.scheduledOnly}
                   >
-                    {isSelected && <span className="mr-1">✓</span>}
-                    {type}
+                    {localFilters.scheduledOnly ? (
+                      <>
+                        <ToggleRight className="w-4 h-4" />
+                        <span>✓ Scheduled Only</span>
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="w-4 h-4" />
+                        <span>Scheduled Only</span>
+                      </>
+                    )}
                   </button>
-                );
-              })}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Divider */}
-          <div className="w-px h-14 bg-border flex-shrink-0 hidden sm:block" />
-
-          {/* Scheduled Toggle */}
-          <div className="flex-shrink-0">
+          {/* Right Column: Date Range Picker */}
+          <div className="flex-shrink-0 w-[280px] border-l border-border pl-5">
             <div className="flex items-center gap-2 mb-3">
-              <CalendarDays className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Options</span>
+              <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Date Range</span>
             </div>
-            <button
-              onClick={() => setLocalFilters(prev => ({ ...prev, scheduledOnly: !prev.scheduledOnly }))}
-              style={localFilters.scheduledOnly ? {
-                backgroundColor: 'var(--primary)',
-                color: 'var(--primary-foreground)',
-                boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
-              } : {
-                backgroundColor: 'var(--muted)',
-                color: 'var(--muted-foreground)',
-              }}
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
-                transition-all duration-150
-                ${!localFilters.scheduledOnly ? 'hover:opacity-80' : ''}
-              `}
-              role="switch"
-              aria-checked={localFilters.scheduledOnly}
-            >
-              {localFilters.scheduledOnly ? (
-                <>
-                  <ToggleRight className="w-4 h-4" />
-                  <span>✓ Scheduled</span>
-                </>
-              ) : (
-                <>
-                  <ToggleLeft className="w-4 h-4" />
-                  <span>Scheduled</span>
-                </>
-              )}
-            </button>
+            <DateRangePicker
+              value={localFilters.dateRange}
+              onChange={(dateRange) => setLocalFilters(prev => ({ ...prev, dateRange }))}
+            />
           </div>
+        </div>
 
-          {/* Divider */}
-          <div className="w-px h-14 bg-border flex-shrink-0 hidden sm:block" />
-
-          {/* Actions */}
-          <div className="flex-shrink-0 flex items-center gap-3">
-            <button
-              onClick={handleClear}
-              className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive transition-colors"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleApply}
-              className="px-4 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm hover:bg-primary-hover active:scale-[0.98] transition-all"
-            >
-              Apply
-            </button>
-            <button
-              onClick={() => setIsFiltersOpen(false)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
-              aria-label="Close filters"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        {/* Actions Footer */}
+        <div className="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-border">
+          <button
+            onClick={handleClear}
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive transition-colors"
+          >
+            Clear All
+          </button>
+          <button
+            onClick={handleApply}
+            className="px-4 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm hover:bg-primary-hover active:scale-[0.98] transition-all"
+          >
+            Apply Filters
+          </button>
+          <button
+            onClick={() => setIsFiltersOpen(false)}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+            aria-label="Close filters"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>,

@@ -122,6 +122,27 @@ export default function InboxPage({
       );
     }
 
+    // Date range filter (based on deadline)
+    if (filters.dateRange.start || filters.dateRange.end) {
+      result = result.filter(p => {
+        const deadline = new Date(p.deadline);
+        
+        if (filters.dateRange.start) {
+          const startDate = new Date(filters.dateRange.start);
+          startDate.setHours(0, 0, 0, 0);
+          if (deadline < startDate) return false;
+        }
+        
+        if (filters.dateRange.end) {
+          const endDate = new Date(filters.dateRange.end);
+          endDate.setHours(23, 59, 59, 999);
+          if (deadline > endDate) return false;
+        }
+        
+        return true;
+      });
+    }
+
     // Sort
     result.sort((a, b) => {
       switch (sortOption) {
@@ -195,6 +216,7 @@ export default function InboxPage({
         availableLabels={availableLabels}
         availablePublishers={availablePublishers}
         showFilters={true}
+        isPublisher={user.isPublisher}
       />
 
       {/* Poll List */}

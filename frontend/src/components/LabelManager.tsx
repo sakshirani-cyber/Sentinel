@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Tag, AlertCircle, Pencil, Check, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Hash, FileText } from 'lucide-react';
+import { Plus, Tag, AlertCircle, Pencil, Check, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Hash, FileText } from 'lucide-react';
 import { User } from '../types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatLabelName, parseLabelName } from '../utils/labelUtils';
@@ -224,16 +224,24 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                 {/* Search Bar & Create Button */}
                 <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                     <div className="relative w-full sm:max-w-md">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-foreground-muted" />
-                        </div>
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="block w-full pl-12 pr-4 py-3 bg-input-background border border-border rounded-xl text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm"
+                            className="w-full h-10 pl-4 pr-10 bg-muted/50 border border-border rounded-xl text-foreground text-sm placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-background hover:border-primary/40 hover:bg-muted/70 transition-all duration-200 dark:bg-muted/30 dark:border-border dark:hover:border-primary/40 dark:hover:bg-muted/50 dark:focus:bg-background dark:focus:border-primary dark:focus:ring-primary/40"
                             placeholder="Search labels..."
                         />
+                        {/* Clear Button - positioned on the right inside the input */}
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}
+                                className="flex items-center justify-center w-5 h-5 rounded-full text-foreground-muted hover:text-foreground hover:bg-muted transition-all duration-200"
+                                aria-label="Clear search"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
                     </div>
                     {!isCreating && (
                         <button
@@ -268,7 +276,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                             Label Name <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
+                                            {/* <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" /> */} 
                                             <input
                                                 type="text"
                                                 value={newLabelName}
@@ -281,7 +289,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                         setCreateError(null);
                                                     }
                                                 }}
-                                                placeholder="urgent, review, feedback..."
+                                                placeholder=" urgent, review, feedback..."
                                                 autoFocus
                                                 className="w-full pl-9 pr-4 py-3 bg-input-background border border-border rounded-xl text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                                             />

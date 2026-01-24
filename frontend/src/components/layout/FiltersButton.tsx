@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Filter, X, Tag, Users, Clock, CalendarDays, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Filter, X, Tag, Users, CalendarDays, ToggleLeft, ToggleRight, Calendar } from 'lucide-react';
+import DateRangePicker from '../common/DateRangePicker';
 
 export interface FilterState {
   labels: string[];
@@ -14,6 +15,7 @@ interface FiltersButtonProps {
   onFiltersChange: (filters: FilterState) => void;
   availableLabels?: string[];
   availablePublishers?: string[];
+  isPublisher?: boolean;
 }
 
 const defaultFilters: FilterState = {
@@ -35,6 +37,7 @@ export default function FiltersButton({
   onFiltersChange,
   availableLabels = [],
   availablePublishers = [],
+  isPublisher = false,
 }: FiltersButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
@@ -45,8 +48,7 @@ export default function FiltersButton({
     filters.labels.length +
     filters.publishers.length +
     (filters.dateRange.start || filters.dateRange.end ? 1 : 0) +
-    filters.signalType.length +
-    (filters.scheduledOnly ? 1 : 0);
+    (isPublisher && filters.scheduledOnly ? 1 : 0);
 
   // Sync local filters with external
   useEffect(() => {
@@ -116,15 +118,6 @@ export default function FiltersButton({
     }));
   };
 
-  const toggleSignalType = (type: string) => {
-    setLocalFilters(prev => ({
-      ...prev,
-      signalType: prev.signalType.includes(type)
-        ? prev.signalType.filter(t => t !== type)
-        : [...prev.signalType, type],
-    }));
-  };
-
   return (
     <div className="relative" ref={panelRef}>
       <button
@@ -158,7 +151,7 @@ export default function FiltersButton({
         <div 
           className="
             absolute right-0 mt-3 
-            w-[700px] max-w-[calc(100vw-2rem)]
+            w-[800px] max-w-[calc(100vw-2rem)]
             bg-white dark:bg-[#1a1a1a]
             rounded-2xl 
             shadow-2xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)]
@@ -191,127 +184,121 @@ export default function FiltersButton({
             </button>
           </div>
 
-          {/* Filter Content - Horizontal Grid Layout */}
+          {/* Filter Content - Two Column Layout */}
           <div className="p-6 bg-white dark:bg-[#1a1a1a]">
-            <div className="grid grid-cols-3 gap-6">
-              
-              {/* Column 1: Labels */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                  <Tag className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm uppercase tracking-wide">Labels</span>
-                </div>
-                <div className="flex flex-wrap gap-2 min-h-[80px] max-h-[120px] overflow-y-auto pr-1">
-                  {availableLabels.length > 0 ? (
-                    availableLabels.map(label => (
-                      <button
-                        key={label}
-                        onClick={() => toggleLabel(label)}
-                        className={`
-                          px-3 py-1.5 rounded-lg text-xs font-medium
-                          transition-all duration-200 hover:scale-105
-                          ${localFilters.labels.includes(label)
-                            ? 'bg-primary text-white shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary/50 hover:text-primary dark:hover:text-primary'
-                          }
-                        `}
-                      >
-                        {label}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-400 dark:text-gray-500 italic">No labels available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Column 2: Publishers */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                  <Users className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm uppercase tracking-wide">Publishers</span>
-                </div>
-                <div className="flex flex-wrap gap-2 min-h-[80px] max-h-[120px] overflow-y-auto pr-1">
-                  {availablePublishers.length > 0 ? (
-                    availablePublishers.slice(0, 8).map(publisher => (
-                      <button
-                        key={publisher}
-                        onClick={() => togglePublisher(publisher)}
-                        className={`
-                          px-3 py-1.5 rounded-lg text-xs font-medium
-                          transition-all duration-200 hover:scale-105
-                          ${localFilters.publishers.includes(publisher)
-                            ? 'bg-primary text-white shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary/50 hover:text-primary dark:hover:text-primary'
-                          }
-                        `}
-                      >
-                        {publisher}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-400 dark:text-gray-500 italic">No publishers available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Column 3: Signal Type & Options */}
-              <div className="space-y-4">
-                {/* Signal Type */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                    <Clock className="w-4 h-4 text-primary" />
-                    <span className="font-semibold text-sm uppercase tracking-wide">Signal Type</span>
+            <div className="flex gap-6">
+              {/* Left Column: Labels, Publishers, Type, Options */}
+              <div className="flex-1 space-y-5">
+                {/* Row 1: Labels and Publishers */}
+                <div className="grid grid-cols-2 gap-5">
+                  {/* Labels */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                      <Tag className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-sm uppercase tracking-wide">Labels</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 min-h-[60px] max-h-[100px] overflow-y-auto pr-1">
+                      {availableLabels.length > 0 ? (
+                        availableLabels.map(label => (
+                          <button
+                            key={label}
+                            onClick={() => toggleLabel(label)}
+                            className={`
+                              px-3 py-1.5 rounded-lg text-xs font-medium
+                              transition-all duration-200 hover:scale-105
+                              ${localFilters.labels.includes(label)
+                                ? 'bg-primary text-white shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary/50 hover:text-primary dark:hover:text-primary'
+                              }
+                            `}
+                          >
+                            {label}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-400 dark:text-gray-500 italic">No labels available</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {['Poll', 'Survey', 'Form'].map(type => (
-                      <button
-                        key={type}
-                        onClick={() => toggleSignalType(type.toLowerCase())}
-                        className={`
-                          px-3 py-1.5 rounded-lg text-xs font-medium
-                          transition-all duration-200 hover:scale-105
-                          ${localFilters.signalType.includes(type.toLowerCase())
-                            ? 'bg-primary text-white shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary/50 hover:text-primary dark:hover:text-primary'
-                          }
-                        `}
-                      >
-                        {type}
-                      </button>
-                    ))}
+
+                  {/* Publishers */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-sm uppercase tracking-wide">Publishers</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 min-h-[60px] max-h-[100px] overflow-y-auto pr-1">
+                      {availablePublishers.length > 0 ? (
+                        availablePublishers.slice(0, 8).map(publisher => (
+                          <button
+                            key={publisher}
+                            onClick={() => togglePublisher(publisher)}
+                            className={`
+                              px-3 py-1.5 rounded-lg text-xs font-medium
+                              transition-all duration-200 hover:scale-105
+                              ${localFilters.publishers.includes(publisher)
+                                ? 'bg-primary text-white shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary/50 hover:text-primary dark:hover:text-primary'
+                              }
+                            `}
+                          >
+                            {publisher}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-400 dark:text-gray-500 italic">No publishers available</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Scheduled Only Toggle */}
-                <div className="pt-2">
-                  <button
-                    onClick={() => setLocalFilters(prev => ({ 
-                      ...prev, 
-                      scheduledOnly: !prev.scheduledOnly 
-                    }))}
-                    className={`
-                      flex items-center gap-3 w-full px-4 py-3 rounded-xl
-                      transition-all duration-200
-                      ${localFilters.scheduledOnly 
-                        ? 'bg-primary/10 dark:bg-primary/20 border-2 border-primary' 
-                        : 'bg-gray-100 dark:bg-gray-800 border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
-                      }
-                    `}
-                    role="switch"
-                    aria-checked={localFilters.scheduledOnly}
-                  >
-                    <CalendarDays className={`w-5 h-5 ${localFilters.scheduledOnly ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
-                    <span className={`text-sm font-medium flex-1 text-left ${localFilters.scheduledOnly ? 'text-primary' : 'text-gray-700 dark:text-gray-300'}`}>
-                      Scheduled Only
-                    </span>
-                    {localFilters.scheduledOnly ? (
-                      <ToggleRight className="w-6 h-6 text-primary" />
-                    ) : (
-                      <ToggleLeft className="w-6 h-6 text-gray-400 dark:text-gray-500" />
-                    )}
-                  </button>
+                {/* Row 2: Scheduled Toggle (Publisher only) */}
+                {isPublisher && (
+                  <div className="flex gap-5 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    {/* Scheduled Only Toggle - Publisher only */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                        <CalendarDays className="w-4 h-4 text-primary" />
+                        <span className="font-semibold text-sm uppercase tracking-wide">Options</span>
+                      </div>
+                      <button
+                        onClick={() => setLocalFilters(prev => ({ 
+                          ...prev, 
+                          scheduledOnly: !prev.scheduledOnly 
+                        }))}
+                        className={`
+                          flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
+                          transition-all duration-200 hover:scale-105
+                          ${localFilters.scheduledOnly 
+                            ? 'bg-primary text-white shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]' 
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary/50'
+                          }
+                        `}
+                        role="switch"
+                        aria-checked={localFilters.scheduledOnly}
+                      >
+                        {localFilters.scheduledOnly ? (
+                          <ToggleRight className="w-4 h-4" />
+                        ) : (
+                          <ToggleLeft className="w-4 h-4" />
+                        )}
+                        <span>Scheduled Only</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Date Range Picker */}
+              <div className="w-[280px] flex-shrink-0 border-l border-gray-200 dark:border-gray-700 pl-6">
+                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-3">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <span className="font-semibold text-sm uppercase tracking-wide">Date Range</span>
                 </div>
+                <DateRangePicker
+                  value={localFilters.dateRange}
+                  onChange={(dateRange) => setLocalFilters(prev => ({ ...prev, dateRange }))}
+                />
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface SearchBarProps {
   value: string;
@@ -11,7 +11,8 @@ interface SearchBarProps {
 /**
  * SearchBar Component
  * 
- * Search input with debounced onChange and clear button.
+ * Modern search input with debounced onChange and clear button.
+ * Supports both light and dark modes with consistent styling.
  */
 export default function SearchBar({
   value,
@@ -43,42 +44,25 @@ export default function SearchBar({
   }, [onChange]);
 
   return (
-    <div className="relative flex-1 max-w-md group">
-      {/* Search Icon */}
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <Search className="h-4 w-4 text-ribbit-fern group-focus-within:text-ribbit-hunter-green transition-colors" />
-      </div>
-
-      {/* Input - Glassmorphism */}
+    <div className="relative flex-1 max-w-md">
+      {/* Input */}
       <input
         type="text"
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="
-          w-full pl-10 pr-10 py-2.5
-          bg-ribbit-dry-sage/40 backdrop-blur-sm
-          border border-ribbit-fern/30 rounded-lg
-          text-ribbit-pine-teal placeholder-ribbit-pine-teal/50
-          text-sm
-          focus:outline-none focus:ring-2 focus:ring-ribbit-fern/40 focus:border-ribbit-fern
-          focus:bg-ribbit-dry-sage/60
-          hover:border-ribbit-fern/50
-          transition-all duration-200
-          dark:bg-ribbit-hunter-green/30 dark:border-ribbit-dry-sage/20
-          dark:text-ribbit-dust-grey dark:placeholder-ribbit-dust-grey/50
-          dark:focus:border-ribbit-dry-sage dark:focus:ring-ribbit-dry-sage/30
-        "
+        className="w-full h-10 pl-4 pr-10 bg-muted/50 border border-border rounded-xl text-foreground text-sm placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-background hover:border-primary/40 hover:bg-muted/70 transition-all duration-200 dark:bg-muted/30 dark:border-border dark:hover:border-primary/40 dark:hover:bg-muted/50 dark:focus:bg-background dark:focus:border-primary dark:focus:ring-primary/40"
         placeholder={placeholder}
       />
 
-      {/* Clear Button */}
+      {/* Clear Button - positioned on the right inside the input */}
       {localValue && (
         <button
           onClick={handleClear}
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-ribbit-fern/70 hover:text-ribbit-hunter-green transition-all duration-200 hover:scale-110"
+          style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}
+          className="flex items-center justify-center w-5 h-5 rounded-full text-foreground-muted hover:text-foreground hover:bg-muted transition-all duration-200"
           aria-label="Clear search"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
