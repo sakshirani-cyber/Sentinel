@@ -1,65 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
-
-type Theme = 'light' | 'dark' | 'system';
+import { useTheme, ThemeMode } from '../../theme';
 
 /**
  * ThemeToggle Component
  * 
  * Toggles between light, dark, and system themes.
- * Persists preference to localStorage.
+ * Uses the global ThemeProvider for consistent theming.
  */
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system');
+  const { mode, setMode } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Load theme preference on mount
+  // Track mounted state to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem('ribbit-theme') as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
   }, []);
 
-  // Apply theme changes
-  useEffect(() => {
-    if (!mounted) return;
-
-    const root = document.documentElement;
-    
-    if (theme === 'system') {
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.toggle('dark', systemPrefersDark);
-    } else {
-      root.classList.toggle('dark', theme === 'dark');
-    }
-
-    localStorage.setItem('ribbit-theme', theme);
-  }, [theme, mounted]);
-
-  // Listen for system theme changes
-  useEffect(() => {
-    if (theme !== 'system') return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      document.documentElement.classList.toggle('dark', e.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
-
   const cycleTheme = () => {
-    const themes: Theme[] = ['light', 'dark', 'system'];
-    const currentIndex = themes.indexOf(theme);
+    const themes: ThemeMode[] = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(mode);
     const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
+    setMode(themes[nextIndex]);
   };
 
   const getIcon = () => {
-    switch (theme) {
+    switch (mode) {
       case 'light':
         return <Sun className="w-5 h-5" />;
       case 'dark':
@@ -70,7 +36,7 @@ export default function ThemeToggle() {
   };
 
   const getLabel = () => {
-    switch (theme) {
+    switch (mode) {
       case 'light':
         return 'Light mode';
       case 'dark':

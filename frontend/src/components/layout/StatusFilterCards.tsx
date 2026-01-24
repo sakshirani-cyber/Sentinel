@@ -63,23 +63,23 @@ export default function StatusFilterCards({
             transition-all duration-200 ease-out
             hover:scale-[1.03] hover:-translate-y-0.5
             active:scale-[0.98]
-            focus-visible:outline-2 focus-visible:outline-ribbit-hunter-green focus-visible:outline-offset-2
+            focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2
             ${activeFilter === card.id
-              ? 'border-ribbit-hunter-green bg-ribbit-dry-sage/40 shadow-lg'
-              : 'border-border bg-card hover:border-ribbit-fern hover:shadow-md hover:bg-ribbit-dry-sage/20'
+              ? 'border-primary bg-primary-muted shadow-lg dark:shadow-[0_0_15px_rgba(0,255,194,0.2)]'
+              : 'border-border bg-card hover:border-primary/50 hover:shadow-md hover:bg-primary-muted'
             }
           `}
           aria-pressed={activeFilter === card.id}
         >
           {/* Active Indicator */}
           {activeFilter === card.id && (
-            <div className="absolute top-0 left-4 right-4 h-0.5 bg-ribbit-hunter-green rounded-b-full" />
+            <div className="absolute top-0 left-4 right-4 h-0.5 bg-primary rounded-b-full" />
           )}
           
           {/* Label */}
           <p className={`text-sm font-medium mb-1 transition-colors ${
             activeFilter === card.id 
-              ? 'text-ribbit-hunter-green dark:text-ribbit-dry-sage' 
+              ? 'text-primary' 
               : 'text-muted-foreground'
           }`}>
             {card.label}
@@ -88,7 +88,7 @@ export default function StatusFilterCards({
           {/* Count */}
           <p className={`text-2xl font-bold transition-colors ${
             activeFilter === card.id 
-              ? 'text-ribbit-hunter-green dark:text-ribbit-dry-sage' 
+              ? 'text-primary' 
               : 'text-foreground'
           }`}>
             {card.count}

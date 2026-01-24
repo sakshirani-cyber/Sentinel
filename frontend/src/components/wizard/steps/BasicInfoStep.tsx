@@ -26,21 +26,21 @@ export default function BasicInfoStep({ formData, updateFormData, onValidationCh
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/20 flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-8 h-8 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+        <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
+        <h2 className="text-xl font-semibold text-primary mb-2">
           What's your signal about?
         </h2>
-        <p className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <p className="text-foreground-secondary">
           Write a clear question for your recipients
         </p>
       </div>
 
       {/* Question Input */}
       <div>
-        <label className="block text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
-          Question <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-primary mb-2">
+          Question <span className="text-destructive">*</span>
         </label>
         <textarea
           value={formData.question}
@@ -50,29 +50,29 @@ export default function BasicInfoStep({ formData, updateFormData, onValidationCh
           placeholder="e.g., Are you available for the team meeting tomorrow at 3 PM?"
           className={`
             w-full px-4 py-3 rounded-xl
-            bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30
+            bg-background dark:bg-input-background
             border-2 transition-all duration-200
-            text-ribbit-pine-teal dark:text-ribbit-dust-grey
-            placeholder:text-ribbit-pine-teal/40 dark:placeholder:text-ribbit-dust-grey/40
+            text-foreground
+            placeholder:text-foreground-muted
             focus:outline-none focus:ring-4
             ${questionError
-              ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
-              : 'border-ribbit-fern/30 dark:border-ribbit-dry-sage/20 focus:border-ribbit-fern focus:ring-ribbit-fern/20'
+              ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
+              : 'border-border focus:border-primary focus:ring-ring'
             }
           `}
         />
         <div className="flex items-center justify-between mt-2">
           {questionError ? (
-            <p className="text-sm text-red-500">{questionError}</p>
+            <p className="text-sm text-destructive">{questionError}</p>
           ) : (
-            <p className="text-xs text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">
+            <p className="text-xs text-foreground-muted">
               Tip: Use # to add inline labels (e.g., #urgent, #hr-team)
             </p>
           )}
           <span className={`text-xs ${
             formData.question.length > 900 
-              ? 'text-red-500' 
-              : 'text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50'
+              ? 'text-destructive' 
+              : 'text-foreground-muted'
           }`}>
             {formData.question.length}/1000
           </span>
@@ -81,8 +81,8 @@ export default function BasicInfoStep({ formData, updateFormData, onValidationCh
 
       {/* Description (Optional) */}
       <div>
-        <label className="block text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-2">
-          Description <span className="text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">(optional)</span>
+        <label className="block text-sm font-medium text-primary mb-2">
+          Description <span className="text-foreground-muted">(optional)</span>
         </label>
         <textarea
           value={formData.description || ''}
@@ -91,24 +91,24 @@ export default function BasicInfoStep({ formData, updateFormData, onValidationCh
           placeholder="Add more context or instructions for recipients..."
           className="
             w-full px-4 py-3 rounded-xl
-            bg-ribbit-dust-grey/50 dark:bg-ribbit-hunter-green/30
-            border-2 border-ribbit-fern/30 dark:border-ribbit-dry-sage/20
-            text-ribbit-pine-teal dark:text-ribbit-dust-grey
-            placeholder:text-ribbit-pine-teal/40 dark:placeholder:text-ribbit-dust-grey/40
-            focus:outline-none focus:ring-4 focus:border-ribbit-fern focus:ring-ribbit-fern/20
+            bg-background dark:bg-input-background
+            border-2 border-border
+            text-foreground
+            placeholder:text-foreground-muted
+            focus:outline-none focus:ring-4 focus:border-primary focus:ring-ring
             transition-all duration-200
           "
         />
       </div>
 
       {/* Tip Card */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-ribbit-dry-sage/20 dark:bg-ribbit-fern/10 border border-ribbit-fern/20">
-        <HelpCircle className="w-5 h-5 text-ribbit-fern flex-shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-secondary dark:bg-secondary border border-border">
+        <HelpCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+          <p className="text-sm font-medium text-primary">
             Writing effective questions
           </p>
-          <ul className="mt-1 text-xs text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70 space-y-1">
+          <ul className="mt-1 text-xs text-foreground-secondary space-y-1">
             <li>• Be specific and clear about what you're asking</li>
             <li>• Include any relevant context (dates, times, names)</li>
             <li>• Keep it concise but complete</li>

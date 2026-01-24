@@ -1,12 +1,27 @@
+/**
+ * ==============================================
+ * GLOBAL STYLES - RIBBIT/SENTINEL APPLICATION
+ * ==============================================
+ * 
+ * ARCHITECTURE:
+ * - CSS variables defined here serve as FALLBACKS for initial page load
+ * - ThemeProvider (src/theme/ThemeProvider.tsx) injects the same variables at runtime
+ * - This prevents flash of unstyled content (FOUC) before React hydrates
+ * - The source of truth for colors is: src/theme/colors.ts
+ * 
+ * COLOR SYSTEM: Neon Marsh Palette
+ * - Light: Teal primary (#0D9488), Pink accent (#EC4899)
+ * - Dark: Cyan primary (#00FFC2), Coral accent (#FF5C8D)
+ */
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
   --font-size: 16px;
 
   /* ============================================
-   * NEON MARSH (CLEAN) COLOR PALETTE
-   * Award-winning modern design system
-   * Teal primary with pink accent
+   * NEON MARSH COLOR PALETTE (CSS Fallbacks)
+   * See: src/theme/colors.ts for source of truth
    * ============================================ */
   
   /* Core Neon Marsh Palette - Light Mode */

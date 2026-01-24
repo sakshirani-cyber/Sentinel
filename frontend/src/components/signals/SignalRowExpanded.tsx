@@ -116,15 +116,15 @@ export default function SignalRowExpanded({
   };
 
   return (
-    <div className="mt-4 pt-4 border-t border-ribbit-fern/10 dark:border-ribbit-dry-sage/10">
+    <div className="mt-4 pt-4 border-t border-border">
       {/* Read-Only Notice (for creators not in audience) */}
       {isReadOnly && (
-        <div className="mb-4 p-3 bg-ribbit-dry-sage/20 dark:bg-ribbit-hunter-green/30 border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 rounded-lg">
-          <div className="flex items-center gap-2 text-sm text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+        <div className="mb-4 p-3 bg-secondary dark:bg-secondary border border-border rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-primary">
             <Lock className="w-4 h-4" />
             <span className="font-medium">You created this signal but are not a recipient.</span>
           </div>
-          <p className="text-xs text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 mt-1 ml-6">
+          <p className="text-xs text-foreground-muted mt-1 ml-6">
             You can view the details but cannot submit a response.
           </p>
         </div>
@@ -132,15 +132,15 @@ export default function SignalRowExpanded({
 
       {/* Expired Notice */}
       {isExpired && !hasResponded && isInAudience && (
-        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div className="mb-4 p-3 bg-destructive/10 dark:bg-destructive/15 border border-destructive/30 rounded-lg">
           <div className="flex items-start gap-2">
-            <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <XCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-700 dark:text-red-300">
+              <p className="text-sm font-medium text-destructive">
                 This signal has expired
               </p>
               {poll.defaultResponse && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                <p className="text-xs text-destructive/80 mt-1">
                   Your response was recorded as: <strong>"{poll.defaultResponse}"</strong>
                 </p>
               )}
@@ -153,24 +153,24 @@ export default function SignalRowExpanded({
       {hasResponded && userResponse && (
         <div className={`mb-4 p-4 rounded-lg border ${
           userResponse.isDefault 
-            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+            ? 'bg-warning/10 dark:bg-warning/15 border-warning/30'
             : userResponse.skipReason
-              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-              : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+              ? 'bg-warning/10 dark:bg-warning/15 border-warning/30'
+              : 'bg-success/10 dark:bg-success/15 border-success/30'
         }`}>
           <div className="flex items-start gap-3">
             {userResponse.isDefault ? (
-              <Clock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <Clock className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             ) : userResponse.skipReason ? (
-              <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             ) : (
-              <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
             )}
             <div className="flex-1">
               <p className={`text-sm font-semibold ${
                 userResponse.isDefault || userResponse.skipReason
-                  ? 'text-amber-700 dark:text-amber-300'
-                  : 'text-emerald-700 dark:text-emerald-300'
+                  ? 'text-warning'
+                  : 'text-success'
               }`}>
                 {userResponse.isDefault 
                   ? 'Default response was recorded'
@@ -180,16 +180,16 @@ export default function SignalRowExpanded({
                 }
               </p>
               <div className="mt-2 space-y-1">
-                <p className="text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+                <p className="text-sm text-foreground">
                   <span className="opacity-60">Response:</span>{' '}
                   <span className="font-medium">{userResponse.response}</span>
                 </p>
                 {userResponse.skipReason && (
-                  <p className="text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+                  <p className="text-sm text-foreground">
                     <span className="opacity-60">Reason:</span> {userResponse.skipReason}
                   </p>
                 )}
-                <p className="text-xs text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">
+                <p className="text-xs text-foreground-muted">
                   {formatDateTime(userResponse.submittedAt)}
                 </p>
               </div>
@@ -200,7 +200,7 @@ export default function SignalRowExpanded({
 
       {/* Response Options */}
       <div className="mb-4">
-        <p className="text-sm font-medium text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70 mb-3 flex items-center gap-2">
+        <p className="text-sm font-medium text-foreground-secondary mb-3 flex items-center gap-2">
           <MessageSquare className="w-4 h-4" />
           {canRespond ? 'Select your response' : 'Response options'}
         </p>
@@ -217,11 +217,11 @@ export default function SignalRowExpanded({
                 className={`
                   flex items-center gap-3 p-3 rounded-lg transition-all duration-200 border
                   ${isSelected
-                    ? 'bg-ribbit-fern/10 dark:bg-ribbit-fern/20 border-ribbit-fern dark:border-ribbit-dry-sage'
-                    : 'bg-white dark:bg-ribbit-hunter-green/40 border-ribbit-fern/10 dark:border-ribbit-dry-sage/10'
+                    ? 'bg-primary/10 dark:bg-primary/20 border-primary'
+                    : 'bg-card dark:bg-secondary border-border'
                   }
                   ${canRespond 
-                    ? 'cursor-pointer hover:border-ribbit-fern/50 dark:hover:border-ribbit-dry-sage/50' 
+                    ? 'cursor-pointer hover:border-primary/50' 
                     : 'cursor-default'
                   }
                   ${isDisabled && !isSelected ? 'opacity-60' : ''}
@@ -232,12 +232,12 @@ export default function SignalRowExpanded({
                   w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
                   transition-colors
                   ${isSelected
-                    ? 'border-ribbit-fern dark:border-ribbit-dry-sage bg-ribbit-fern dark:bg-ribbit-dry-sage'
-                    : 'border-ribbit-fern/30 dark:border-ribbit-dry-sage/30'
+                    ? 'border-primary bg-primary'
+                    : 'border-border'
                   }
                 `}>
                   {isSelected && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-ribbit-hunter-green" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
                   )}
                 </div>
 
@@ -255,15 +255,15 @@ export default function SignalRowExpanded({
                 <span className={`
                   flex-1 text-sm transition-colors
                   ${isSelected
-                    ? 'text-ribbit-hunter-green dark:text-ribbit-dry-sage font-medium'
-                    : 'text-ribbit-pine-teal dark:text-ribbit-dust-grey'
+                    ? 'text-primary font-medium'
+                    : 'text-foreground'
                   }
                 `}>
                   {option.text}
                 </span>
 
                 {/* Option letter badge */}
-                <span className="text-xs text-ribbit-pine-teal/30 dark:text-ribbit-dust-grey/30 font-mono">
+                <span className="text-xs text-foreground-muted font-mono">
                   {String.fromCharCode(65 + index)}
                 </span>
               </label>
@@ -274,14 +274,14 @@ export default function SignalRowExpanded({
 
       {/* Default Response Info (for eligible responders) */}
       {canRespond && poll.showDefaultToConsumers && poll.defaultResponse && (
-        <div className="mb-4 p-3 bg-ribbit-dry-sage/20 dark:bg-ribbit-hunter-green/30 border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 rounded-lg">
+        <div className="mb-4 p-3 bg-secondary dark:bg-secondary border border-border rounded-lg">
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-ribbit-fern dark:text-ribbit-dry-sage flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage">
+              <p className="text-sm font-medium text-primary">
                 Default response if you don't respond:
               </p>
-              <p className="text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey mt-1 font-medium">
+              <p className="text-sm text-foreground mt-1 font-medium">
                 "{poll.defaultResponse}"
               </p>
             </div>
@@ -291,14 +291,14 @@ export default function SignalRowExpanded({
 
       {/* Persistent Alert Warning */}
       {canRespond && poll.isPersistentFinalAlert && (
-        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <div className="mb-4 p-3 bg-warning/10 dark:bg-warning/15 border border-warning/30 rounded-lg">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              <p className="text-sm font-medium text-warning">
                 Mandatory final alert enabled
               </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              <p className="text-xs text-warning/80 mt-1">
                 You'll receive a persistent alert 1 minute before deadline.
               </p>
             </div>
@@ -313,9 +313,8 @@ export default function SignalRowExpanded({
           disabled={!selectedValue}
           className="
             w-full flex items-center justify-center gap-2 px-4 py-3
-            bg-ribbit-hunter-green hover:bg-ribbit-pine-teal
-            dark:bg-ribbit-dry-sage dark:hover:bg-ribbit-fern
-            text-white dark:text-ribbit-hunter-green
+            bg-primary hover:bg-primary-hover
+            text-primary-foreground
             rounded-lg font-semibold
             shadow-md hover:shadow-lg
             transition-all duration-200
@@ -330,14 +329,14 @@ export default function SignalRowExpanded({
 
       {/* Status Footer for already responded or expired */}
       {hasResponded && (
-        <div className="flex items-center justify-center gap-2 py-2 text-ribbit-fern dark:text-ribbit-dry-sage">
+        <div className="flex items-center justify-center gap-2 py-2 text-primary">
           <CheckCircle className="w-4 h-4" />
           <span className="text-sm font-medium">Response recorded</span>
         </div>
       )}
 
       {isExpired && !hasResponded && isInAudience && (
-        <div className="flex items-center justify-center gap-2 py-2 text-red-500">
+        <div className="flex items-center justify-center gap-2 py-2 text-destructive">
           <XCircle className="w-4 h-4" />
           <span className="text-sm font-medium">Responses closed</span>
         </div>
@@ -351,52 +350,52 @@ export default function SignalRowExpanded({
         >
           <div 
             className="
-              bg-white dark:bg-ribbit-hunter-green
+              bg-card-solid dark:bg-card-solid
               rounded-xl shadow-2xl max-w-md w-full
               overflow-hidden
-              border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20
+              border border-border
               animate-scale-in
             "
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-6 text-center border-b border-ribbit-fern/10 dark:border-ribbit-dry-sage/10">
-              <div className="w-14 h-14 bg-ribbit-fern/10 dark:bg-ribbit-dry-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Send className="w-7 h-7 text-ribbit-fern dark:text-ribbit-dry-sage" />
+            <div className="p-6 text-center border-b border-border">
+              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Send className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dust-grey mb-1">
+              <h3 className="text-lg font-semibold text-foreground mb-1">
                 Confirm Response
               </h3>
-              <p className="text-sm text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">
+              <p className="text-sm text-foreground-muted">
                 Please review your selection
               </p>
             </div>
 
             {/* Selected Response */}
-            <div className="p-6 bg-ribbit-dry-sage/10 dark:bg-ribbit-pine-teal/20">
-              <p className="text-xs uppercase tracking-wider text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50 mb-2">
+            <div className="p-6 bg-secondary/30 dark:bg-secondary">
+              <p className="text-xs uppercase tracking-wider text-foreground-muted mb-2">
                 Your response
               </p>
-              <div className="p-4 bg-white dark:bg-ribbit-hunter-green/60 rounded-lg border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20">
-                <p className="text-ribbit-hunter-green dark:text-ribbit-dry-sage font-medium">
+              <div className="p-4 bg-card-solid rounded-lg border border-border">
+                <p className="text-primary font-medium">
                   {selectedValue}
                 </p>
               </div>
-              <p className="text-xs text-ribbit-pine-teal/40 dark:text-ribbit-dust-grey/40 mt-3 text-center">
+              <p className="text-xs text-foreground-muted mt-3 text-center">
                 This action cannot be undone
               </p>
             </div>
 
             {/* Modal Actions */}
-            <div className="p-4 flex gap-3 border-t border-ribbit-fern/10 dark:border-ribbit-dry-sage/10">
+            <div className="p-4 flex gap-3 border-t border-border">
               <button
                 onClick={() => setShowConfirmation(false)}
                 className="
                   flex-1 px-4 py-2.5
-                  bg-ribbit-dust-grey dark:bg-ribbit-pine-teal
-                  text-ribbit-hunter-green dark:text-ribbit-dust-grey
+                  bg-muted
+                  text-foreground
                   rounded-lg font-medium
-                  hover:bg-ribbit-dry-sage dark:hover:bg-ribbit-fern/30
+                  hover:bg-secondary
                   transition-colors
                 "
               >
@@ -407,9 +406,8 @@ export default function SignalRowExpanded({
                 disabled={isSubmitting}
                 className="
                   flex-1 px-4 py-2.5
-                  bg-ribbit-hunter-green dark:bg-ribbit-dry-sage
-                  hover:bg-ribbit-pine-teal dark:hover:bg-ribbit-fern
-                  text-white dark:text-ribbit-hunter-green
+                  bg-primary hover:bg-primary-hover
+                  text-primary-foreground
                   rounded-lg font-medium
                   flex items-center justify-center gap-2
                   shadow-md hover:shadow-lg

@@ -226,21 +226,21 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-ribbit-dust-grey dark:bg-ribbit-pine-teal rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 animate-scale-in">
+      <div className="bg-card-solid dark:bg-card-solid rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-border animate-scale-in">
         
         {/* Header */}
-        <div className="flex-shrink-0 flex items-start justify-between p-6 border-b border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/50">
+        <div className="flex-shrink-0 flex items-start justify-between p-6 border-b border-border bg-secondary/30 dark:bg-secondary">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-ribbit-fern/20 dark:bg-ribbit-dry-sage/20 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Signal Analytics</h2>
-                <p className="text-sm text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">Response breakdown and distribution</p>
+                <h2 className="text-lg font-semibold text-primary">Signal Analytics</h2>
+                <p className="text-sm text-foreground-muted">Response breakdown and distribution</p>
               </div>
             </div>
-            <div className="text-ribbit-pine-teal dark:text-ribbit-dust-grey font-medium">
+            <div className="text-foreground font-medium">
               <LabelText text={poll.question} labels={labels} />
             </div>
             {poll.labels && poll.labels.length > 0 && (
@@ -253,7 +253,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
             {canExport && (
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-ribbit-hunter-green hover:bg-[#2f4a35] text-ribbit-dust-grey rounded-xl transition-all text-sm font-medium shadow-md hover:shadow-lg"
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl transition-all text-sm font-medium shadow-md hover:shadow-lg"
               >
                 <Download className="w-4 h-4" />
                 Export
@@ -261,7 +261,7 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
             )}
             <button
               onClick={onClose}
-              className="p-2 text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 hover:text-ribbit-hunter-green dark:hover:text-ribbit-dry-sage hover:bg-ribbit-dry-sage/50 dark:hover:bg-ribbit-hunter-green/50 rounded-lg transition-colors"
+              className="p-2 text-foreground-muted hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -276,46 +276,46 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
               icon={Users}
               label="Total Recipients"
               value={totalConsumers}
-              color="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-              iconColor="text-blue-600 dark:text-blue-400"
+              color="bg-info/10 dark:bg-info/15 text-info"
+              iconColor="text-info"
             />
             <SummaryCard
               icon={TrendingUp}
               label="Response Rate"
               value={`${responseRate.toFixed(1)}%`}
-              color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-              iconColor="text-emerald-600 dark:text-emerald-400"
+              color="bg-success/10 dark:bg-success/15 text-success"
+              iconColor="text-success"
             />
             <SummaryCard
               icon={CheckCircle}
               label="Submitted"
               value={submittedCount}
-              color="bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/30 text-ribbit-hunter-green dark:text-ribbit-dry-sage"
-              iconColor="text-ribbit-fern dark:text-ribbit-dry-sage"
+              color="bg-primary/10 dark:bg-primary/15 text-primary"
+              iconColor="text-primary"
             />
             <SummaryCard
               icon={Clock}
               label="System Defaults"
               value={defaultsCount}
-              color="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-              iconColor="text-amber-600 dark:text-amber-400"
+              color="bg-warning/10 dark:bg-warning/15 text-warning"
+              iconColor="text-warning"
             />
             <SummaryCard
               icon={XCircle}
               label="Skipped"
               value={skippedCount}
-              color="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-              iconColor="text-red-600 dark:text-red-400"
+              color="bg-destructive/10 dark:bg-destructive/15 text-destructive"
+              iconColor="text-destructive"
             />
           </div>
 
           {/* Response Distribution */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <PieChart className="w-5 h-5 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
-              <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage">Response Distribution</h3>
+              <PieChart className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-semibold text-primary">Response Distribution</h3>
             </div>
-            <div className="bg-white dark:bg-ribbit-hunter-green/40 rounded-xl border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 p-4 space-y-4">
+            <div className="bg-card dark:bg-secondary rounded-xl border border-border p-4 space-y-4">
               {Object.entries(responseCounts).map(([option, count]) => {
                 const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
                 const barWidth = (count / maxCount) * 100;
@@ -325,27 +325,27 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
                 return (
                   <div key={option} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-ribbit-pine-teal dark:text-ribbit-dust-grey flex items-center gap-2 min-w-0 flex-1 font-medium">
+                      <span className="text-foreground flex items-center gap-2 min-w-0 flex-1 font-medium">
                         <LabelText text={option} labels={labels} />
                         {isDefaultOption && (
-                          <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                          <span className="text-xs bg-warning/10 dark:bg-warning/20 text-warning px-2 py-0.5 rounded-full">
                             Default
                           </span>
                         )}
                         {isRemoved && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 rounded-full text-xs border border-ribbit-fern/10">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted text-foreground-muted rounded-full text-xs border border-border">
                             <Archive className="w-3 h-3" />
                             Removed
                           </span>
                         )}
                       </span>
-                      <span className="text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70 font-medium ml-4">
-                        {count} <span className="text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50">({percentage.toFixed(1)}%)</span>
+                      <span className="text-foreground-secondary font-medium ml-4">
+                        {count} <span className="text-foreground-muted">({percentage.toFixed(1)}%)</span>
                       </span>
                     </div>
-                    <div className="w-full bg-ribbit-dry-sage/30 dark:bg-ribbit-fern/20 rounded-full h-3 overflow-hidden">
+                    <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-ribbit-fern to-ribbit-hunter-green dark:from-ribbit-dry-sage dark:to-ribbit-fern h-full rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-primary to-primary-hover h-full rounded-full transition-all duration-500"
                         style={{ width: `${barWidth}%` }}
                       />
                     </div>

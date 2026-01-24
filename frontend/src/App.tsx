@@ -3,6 +3,9 @@ import { useAuth } from './hooks/useAuth';
 import { usePollData } from './hooks/usePollData';
 import { Poll } from './types';
 
+// Theme System
+import { ThemeProvider } from './theme';
+
 // Auth & Special Pages
 import AuthPage from './components/AuthPage';
 import PersistentAlertSecondary from './components/PersistentAlertSecondary';
@@ -158,7 +161,11 @@ function App() {
 
   // If this is a secondary monitor window, render the lock-out view immediately
   if (isSecondary) {
-    return <PersistentAlertSecondary />;
+    return (
+      <ThemeProvider>
+        <PersistentAlertSecondary />
+      </ThemeProvider>
+    );
   }
 
   // Handle poll creation with success message
@@ -194,23 +201,29 @@ function App() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-ribbit-dust-grey dark:bg-ribbit-pine-teal">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-foreground-secondary font-medium">Loading Ribbit...</p>
+      <ThemeProvider>
+        <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-foreground-secondary font-medium">Loading Ribbit...</p>
+          </div>
         </div>
-      </div>
+      </ThemeProvider>
     );
   }
 
   // Auth page
   if (!user) {
-    return <AuthPage onLogin={login} error={loginError} success={loginSuccess} />;
+    return (
+      <ThemeProvider>
+        <AuthPage onLogin={login} error={loginError} success={loginSuccess} />
+      </ThemeProvider>
+    );
   }
 
   // Main authenticated app with Ribbit Layout
   return (
-    <>
+    <ThemeProvider>
       {/* Global Alert Manager (handles notifications, persistent alerts) */}
       <GlobalAlertManager
         user={user}
@@ -225,7 +238,7 @@ function App() {
 
       {/* Success Toast */}
       {successMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-ribbit-hunter-green text-ribbit-dust-grey px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
+        <div className="fixed top-20 right-4 z-50 bg-primary text-primary-foreground px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
@@ -255,7 +268,7 @@ function App() {
           onSubmitResponse={submitResponse}
         />
       </RibbitLayout>
-    </>
+    </ThemeProvider>
   );
 }
 

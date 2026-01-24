@@ -394,9 +394,8 @@ export default function DateRangePicker({
                   bgColor = 'var(--primary)';
                   textColor = 'var(--primary-foreground)';
                 } else if (inRange) {
-                  bgColor = 'var(--primary)';
+                  bgColor = 'var(--primary-muted)';
                   textColor = 'var(--foreground)';
-                  bgColor = 'rgba(13, 148, 136, 0.15)';
                   borderRadius = '0';
                 }
 
@@ -526,7 +525,7 @@ export default function DateRangePicker({
                 textAlign: 'center', 
                 fontSize: '11px', 
                 color: 'var(--primary)', 
-                backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                backgroundColor: 'var(--primary-muted)',
                 borderTop: '1px solid var(--border)',
               }}
             >
