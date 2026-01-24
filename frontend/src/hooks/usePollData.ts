@@ -97,71 +97,83 @@ export function usePollData() {
     };
 
     const deletePoll = async (pollId: string) => {
+        const timestamp = new Date().toLocaleTimeString();
+        
         try {
             const poll = polls.find(p => p.id === pollId);
+            
+            console.log(`[DELETE-DEBUG] [${timestamp}] ========== DELETE FLOW STARTED ==========`);
+            console.log(`[DELETE-DEBUG] [${timestamp}] Looking for poll | localId=${pollId}`);
+            
             if (!poll) {
-                console.error('[Frontend] Poll not found for deletion:', pollId);
+                console.error(`[DELETE-DEBUG] [${timestamp}] ❌ POLL NOT FOUND | localId=${pollId}`);
+                console.log(`[DELETE-DEBUG] [${timestamp}] Available polls:`, polls.map(p => ({ id: p.id, cloudSignalId: p.cloudSignalId })));
                 return;
             }
 
-            console.log('[Frontend] Starting delete process for poll:', {
-                pollId,
-                cloudSignalId: poll.cloudSignalId,
-                question: poll.question?.substring(0, 50)
-            });
+            console.log(`[DELETE-DEBUG] [${timestamp}] ✓ Poll found | localId=${pollId} | cloudSignalId=${poll.cloudSignalId} | type=${typeof poll.cloudSignalId} | question="${poll.question?.substring(0, 40)}..."`);
 
             // Step 1: Delete from cloud backend if poll has cloudSignalId
+            console.log(`[DELETE-DEBUG] [${timestamp}] STEP 1: Cloud Backend Deletion`);
+            console.log(`[DELETE-DEBUG] [${timestamp}] Checking conditions | hasElectronBackend=${!!window.electron?.backend} | hasCloudSignalId=${!!poll.cloudSignalId} | cloudSignalId=${poll.cloudSignalId}`);
+            
             if (window.electron?.backend && poll.cloudSignalId) {
                 try {
-                    console.log('[Frontend] Deleting from cloud backend, signalId:', poll.cloudSignalId);
+                    console.log(`[DELETE-DEBUG] [${timestamp}] 🌐 Calling backend.deletePoll() | cloudSignalId=${poll.cloudSignalId}`);
                     const backendResult = await window.electron.backend.deletePoll(poll.cloudSignalId);
+                    console.log(`[DELETE-DEBUG] [${timestamp}] 🌐 Backend response received:`, JSON.stringify(backendResult));
+                    
                     if (backendResult.success) {
-                        console.log('[Frontend] Cloud backend deletion successful for signalId:', poll.cloudSignalId);
+                        console.log(`[DELETE-DEBUG] [${timestamp}] ✅ CLOUD DELETE SUCCESS | cloudSignalId=${poll.cloudSignalId}`);
                     } else {
-                        console.error('[Frontend] Cloud backend deletion failed:', backendResult.error);
-                        // Continue with local deletion even if cloud fails
-                        console.warn('[Frontend] Continuing with local deletion despite cloud failure');
+                        console.error(`[DELETE-DEBUG] [${timestamp}] ❌ CLOUD DELETE FAILED | cloudSignalId=${poll.cloudSignalId} | error=${backendResult.error}`);
+                        console.warn(`[DELETE-DEBUG] [${timestamp}] ⚠️ Continuing with local deletion despite cloud failure`);
                     }
                 } catch (backendError) {
-                    console.error('[Frontend] Error calling cloud backend delete:', backendError);
-                    // Continue with local deletion even if cloud fails
-                    console.warn('[Frontend] Continuing with local deletion despite cloud error');
+                    console.error(`[DELETE-DEBUG] [${timestamp}] ❌ CLOUD DELETE EXCEPTION | cloudSignalId=${poll.cloudSignalId}`, backendError);
+                    console.warn(`[DELETE-DEBUG] [${timestamp}] ⚠️ Continuing with local deletion despite cloud error`);
                 }
             } else {
-                console.log('[Frontend] No cloudSignalId found, skipping cloud backend deletion');
+                console.warn(`[DELETE-DEBUG] [${timestamp}] ⚠️ SKIPPING CLOUD DELETE | reason=${!window.electron?.backend ? 'no electron.backend' : 'no cloudSignalId'} | cloudSignalId=${poll.cloudSignalId}`);
             }
 
             // Step 2: Delete from local DB via Electron IPC
+            console.log(`[DELETE-DEBUG] [${timestamp}] STEP 2: Local DB Deletion`);
+            
             if (window.electron?.db) {
                 try {
-                    console.log('[Frontend] Deleting from local DB, pollId:', pollId);
+                    console.log(`[DELETE-DEBUG] [${timestamp}] 💾 Calling db.deletePoll() | localId=${pollId}`);
                     const result = await window.electron.db.deletePoll(pollId);
+                    console.log(`[DELETE-DEBUG] [${timestamp}] 💾 Local DB response:`, JSON.stringify(result));
+                    
                     if (result.success) {
-                        console.log('[Frontend] Local DB deletion successful. Rows affected:', result.changes);
+                        console.log(`[DELETE-DEBUG] [${timestamp}] ✅ LOCAL DELETE SUCCESS | localId=${pollId} | rowsAffected=${result.changes}`);
                         if (result.changes === 0) {
-                            console.warn('[Frontend] Deletion called but 0 rows affected. Poll might have been already deleted.');
+                            console.warn(`[DELETE-DEBUG] [${timestamp}] ⚠️ 0 rows affected - poll may have been already deleted`);
                         }
                         // Step 3: Update local state only after successful DB deletion
                         setPolls(prev => prev.filter(p => p.id !== pollId));
                         setResponses(prev => prev.filter(r => r.pollId !== pollId));
-                        console.log('[Frontend] Poll and responses removed from local state');
+                        console.log(`[DELETE-DEBUG] [${timestamp}] ✓ React state updated - poll removed from UI`);
                     } else {
-                        console.error('[Frontend] Failed to delete poll from local DB:', result.error);
+                        console.error(`[DELETE-DEBUG] [${timestamp}] ❌ LOCAL DELETE FAILED | localId=${pollId} | error=${result.error}`);
                         alert(`Failed to delete poll from local database: ${result.error}`);
                     }
                 } catch (dbError) {
-                    console.error('[Frontend] IPC Error deleting from local DB:', dbError);
+                    console.error(`[DELETE-DEBUG] [${timestamp}] ❌ LOCAL DELETE EXCEPTION | localId=${pollId}`, dbError);
                     alert('Error deleting poll from local database');
                 }
             } else {
                 // No electron, just update state
                 setPolls(prev => prev.filter(p => p.id !== pollId));
                 setResponses(prev => prev.filter(r => r.pollId !== pollId));
-                console.log('[Frontend] Poll deleted from state (no Electron DB)');
+                console.log(`[DELETE-DEBUG] [${timestamp}] ✓ Poll deleted from state (no Electron DB)`);
             }
 
+            console.log(`[DELETE-DEBUG] [${timestamp}] ========== DELETE FLOW COMPLETED ==========`);
+
         } catch (error) {
-            console.error('[Frontend] Error in deletePoll:', error);
+            console.error(`[DELETE-DEBUG] [${timestamp}] ❌ UNEXPECTED ERROR IN DELETE FLOW:`, error);
             alert('Error deleting poll: ' + (error as Error).message);
         }
     };

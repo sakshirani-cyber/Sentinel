@@ -156,9 +156,40 @@ async function editPoll(signalId, poll, republish) {
     }
 }
 async function deletePoll(signalId) {
-    console.log('[Backend API] Deleting poll:', signalId);
-    await apiClient.delete(`/api/signals/${signalId}`);
-    console.log('[Backend API] Poll deleted successfully');
+    const time = new Date().toLocaleTimeString();
+    const url = `/api/signals/${signalId}`;
+    const fullUrl = `${API_BASE_URL}${url}`;
+    // #region agent log
+    const fs = require('fs');
+    const logPath = 'c:\\Users\\amandeep.singh\\OneDrive - Arrise Solutions Malta Limited\\Desktop\\FrontendFolder\\Sentinel\\.cursor\\debug.log';
+    fs.appendFileSync(logPath, JSON.stringify({ location: 'backendApi.ts:deletePoll', message: 'backendApi.deletePoll CALLED', data: { signalId, fullUrl, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
+    // #endregion
+    console.log(`[DELETE-DEBUG] [${time}] ========== Backend API: deletePoll ==========`);
+    console.log(`[DELETE-DEBUG] [${time}] Input | signalId=${signalId} | type=${typeof signalId}`);
+    console.log(`[DELETE-DEBUG] [${time}] Request | method=DELETE | url=${fullUrl}`);
+    try {
+        const response = await apiClient.delete(url);
+        console.log(`[DELETE-DEBUG] [${time}] ✅ Response received | status=${response.status} | statusText=${response.statusText}`);
+        console.log(`[DELETE-DEBUG] [${time}] Response data:`, JSON.stringify(response.data));
+        // #region agent log
+        fs.appendFileSync(logPath, JSON.stringify({ location: 'backendApi.ts:deletePoll-success', message: 'DELETE API SUCCESS', data: { signalId, status: response.status, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
+        // #endregion
+    }
+    catch (error) {
+        console.error(`[DELETE-DEBUG] [${time}] ❌ DELETE request FAILED`);
+        console.error(`[DELETE-DEBUG] [${time}] Error | message=${error.message}`);
+        // #region agent log
+        fs.appendFileSync(logPath, JSON.stringify({ location: 'backendApi.ts:deletePoll-error', message: 'DELETE API FAILED', data: { signalId, errorMessage: error.message, status: error.response?.status, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
+        // #endregion
+        if (error.response) {
+            console.error(`[DELETE-DEBUG] [${time}] Response | status=${error.response.status} | statusText=${error.response.statusText}`);
+            console.error(`[DELETE-DEBUG] [${time}] Response data:`, JSON.stringify(error.response.data));
+        }
+        else if (error.request) {
+            console.error(`[DELETE-DEBUG] [${time}] No response received - network error or timeout`);
+        }
+        throw error; // Re-throw to be handled by caller
+    }
 }
 async function login(email, password) {
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔐 Attempting login for: ${email}`);

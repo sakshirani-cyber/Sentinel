@@ -288,11 +288,29 @@ export async function editPoll(
 }
 
 export async function deletePoll(signalId: number): Promise<void> {
-    console.log('[Backend API] Deleting poll:', signalId);
-
-    await apiClient.delete<ApiResponse<void>>(`/api/signals/${signalId}`);
-
-    console.log('[Backend API] Poll deleted successfully');
+    const time = new Date().toLocaleTimeString();
+    const url = `/api/signals/${signalId}`;
+    const fullUrl = `${API_BASE_URL}${url}`;
+    
+    console.log(`[DELETE-DEBUG] [${time}] ========== Backend API: deletePoll ==========`);
+    console.log(`[DELETE-DEBUG] [${time}] Input | signalId=${signalId} | type=${typeof signalId}`);
+    console.log(`[DELETE-DEBUG] [${time}] Request | method=DELETE | url=${fullUrl}`);
+    
+    try {
+        const response = await apiClient.delete<ApiResponse<void>>(url);
+        console.log(`[DELETE-DEBUG] [${time}] ✅ Response received | status=${response.status} | statusText=${response.statusText}`);
+        console.log(`[DELETE-DEBUG] [${time}] Response data:`, JSON.stringify(response.data));
+    } catch (error: any) {
+        console.error(`[DELETE-DEBUG] [${time}] ❌ DELETE request FAILED`);
+        console.error(`[DELETE-DEBUG] [${time}] Error | message=${error.message}`);
+        if (error.response) {
+            console.error(`[DELETE-DEBUG] [${time}] Response | status=${error.response.status} | statusText=${error.response.statusText}`);
+            console.error(`[DELETE-DEBUG] [${time}] Response data:`, JSON.stringify(error.response.data));
+        } else if (error.request) {
+            console.error(`[DELETE-DEBUG] [${time}] No response received - network error or timeout`);
+        }
+        throw error; // Re-throw to be handled by caller
+    }
 }
 
 export async function login(email: string, password: string): Promise<string> {

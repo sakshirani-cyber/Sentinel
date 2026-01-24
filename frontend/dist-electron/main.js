@@ -312,6 +312,11 @@ electron_1.app.whenReady().then(async () => {
     });
     electron_1.ipcMain.handle('db-delete-poll', async (_event, pollId) => {
         console.log(`[IPC Handler] db-delete-poll called for pollId: ${pollId}`);
+        // #region agent log
+        const fs = require('fs');
+        const logPath = 'c:\\Users\\amandeep.singh\\OneDrive - Arrise Solutions Malta Limited\\Desktop\\FrontendFolder\\Sentinel\\.cursor\\debug.log';
+        fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:db-delete-poll', message: 'db-delete-poll ENTRY', data: { pollId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
+        // #endregion
         try {
             const polls = (0, db_1.getPolls)();
             const poll = polls.find(p => p.id === pollId);
@@ -320,8 +325,14 @@ electron_1.app.whenReady().then(async () => {
             }
             const result = (0, db_1.deletePoll)(pollId);
             console.log(`[IPC Handler] Local deletion result for ${pollId}:`, result);
+            // #region agent log
+            fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:db-delete-poll-cloud-check', message: 'Checking cloud sync', data: { pollId, hasCloudSignalId: !!poll?.cloudSignalId, cloudSignalId: poll?.cloudSignalId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
+            // #endregion
             if (poll?.cloudSignalId) {
                 console.log(`[IPC Handler] Syncing deletion to cloud for signalId: ${poll.cloudSignalId}`);
+                // #region agent log
+                fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:db-delete-poll-cloud-call', message: 'DUPLICATE CLOUD DELETE ATTEMPT from db-delete-poll', data: { pollId, cloudSignalId: poll.cloudSignalId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
+                // #endregion
                 backendApi.deletePoll(poll.cloudSignalId).then(() => {
                     console.log(`[IPC Handler] Cloud deletion successful for signalId: ${poll.cloudSignalId}`);
                 }).catch(err => {
@@ -433,14 +444,33 @@ electron_1.app.whenReady().then(async () => {
     });
     electron_1.ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
         const time = new Date().toLocaleTimeString();
-        console.log(`[IPC Handler] [${time}] 🗑️ backend-delete-poll called for signalId: ${signalId}`);
+        console.log(`[DELETE-DEBUG] [${time}] ========== IPC: backend-delete-poll ==========`);
+        console.log(`[DELETE-DEBUG] [${time}] Received signalId | value=${signalId} | type=${typeof signalId}`);
+        // #region agent log
+        const fs = require('fs');
+        const logPath = 'c:\\Users\\amandeep.singh\\OneDrive - Arrise Solutions Malta Limited\\Desktop\\FrontendFolder\\Sentinel\\.cursor\\debug.log';
+        fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:backend-delete-poll', message: 'backend-delete-poll ENTRY (primary cloud delete)', data: { signalId, type: typeof signalId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
+        // #endregion
+        if (signalId === undefined || signalId === null) {
+            console.error(`[DELETE-DEBUG] [${time}] ❌ INVALID signalId - undefined or null`);
+            return { success: false, error: 'signalId is undefined or null' };
+        }
+        if (typeof signalId !== 'number') {
+            console.warn(`[DELETE-DEBUG] [${time}] ⚠️ signalId is not a number, type=${typeof signalId}, attempting to proceed anyway`);
+        }
         try {
+            console.log(`[DELETE-DEBUG] [${time}] 🌐 Calling backendApi.deletePoll(${signalId})...`);
             await backendApi.deletePoll(signalId);
+            console.log(`[DELETE-DEBUG] [${time}] ✅ backendApi.deletePoll() completed successfully`);
             return { success: true };
         }
         catch (error) {
             const errorMessage = backendApi.extractBackendError(error);
-            console.error(`[IPC Handler] [${time}] ❌ backend-delete-poll error:`, errorMessage);
+            console.error(`[DELETE-DEBUG] [${time}] ❌ backendApi.deletePoll() FAILED`);
+            console.error(`[DELETE-DEBUG] [${time}] Error details | message=${errorMessage} | status=${error.response?.status} | statusText=${error.response?.statusText}`);
+            if (error.response?.data) {
+                console.error(`[DELETE-DEBUG] [${time}] Response data:`, JSON.stringify(error.response.data));
+            }
             return { success: false, error: errorMessage };
         }
     });

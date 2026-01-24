@@ -305,24 +305,10 @@ app.whenReady().then(async () => {
     ipcMain.handle('db-delete-poll', async (_event, pollId) => {
         console.log(`[IPC Handler] db-delete-poll called for pollId: ${pollId}`);
         try {
-            const polls = getPolls();
-            const poll = polls.find(p => p.id === pollId);
-
-            if (!poll) {
-                console.warn(`[IPC Handler] db-delete-poll: Poll ${pollId} not found in DB`);
-            }
-
             const result = deletePoll(pollId);
             console.log(`[IPC Handler] Local deletion result for ${pollId}:`, result);
 
-            if (poll?.cloudSignalId) {
-                console.log(`[IPC Handler] Syncing deletion to cloud for signalId: ${poll.cloudSignalId}`);
-                backendApi.deletePoll(poll.cloudSignalId).then(() => {
-                    console.log(`[IPC Handler] Cloud deletion successful for signalId: ${poll.cloudSignalId}`);
-                }).catch(err => {
-                    console.error('[IPC Handler] Failed to sync poll deletion to cloud:', err.message);
-                });
-            }
+            // NOTE: Cloud deletion is handled by frontend via backend-delete-poll IPC handler
 
             return { success: true, changes: result.changes };
         } catch (error: any) {
@@ -434,13 +420,30 @@ app.whenReady().then(async () => {
 
     ipcMain.handle('backend-delete-poll', async (_event, signalId) => {
         const time = new Date().toLocaleTimeString();
-        console.log(`[IPC Handler] [${time}] 🗑️ backend-delete-poll called for signalId: ${signalId}`);
+        console.log(`[DELETE-DEBUG] [${time}] ========== IPC: backend-delete-poll ==========`);
+        console.log(`[DELETE-DEBUG] [${time}] Received signalId | value=${signalId} | type=${typeof signalId}`);
+        
+        if (signalId === undefined || signalId === null) {
+            console.error(`[DELETE-DEBUG] [${time}] ❌ INVALID signalId - undefined or null`);
+            return { success: false, error: 'signalId is undefined or null' };
+        }
+        
+        if (typeof signalId !== 'number') {
+            console.warn(`[DELETE-DEBUG] [${time}] ⚠️ signalId is not a number, type=${typeof signalId}, attempting to proceed anyway`);
+        }
+        
         try {
+            console.log(`[DELETE-DEBUG] [${time}] 🌐 Calling backendApi.deletePoll(${signalId})...`);
             await backendApi.deletePoll(signalId);
+            console.log(`[DELETE-DEBUG] [${time}] ✅ backendApi.deletePoll() completed successfully`);
             return { success: true };
         } catch (error: any) {
             const errorMessage = backendApi.extractBackendError(error);
-            console.error(`[IPC Handler] [${time}] ❌ backend-delete-poll error:`, errorMessage);
+            console.error(`[DELETE-DEBUG] [${time}] ❌ backendApi.deletePoll() FAILED`);
+            console.error(`[DELETE-DEBUG] [${time}] Error details | message=${errorMessage} | status=${error.response?.status} | statusText=${error.response?.statusText}`);
+            if (error.response?.data) {
+                console.error(`[DELETE-DEBUG] [${time}] Response data:`, JSON.stringify(error.response.data));
+            }
             return { success: false, error: errorMessage };
         }
     });
