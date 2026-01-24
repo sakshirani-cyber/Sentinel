@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Edit, MoreVertical, Trash2 } from 'lucide-react';
+import { BarChart3, Edit, MoreVertical, Trash2, Loader2 } from 'lucide-react';
 import { Poll } from '../../types';
 
 interface SignalRowActionsProps {
@@ -10,6 +10,7 @@ interface SignalRowActionsProps {
   onAnalytics?: (poll: Poll) => void;
   onEdit?: (poll: Poll) => void;
   onDelete?: (pollId: string) => void;
+  loadingAnalytics?: boolean;
 }
 
 /**
@@ -28,6 +29,7 @@ export default function SignalRowActions({
   onAnalytics,
   onEdit,
   onDelete,
+  loadingAnalytics = false,
 }: SignalRowActionsProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -78,17 +80,22 @@ export default function SignalRowActions({
       {onAnalytics && (
         <button
           onClick={handleAnalyticsClick}
-          className="
+          disabled={loadingAnalytics}
+          className={`
             p-2 rounded-lg
-            text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70
-            hover:text-ribbit-hunter-green dark:hover:text-ribbit-dry-sage
-            hover:bg-ribbit-dry-sage/30 dark:hover:bg-ribbit-hunter-green/30
             transition-all duration-200
-            active:scale-95
-          "
-          title="View Analytics"
+            ${loadingAnalytics 
+              ? 'text-primary cursor-wait' 
+              : 'text-foreground-muted hover:text-foreground hover:bg-muted active:scale-95'
+            }
+          `}
+          title={loadingAnalytics ? "Loading Analytics..." : "View Analytics"}
         >
-          <BarChart3 className="w-4 h-4" />
+          {loadingAnalytics ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <BarChart3 className="w-4 h-4" />
+          )}
         </button>
       )}
 
@@ -98,9 +105,9 @@ export default function SignalRowActions({
           onClick={handleEditClick}
           className="
             p-2 rounded-lg
-            text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70
-            hover:text-ribbit-hunter-green dark:hover:text-ribbit-dry-sage
-            hover:bg-ribbit-dry-sage/30 dark:hover:bg-ribbit-hunter-green/30
+            text-foreground-muted
+            hover:text-foreground
+            hover:bg-muted
             transition-all duration-200
             active:scale-95
           "
@@ -117,9 +124,9 @@ export default function SignalRowActions({
             onClick={handleMoreClick}
             className="
               p-2 rounded-lg
-              text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70
-              hover:text-ribbit-hunter-green dark:hover:text-ribbit-dry-sage
-              hover:bg-ribbit-dry-sage/30 dark:hover:bg-ribbit-hunter-green/30
+              text-foreground-muted
+              hover:text-foreground
+              hover:bg-muted
               transition-all duration-200
               active:scale-95
             "
@@ -133,8 +140,8 @@ export default function SignalRowActions({
             <div 
               className="
                 absolute left-0 top-full mt-1 z-50
-                bg-white dark:bg-ribbit-hunter-green
-                border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20
+                bg-card-solid dark:bg-card-solid
+                border border-border
                 rounded-lg shadow-lg
                 min-w-[140px]
                 animate-fade-in
@@ -144,8 +151,8 @@ export default function SignalRowActions({
                 onClick={handleDeleteClick}
                 className="
                   w-full flex items-center gap-2 px-3 py-2
-                  text-red-600 dark:text-red-400
-                  hover:bg-red-50 dark:hover:bg-red-900/20
+                  text-destructive
+                  hover:bg-destructive/10
                   rounded-lg
                   transition-colors
                   text-sm font-medium
@@ -167,18 +174,18 @@ export default function SignalRowActions({
         >
           <div 
             className="
-              bg-white dark:bg-ribbit-hunter-green
+              bg-card-solid
               rounded-xl shadow-2xl
               p-6 max-w-sm w-full mx-4
-              border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20
+              border border-border
               animate-scale-in
             "
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dust-grey mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Delete Signal?
             </h3>
-            <p className="text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70 mb-6">
+            <p className="text-sm text-foreground-muted mb-6">
               This action cannot be undone. All responses will be permanently deleted.
             </p>
             <div className="flex gap-3">
@@ -186,10 +193,10 @@ export default function SignalRowActions({
                 onClick={cancelDelete}
                 className="
                   flex-1 px-4 py-2.5
-                  bg-ribbit-dust-grey dark:bg-ribbit-pine-teal
-                  text-ribbit-hunter-green dark:text-ribbit-dust-grey
+                  bg-muted
+                  text-foreground
                   rounded-lg font-medium
-                  hover:bg-ribbit-dry-sage dark:hover:bg-ribbit-fern/30
+                  hover:bg-muted/80
                   transition-colors
                 "
               >
@@ -199,8 +206,8 @@ export default function SignalRowActions({
                 onClick={confirmDelete}
                 className="
                   flex-1 px-4 py-2.5
-                  bg-red-500 hover:bg-red-600
-                  text-white
+                  bg-destructive hover:bg-destructive/90
+                  text-destructive-foreground
                   rounded-lg font-medium
                   transition-colors
                 "

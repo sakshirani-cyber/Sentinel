@@ -24,6 +24,9 @@ interface SignalRowProps {
 
   // Optional: Start expanded
   defaultExpanded?: boolean;
+  
+  // Loading state for analytics
+  loadingAnalytics?: boolean;
 }
 
 /**
@@ -52,6 +55,7 @@ export default function SignalRow({
   onDelete,
   onAnalytics,
   defaultExpanded = false,
+  loadingAnalytics = false,
 }: SignalRowProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -112,6 +116,7 @@ export default function SignalRow({
             onAnalytics={onAnalytics}
             onEdit={onEdit}
             onDelete={onDelete}
+            loadingAnalytics={loadingAnalytics}
           />
 
           {/* Separator */}

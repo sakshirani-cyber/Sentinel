@@ -5,6 +5,7 @@ import type { StatusFilter, SortOption, FilterState } from '../layout';
 import IncompletePolls from '../dashboard/IncompletePolls';
 import CompletedPolls from '../dashboard/CompletedPolls';
 import { EmptyState } from '../signals';
+import { AnalyticsPanel } from '../analytics';
 
 interface InboxPageProps {
   user: User;
@@ -13,7 +14,6 @@ interface InboxPageProps {
   drafts: Record<string, string>;
   onSubmitResponse: (pollId: string, value: string) => Promise<void>;
   onSaveDraft: (pollId: string, value: string) => void;
-  onAnalytics?: (poll: Poll) => void;
 }
 
 /**
@@ -31,7 +31,6 @@ export default function InboxPage({
   drafts,
   onSubmitResponse,
   onSaveDraft,
-  onAnalytics,
 }: InboxPageProps) {
   // Filter state
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -231,7 +230,6 @@ export default function InboxPage({
           polls={filteredPolls}
           responses={responses}
           user={user}
-          onAnalytics={onAnalytics}
         />
       ) : (
         <IncompletePolls
@@ -241,9 +239,11 @@ export default function InboxPage({
           responses={responses}
           onSubmitResponse={onSubmitResponse}
           onSaveDraft={onSaveDraft}
-          onAnalytics={onAnalytics}
         />
       )}
+
+      {/* Analytics Panel (slide-in from right) */}
+      <AnalyticsPanel />
     </div>
   );
 }

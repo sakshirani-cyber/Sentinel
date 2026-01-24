@@ -1,3 +1,20 @@
+/**
+ * @deprecated This component is deprecated in favor of the new AnalyticsPanel.
+ * 
+ * The new analytics system uses a slide-in panel pattern with:
+ * - Loading skeleton states
+ * - Donut chart visualization
+ * - Animated progress bars
+ * - Semantic color tokens for light/dark mode
+ * 
+ * Migration:
+ * - Use AnalyticsPanel from '@/components/analytics' instead
+ * - Analytics is opened via LayoutContext.openAnalyticsPanel()
+ * 
+ * This file is kept for backward compatibility with deprecated components
+ * like ConsumerDashboard.tsx and will be removed in a future version.
+ */
+
 import { Poll, Response } from '../types';
 import type { Worksheet, Fill } from 'exceljs';
 import { X, TrendingUp, Users, Clock, CheckCircle, XCircle, Archive, Download, Shield, BarChart3, PieChart } from 'lucide-react';

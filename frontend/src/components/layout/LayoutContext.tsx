@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { Poll, Response } from '../../types';
 
 /**
  * Available pages in the application
@@ -38,6 +39,13 @@ export interface LayoutContextType {
   // Panel has unsaved changes
   panelHasChanges: boolean;
   setPanelHasChanges: (hasChanges: boolean) => void;
+  
+  // Analytics panel state
+  isAnalyticsPanelOpen: boolean;
+  analyticsPoll: Poll | null;
+  analyticsResponses: Response[];
+  openAnalyticsPanel: (poll: Poll, responses: Response[]) => void;
+  closeAnalyticsPanel: () => void;
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
@@ -77,6 +85,11 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
   // Create Signal panel state
   const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
   const [panelHasChanges, setPanelHasChanges] = useState(false);
+  
+  // Analytics panel state
+  const [isAnalyticsPanelOpen, setIsAnalyticsPanelOpen] = useState(false);
+  const [analyticsPoll, setAnalyticsPoll] = useState<Poll | null>(null);
+  const [analyticsResponses, setAnalyticsResponses] = useState<Response[]>([]);
 
   // Sidebar handlers
   const openSidebar = useCallback(() => setIsSidebarOpen(true), []);
@@ -104,6 +117,22 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
     setPanelHasChanges(false);
   }, []);
 
+  // Analytics Panel handlers
+  const openAnalyticsPanel = useCallback((poll: Poll, responses: Response[]) => {
+    setAnalyticsPoll(poll);
+    setAnalyticsResponses(responses);
+    setIsAnalyticsPanelOpen(true);
+  }, []);
+
+  const closeAnalyticsPanel = useCallback(() => {
+    setIsAnalyticsPanelOpen(false);
+    // Clear data after animation completes
+    setTimeout(() => {
+      setAnalyticsPoll(null);
+      setAnalyticsResponses([]);
+    }, 300);
+  }, []);
+
   // Navigation handler - closes sidebar on mobile after navigation
   const handleSetCurrentPage = useCallback((page: PageType) => {
     setCurrentPage(page);
@@ -127,6 +156,11 @@ export function LayoutProvider({ children, defaultPage = 'inbox' }: LayoutProvid
     closeCreatePanel,
     panelHasChanges,
     setPanelHasChanges,
+    isAnalyticsPanelOpen,
+    analyticsPoll,
+    analyticsResponses,
+    openAnalyticsPanel,
+    closeAnalyticsPanel,
   };
 
   return (

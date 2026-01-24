@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { Poll, Response, User } from '../../types';
 import { SignalRow, EmptyState } from '../signals';
+import { useLayout } from '../layout/LayoutContext';
+import { mapResultsToResponses } from '../../services/pollService';
 
 interface IncompletePollsProps {
   polls: Poll[];
@@ -8,7 +11,6 @@ interface IncompletePollsProps {
   responses: Response[];
   onSubmitResponse: (pollId: string, value: string) => Promise<void>;
   onSaveDraft: (pollId: string, value: string) => void;
-  onAnalytics?: (poll: Poll) => void;
 }
 
 /**
@@ -24,14 +26,42 @@ export default function IncompletePolls({
   responses,
   onSubmitResponse,
   onSaveDraft,
-  onAnalytics,
 }: IncompletePollsProps) {
+  const { openAnalyticsPanel } = useLayout();
+  const [loadingAnalyticsPollId, setLoadingAnalyticsPollId] = useState<string | null>(null);
+  
   if (polls.length === 0) {
     return <EmptyState type="inbox" />;
   }
 
   const getUserResponse = (pollId: string) => {
     return responses.find(r => r.pollId === pollId && r.consumerEmail === user.email);
+  };
+
+  const handleAnalytics = async (poll: Poll) => {
+    setLoadingAnalyticsPollId(poll.id);
+    
+    try {
+      // Get local responses for this poll
+      let fetchedResponses = responses.filter(r => r.pollId === poll.id);
+      
+      // Fetch backend responses if available
+      if (poll.cloudSignalId && (window as any).electron?.backend) {
+        try {
+          const result = await (window as any).electron.backend.getPollResults(poll.cloudSignalId);
+          if (result.success && result.data) {
+            fetchedResponses = mapResultsToResponses(result.data, poll);
+          }
+        } catch (error) {
+          console.error('[IncompletePolls] Error fetching from backend:', error);
+        }
+      }
+      
+      // Open the analytics panel with poll and responses
+      openAnalyticsPanel(poll, fetchedResponses);
+    } finally {
+      setLoadingAnalyticsPollId(null);
+    }
   };
 
   return (
@@ -64,7 +94,8 @@ export default function IncompletePolls({
               isPublisher={user.isPublisher}
               onSubmitResponse={onSubmitResponse}
               onSaveDraft={onSaveDraft}
-              onAnalytics={onAnalytics}
+              onAnalytics={handleAnalytics}
+              loadingAnalytics={loadingAnalyticsPollId === poll.id}
             />
           </div>
         ))}

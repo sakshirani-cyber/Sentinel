@@ -1254,6 +1254,98 @@ html {
   background-color: var(--background-secondary);
 }
 
+/* ============================================
+ * ANALYTICS PANEL - Slide-in from right
+ * Similar to ribbit-panel but for analytics view
+ * ============================================ */
+
+.analytics-panel-backdrop {
+  position: fixed;
+  top: var(--topbar-height);
+  left: calc(var(--sidebar-width) + var(--sidebar-margin));
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: var(--z-panel);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-panel), visibility var(--transition-panel);
+}
+
+.analytics-panel-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.analytics-panel {
+  position: fixed;
+  top: var(--topbar-height);
+  right: 0;
+  bottom: 0;
+  width: min(900px, calc(100vw - var(--sidebar-width) - 48px));
+  background: var(--card-solid);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-2xl);
+  z-index: calc(var(--z-panel) + 1);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--transition-panel);
+  overflow: hidden;
+}
+
+.analytics-panel.open {
+  transform: translateX(0);
+}
+
+.analytics-panel-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--background-secondary);
+}
+
+.analytics-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+  background: var(--background);
+}
+
+.analytics-panel-footer {
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border);
+  background: var(--background-secondary);
+}
+
+/* Dark mode adjustments for analytics panel */
+.dark .analytics-panel {
+  background: var(--card-solid);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 194, 0.1);
+}
+
+.dark .analytics-panel-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .analytics-panel {
+    width: 100%;
+    left: 0;
+  }
+
+  .analytics-panel-backdrop {
+    left: 0;
+  }
+}
+
 /* Status Filter Cards - Bento style */
 .ribbit-status-cards {
   display: grid;

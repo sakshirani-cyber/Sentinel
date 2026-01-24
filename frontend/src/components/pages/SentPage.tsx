@@ -5,7 +5,7 @@ import type { StatusFilter, SortOption, FilterState } from '../layout';
 import PublishedPolls from '../PublishedPolls';
 import ScheduledPolls from '../ScheduledPolls';
 import { EmptyState } from '../signals';
-import { Send } from 'lucide-react';
+import { AnalyticsPanel } from '../analytics';
 
 interface SentPageProps {
   user: User;
@@ -255,6 +255,9 @@ export default function SentPage({
           )}
         </div>
       )}
+
+      {/* Analytics Panel (slide-in from right) */}
+      <AnalyticsPanel />
     </div>
   );
 }

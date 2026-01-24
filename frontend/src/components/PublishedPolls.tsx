@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Poll, Response } from '../types';
 import { mapResultsToResponses } from '../services/pollService';
 import { BarChart3 } from 'lucide-react';
-import AnalyticsView from './AnalyticsView';
 import EditPollModal from './EditPollModal';
 import { SignalRow } from './signals';
+import { useLayout } from './layout/LayoutContext';
 
 interface PublishedPollsProps {
   polls: Poll[];
@@ -27,10 +27,9 @@ export default function PublishedPolls({
   onDeletePoll,
   onUpdatePoll
 }: PublishedPollsProps) {
-  const [selectedPollForAnalytics, setSelectedPollForAnalytics] = useState<Poll | null>(null);
-  const [analyticsResponses, setAnalyticsResponses] = useState<Response[]>([]);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const { openAnalyticsPanel } = useLayout();
   const [selectedPollForEdit, setSelectedPollForEdit] = useState<Poll | null>(null);
+  const [loadingAnalyticsPollId, setLoadingAnalyticsPollId] = useState<string | null>(null);
 
   // Sort polls: active first (by deadline), then expired (by most recent)
   const sortedPolls = [...polls].sort((a, b) => {
@@ -53,36 +52,30 @@ export default function PublishedPolls({
   });
 
   const handleAnalyticsClick = async (poll: Poll) => {
-    setSelectedPollForAnalytics(poll);
-    setLoadingAnalytics(true);
-    setAnalyticsResponses([]);
-
+    setLoadingAnalyticsPollId(poll.id);
+    
     try {
-      let fetchedResponses: Response[] = [];
-
+      // Get local responses for this poll
+      const localResponses = responses.filter(r => r.pollId === poll.id);
+      
+      // Fetch backend responses if available
+      let fetchedResponses = localResponses;
+      
       if (poll.cloudSignalId && (window as any).electron?.backend) {
         try {
           const result = await (window as any).electron.backend.getPollResults(poll.cloudSignalId);
-
           if (result.success && result.data) {
             fetchedResponses = mapResultsToResponses(result.data, poll);
-          } else {
-            fetchedResponses = responses.filter(r => r.pollId === poll.id);
           }
         } catch (error) {
           console.error('[PublishedPolls] Error fetching from backend:', error);
-          fetchedResponses = responses.filter(r => r.pollId === poll.id);
         }
-      } else {
-        fetchedResponses = responses.filter(r => r.pollId === poll.id);
       }
-
-      setAnalyticsResponses(fetchedResponses);
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-      alert('Failed to load analytics');
+      
+      // Open the analytics panel with poll and responses
+      openAnalyticsPanel(poll, fetchedResponses);
     } finally {
-      setLoadingAnalytics(false);
+      setLoadingAnalyticsPollId(null);
     }
   };
 
@@ -129,35 +122,11 @@ export default function PublishedPolls({
               onAnalytics={handleAnalyticsClick}
               onEdit={handleEditClick}
               onDelete={onDeletePoll}
+              loadingAnalytics={loadingAnalyticsPollId === poll.id}
             />
           </div>
         ))}
       </div>
-
-      {/* Analytics Modal */}
-      {selectedPollForAnalytics && !loadingAnalytics && (
-        <AnalyticsView
-          poll={selectedPollForAnalytics}
-          responses={analyticsResponses}
-          onClose={() => {
-            setSelectedPollForAnalytics(null);
-            setAnalyticsResponses([]);
-          }}
-          canExport={true}
-        />
-      )}
-
-      {/* Loading Analytics Overlay */}
-      {loadingAnalytics && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-ribbit-hunter-green rounded-xl p-6 flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-4 border-ribbit-fern/30 border-t-ribbit-fern rounded-full animate-spin" />
-            <p className="text-ribbit-hunter-green dark:text-ribbit-dust-grey font-medium">
-              Loading analytics...
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Edit Modal */}
       {selectedPollForEdit && (

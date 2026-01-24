@@ -261,7 +261,19 @@ export default function ConsumerDashboard({
           <IncompletePolls
             polls={incomplete}
             drafts={drafts}
-            onSelectPoll={setSelectedPoll}
+            user={user}
+            responses={responses}
+            onSubmitResponse={async (pollId: string, value: string) => {
+              const response: Response = {
+                pollId,
+                consumerEmail: user.email,
+                response: value,
+                submittedAt: new Date().toISOString(),
+                isDefault: false,
+              };
+              onSubmitResponse(response);
+            }}
+            onSaveDraft={handleSaveDraft}
           />
         )}
 
