@@ -16,66 +16,71 @@ const statusConfig: Record<SignalStatus, {
   borderClassName: string;
   pulseClassName?: string;
   hoverClassName?: string;
+  signalAnimation?: string;
 }> = {
   active: {
     icon: Send,
     label: 'Active',
-    bgClassName: 'bg-primary/10 dark:bg-primary/20',
-    textClassName: 'text-primary dark:text-primary',
-    borderClassName: 'border-primary/30 dark:border-primary/40',
-    pulseClassName: 'status-pulse',
-    hoverClassName: 'hover:bg-primary/15 dark:hover:bg-primary/25 hover:shadow-[0_2px_8px_rgba(13,148,136,0.15)] dark:hover:shadow-[0_0_10px_rgba(0,255,194,0.2)]',
+    // Signal-inspired gradient background
+    bgClassName: 'bg-gradient-to-r from-[rgba(10,143,129,0.08)] to-[rgba(10,143,129,0.12)] dark:from-[rgba(0,245,184,0.1)] dark:to-[rgba(0,245,184,0.15)]',
+    textClassName: 'text-[#0A8F81] dark:text-[#00F5B8]',
+    borderClassName: 'border-[rgba(10,143,129,0.3)] dark:border-[rgba(0,245,184,0.35)]',
+    pulseClassName: 'status-signal',
+    hoverClassName: 'hover:from-[rgba(10,143,129,0.12)] hover:to-[rgba(10,143,129,0.18)] dark:hover:from-[rgba(0,245,184,0.15)] dark:hover:to-[rgba(0,245,184,0.22)] hover:shadow-[0_2px_8px_rgba(10,143,129,0.18)] dark:hover:shadow-[0_0_12px_rgba(0,245,184,0.25)]',
+    signalAnimation: 'status-signal',
   },
   completed: {
     icon: CheckCircle,
     label: 'Completed',
-    bgClassName: 'bg-success/10 dark:bg-success/20',
-    textClassName: 'text-success dark:text-success',
-    borderClassName: 'border-success/30 dark:border-success/40',
-    hoverClassName: 'hover:bg-success/15 dark:hover:bg-success/25 hover:shadow-[0_2px_8px_rgba(16,185,129,0.15)]',
+    bgClassName: 'bg-[#E8F5F0] dark:bg-[rgba(52,211,153,0.15)]',
+    textClassName: 'text-success dark:text-[#34D399]',
+    borderClassName: 'border-success/30 dark:border-[rgba(52,211,153,0.4)]',
+    hoverClassName: 'hover:bg-[#DCF0E8] dark:hover:bg-[rgba(52,211,153,0.2)] hover:shadow-[0_2px_8px_rgba(16,185,129,0.15)]',
   },
   incomplete: {
     icon: Clock,
     label: 'Pending',
-    bgClassName: 'bg-warning/10 dark:bg-warning/20',
-    textClassName: 'text-warning dark:text-warning',
-    borderClassName: 'border-warning/30 dark:border-warning/40',
-    pulseClassName: 'pulse-dot',
-    hoverClassName: 'hover:bg-warning/15 dark:hover:bg-warning/25 hover:shadow-[0_2px_8px_rgba(245,158,11,0.15)]',
+    bgClassName: 'bg-[#FFF8E6] dark:bg-[rgba(251,191,36,0.15)]',
+    textClassName: 'text-warning dark:text-[#FBBF24]',
+    borderClassName: 'border-warning/30 dark:border-[rgba(251,191,36,0.4)]',
+    pulseClassName: 'frequency-pulse',
+    hoverClassName: 'hover:bg-[#FFF3D6] dark:hover:bg-[rgba(251,191,36,0.2)] hover:shadow-[0_2px_8px_rgba(245,158,11,0.15)]',
   },
   scheduled: {
     icon: Calendar,
     label: 'Scheduled',
-    bgClassName: 'bg-info/10 dark:bg-info/20',
-    textClassName: 'text-info dark:text-info',
-    borderClassName: 'border-info/30 dark:border-info/40',
-    hoverClassName: 'hover:bg-info/15 dark:hover:bg-info/25 hover:shadow-[0_2px_8px_rgba(59,130,246,0.15)]',
+    bgClassName: 'bg-[#EFF6FF] dark:bg-[rgba(96,165,250,0.15)]',
+    textClassName: 'text-info dark:text-[#60A5FA]',
+    borderClassName: 'border-info/30 dark:border-[rgba(96,165,250,0.4)]',
+    hoverClassName: 'hover:bg-[#E0EFFF] dark:hover:bg-[rgba(96,165,250,0.2)] hover:shadow-[0_2px_8px_rgba(59,130,246,0.15)]',
   },
   draft: {
     icon: FileEdit,
     label: 'Draft',
-    bgClassName: 'bg-muted dark:bg-muted',
+    bgClassName: 'bg-[#E8F0E8] dark:bg-[rgba(168,174,174,0.1)]',
     textClassName: 'text-muted-foreground',
-    borderClassName: 'border-border',
-    hoverClassName: 'hover:bg-muted/80 hover:shadow-[0_2px_6px_rgba(15,23,42,0.08)]',
+    borderClassName: 'border-[#C8D4D8] dark:border-[#262B30]',
+    hoverClassName: 'hover:bg-[#DCE6DC] dark:hover:bg-[rgba(168,174,174,0.15)] hover:shadow-[0_2px_6px_rgba(15,23,42,0.08)]',
   },
   expired: {
     icon: AlertCircle,
     label: 'Expired',
-    bgClassName: 'bg-destructive/10 dark:bg-destructive/20',
-    textClassName: 'text-destructive dark:text-destructive',
-    borderClassName: 'border-destructive/30 dark:border-destructive/40',
-    hoverClassName: 'hover:bg-destructive/15 dark:hover:bg-destructive/25 hover:shadow-[0_2px_8px_rgba(239,68,68,0.15)]',
+    bgClassName: 'bg-[#FEF2F2] dark:bg-[rgba(248,113,113,0.15)]',
+    textClassName: 'text-destructive dark:text-[#F87171]',
+    borderClassName: 'border-destructive/30 dark:border-[rgba(248,113,113,0.4)]',
+    hoverClassName: 'hover:bg-[#FEE8E8] dark:hover:bg-[rgba(248,113,113,0.2)] hover:shadow-[0_2px_8px_rgba(239,68,68,0.15)]',
   },
 };
 
 /**
  * StatusBadge Component
  * 
- * Displays signal status with consistent styling.
+ * Displays signal status with consistent "Signal Wildlife" styling.
  * Features:
- * - Pulse animation for active/pending statuses
- * - Hover glow effect
+ * - Signal ring animation for active status
+ * - Frequency pulse for pending status
+ * - Organic color gradients
+ * - Hover glow effects
  * - Smooth transitions
  */
 export default function StatusBadge({ 
@@ -88,9 +93,9 @@ export default function StatusBadge({
   const Icon = config.icon;
   
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs gap-1',
-    md: 'px-2.5 py-1 text-sm gap-1.5',
-    lg: 'px-3 py-1.5 text-base gap-2',
+    sm: 'px-2.5 py-1 text-xs gap-1.5',
+    md: 'px-3 py-1.5 text-sm gap-2',
+    lg: 'px-4 py-2 text-base gap-2.5',
   };
   
   const iconSizes = {
@@ -101,6 +106,8 @@ export default function StatusBadge({
 
   // Determine if we should show the pulse indicator
   const shouldPulse = showPulse && (status === 'active' || status === 'incomplete');
+  // Use signal animation for active status
+  const isSignalActive = status === 'active' && showPulse;
   
   return (
     <span 
@@ -108,19 +115,31 @@ export default function StatusBadge({
         inline-flex items-center font-medium rounded-full border cursor-default
         ${config.bgClassName} ${config.textClassName} ${config.borderClassName}
         ${config.hoverClassName || ''}
+        ${isSignalActive ? config.signalAnimation || '' : ''}
         ${sizeClasses[size]}
         transition-all duration-200
+        backdrop-blur-sm
       `}
     >
-      {/* Pulsing dot indicator for active states */}
-      {shouldPulse && (
-        <span className="relative flex h-2 w-2 mr-0.5">
-          <span className={`absolute inline-flex h-full w-full rounded-full bg-current opacity-75 pulse-dot`} />
+      {/* Signal ring indicator for active state */}
+      {isSignalActive && (
+        <span className="relative flex h-2 w-2 mr-1">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-current opacity-60 status-signal" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
         </span>
       )}
-      {showIcon && !shouldPulse && <Icon className={`${iconSizes[size]} transition-transform duration-200`} />}
-      {config.label}
+      {/* Frequency pulse indicator for pending state */}
+      {status === 'incomplete' && showPulse && (
+        <span className="relative flex h-2 w-2 mr-1">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-current opacity-60 pulse-dot" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
+        </span>
+      )}
+      {/* Regular icon for other states */}
+      {showIcon && !shouldPulse && (
+        <Icon className={`${iconSizes[size]} transition-transform duration-200 group-hover:scale-110`} />
+      )}
+      <span className="font-semibold tracking-tight">{config.label}</span>
     </span>
   );
 }

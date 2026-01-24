@@ -8,20 +8,37 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "flex h-11 w-full min-w-0 rounded-xl border border-border px-4 py-2",
-        "text-base bg-input-background text-foreground",
-        // Subtle inner shadow for depth
-        "shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]",
+        // "Marsh Well" effect - recessed organic feel
+        "flex h-11 w-full min-w-0 rounded-xl px-4 py-2",
+        // Gradient background for organic depth
+        "bg-gradient-to-b from-[#F7F9F7] to-white",
+        // Border with teal undertone
+        "border border-[#C8D4D8]",
+        "text-base text-foreground",
+        // Inset shadow for recessed well effect
+        "shadow-[inset_0_2px_4px_rgba(15,23,42,0.03),inset_0_0_0_1px_rgba(200,212,216,0.3)]",
         "placeholder:text-muted-foreground",
         "selection:bg-primary/20 selection:text-foreground",
-        "dark:bg-input dark:border-border dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]",
         "transition-all duration-200 outline-none",
-        "hover:border-foreground-muted hover:shadow-[inset_0_1px_2px_rgba(15,23,42,0.04),0_0_0_1px_rgba(13,148,136,0.05)]",
-        // Enhanced focus with teal glow for light mode
-        "focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-ring",
-        "focus-visible:shadow-[inset_0_1px_2px_rgba(15,23,42,0.04),0_0_12px_rgba(13,148,136,0.12)]",
-        "dark:focus-visible:ring-primary/40 dark:focus-visible:shadow-[inset_0_1px_2px_rgba(0,0,0,0.1),0_0_15px_rgba(0,255,194,0.15)]",
+        // Hover - subtle lift
+        "hover:border-[#A8B8C0]",
+        "hover:shadow-[inset_0_2px_4px_rgba(15,23,42,0.03),0_0_0_1px_rgba(10,143,129,0.06)]",
+        // Focus - organic teal glow with smooth transition
+        "focus-visible:bg-white",
+        "focus-visible:border-primary",
+        "focus-visible:ring-[3px] focus-visible:ring-ring",
+        "focus-visible:shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_0_0_3px_rgba(10,143,129,0.12),0_0_12px_rgba(10,143,129,0.08)]",
+        // Dark mode - "Deep Water Well" effect
+        "dark:bg-gradient-to-b dark:from-[#0C0E10] dark:to-[#0F1214]",
+        "dark:border-[#262B30]",
+        "dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]",
+        "dark:hover:border-[#3A4048]",
+        "dark:focus-visible:bg-[#0F1214]",
+        "dark:focus-visible:ring-primary/35",
+        "dark:focus-visible:shadow-[inset_0_1px_2px_rgba(0,0,0,0.1),0_0_0_3px_rgba(0,245,184,0.15),0_0_15px_rgba(0,245,184,0.1)]",
+        // File input styling
         "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
+        // States
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         "md:text-sm",
