@@ -101,19 +101,31 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
             return;
         }
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LabelManager.tsx:104',message:'Before label creation (FIX: using raw name)',data:{rawName:newLabelName,hasSpecialChars:newLabelName.includes('~')||newLabelName.includes('#')},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+
         const newLabel: Label = {
             id: Date.now().toString(),
-            name: formatLabelName(newLabelName),
+            name: newLabelName, // FIX: Use raw name instead of formatLabelName()
             color: '#588157', // Default fern color (not used in display)
             description: newLabelDesc,
             createdAt: new Date().toISOString()
         };
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LabelManager.tsx:115',message:'Label object created for IPC (FIX applied)',data:{labelId:newLabel.id,labelName:newLabel.name,containsSpecialChars:newLabel.name.includes('~')||newLabel.name.includes('#')},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
 
         try {
             if ((window as any).electron?.backend) {
                 console.log('[LabelManager] Creating label (IPC db-create-label)...', newLabel);
                 const result = await (window as any).electron.ipcRenderer.invoke('db-create-label', newLabel);
                 console.log('[LabelManager] db-create-label result:', result);
+
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LabelManager.tsx:135',message:'Backend IPC result',data:{success:result.success,error:result.error||null,sentName:newLabel.name},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
 
                 if (result.success) {
                     setIsCreating(false);

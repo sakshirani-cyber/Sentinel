@@ -1016,16 +1016,14 @@ ipcMain.handle('db-create-label', async (event, label) => {
     console.log(`[IPC Handler] [${time}] 🏷️ db-create-label received: "${label.name}"`);
     console.log(`[IPC Handler] Label Data:`, label);
 
-    // Input Validation
+    // Input Validation (raw label names - no ~#~ formatting)
     if (label.name.length > 100) {
         return { success: false, error: 'Label name cannot exceed 100 characters' };
     }
     if (label.description && label.description.length > 500) {
         return { success: false, error: 'Description cannot exceed 500 characters' };
     }
-    if (label.name.includes('~') || label.name.includes('#')) {
-        return { success: false, error: 'Label name cannot contain special characters like ~ or #' };
-    }
+    // Note: Special character validation (~, #) removed - raw names are now expected
 
     try {
         const result = createLabel(label);

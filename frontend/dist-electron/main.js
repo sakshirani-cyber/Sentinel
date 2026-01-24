@@ -312,33 +312,10 @@ electron_1.app.whenReady().then(async () => {
     });
     electron_1.ipcMain.handle('db-delete-poll', async (_event, pollId) => {
         console.log(`[IPC Handler] db-delete-poll called for pollId: ${pollId}`);
-        // #region agent log
-        const fs = require('fs');
-        const logPath = 'c:\\Users\\amandeep.singh\\OneDrive - Arrise Solutions Malta Limited\\Desktop\\FrontendFolder\\Sentinel\\.cursor\\debug.log';
-        fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:db-delete-poll', message: 'db-delete-poll ENTRY', data: { pollId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
-        // #endregion
         try {
-            const polls = (0, db_1.getPolls)();
-            const poll = polls.find(p => p.id === pollId);
-            if (!poll) {
-                console.warn(`[IPC Handler] db-delete-poll: Poll ${pollId} not found in DB`);
-            }
             const result = (0, db_1.deletePoll)(pollId);
             console.log(`[IPC Handler] Local deletion result for ${pollId}:`, result);
-            // #region agent log
-            fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:db-delete-poll-cloud-check', message: 'Checking cloud sync', data: { pollId, hasCloudSignalId: !!poll?.cloudSignalId, cloudSignalId: poll?.cloudSignalId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
-            // #endregion
-            if (poll?.cloudSignalId) {
-                console.log(`[IPC Handler] Syncing deletion to cloud for signalId: ${poll.cloudSignalId}`);
-                // #region agent log
-                fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:db-delete-poll-cloud-call', message: 'DUPLICATE CLOUD DELETE ATTEMPT from db-delete-poll', data: { pollId, cloudSignalId: poll.cloudSignalId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
-                // #endregion
-                backendApi.deletePoll(poll.cloudSignalId).then(() => {
-                    console.log(`[IPC Handler] Cloud deletion successful for signalId: ${poll.cloudSignalId}`);
-                }).catch(err => {
-                    console.error('[IPC Handler] Failed to sync poll deletion to cloud:', err.message);
-                });
-            }
+            // NOTE: Cloud deletion is handled by frontend via backend-delete-poll IPC handler
             return { success: true, changes: result.changes };
         }
         catch (error) {
@@ -446,11 +423,6 @@ electron_1.app.whenReady().then(async () => {
         const time = new Date().toLocaleTimeString();
         console.log(`[DELETE-DEBUG] [${time}] ========== IPC: backend-delete-poll ==========`);
         console.log(`[DELETE-DEBUG] [${time}] Received signalId | value=${signalId} | type=${typeof signalId}`);
-        // #region agent log
-        const fs = require('fs');
-        const logPath = 'c:\\Users\\amandeep.singh\\OneDrive - Arrise Solutions Malta Limited\\Desktop\\FrontendFolder\\Sentinel\\.cursor\\debug.log';
-        fs.appendFileSync(logPath, JSON.stringify({ location: 'main.ts:backend-delete-poll', message: 'backend-delete-poll ENTRY (primary cloud delete)', data: { signalId, type: typeof signalId, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) + '\n');
-        // #endregion
         if (signalId === undefined || signalId === null) {
             console.error(`[DELETE-DEBUG] [${time}] ❌ INVALID signalId - undefined or null`);
             return { success: false, error: 'signalId is undefined or null' };
@@ -980,16 +952,14 @@ electron_1.ipcMain.handle('db-create-label', async (event, label) => {
     console.log('\n' + '*'.repeat(80));
     console.log(`[IPC Handler] [${time}] 🏷️ db-create-label received: "${label.name}"`);
     console.log(`[IPC Handler] Label Data:`, label);
-    // Input Validation
+    // Input Validation (raw label names - no ~#~ formatting)
     if (label.name.length > 100) {
         return { success: false, error: 'Label name cannot exceed 100 characters' };
     }
     if (label.description && label.description.length > 500) {
         return { success: false, error: 'Description cannot exceed 500 characters' };
     }
-    if (label.name.includes('~') || label.name.includes('#')) {
-        return { success: false, error: 'Label name cannot contain special characters like ~ or #' };
-    }
+    // Note: Special character validation (~, #) removed - raw names are now expected
     try {
         const result = (0, db_1.createLabel)(label);
         console.log(`[IPC Handler] [${time}] ✅ Local label created: ${label.name} (id: ${label.id})`);
