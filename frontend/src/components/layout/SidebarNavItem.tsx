@@ -1,4 +1,5 @@
 import { LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SidebarNavItemProps {
   icon: LucideIcon;
@@ -14,8 +15,9 @@ interface SidebarNavItemProps {
  * 
  * Individual navigation item for the floating sidebar.
  * Features Neon Marsh palette with premium micro-interactions:
- * - Hover glow effect
- * - Active state with neon indicator
+ * - Hover glow effect with icon bounce
+ * - Active state with animated neon indicator
+ * - Badge pop animation on count change
  * - Smooth spring animations
  * - Collapsed mode with icon-only display + tooltip
  */
@@ -27,6 +29,19 @@ export default function SidebarNavItem({
   onClick,
   isCollapsed = false,
 }: SidebarNavItemProps) {
+  // Track badge changes for animation
+  const prevBadgeRef = useRef(badge);
+  const [badgeAnimating, setBadgeAnimating] = useState(false);
+
+  useEffect(() => {
+    if (badge !== prevBadgeRef.current && typeof badge === 'number' && badge > 0) {
+      setBadgeAnimating(true);
+      const timer = setTimeout(() => setBadgeAnimating(false), 400);
+      prevBadgeRef.current = badge;
+      return () => clearTimeout(timer);
+    }
+  }, [badge]);
+
   return (
     <button
       onClick={onClick}
@@ -34,7 +49,7 @@ export default function SidebarNavItem({
         group w-full flex items-center gap-3 px-4 py-3 rounded-xl
         font-medium text-sm relative overflow-hidden
         transition-all duration-200 ease-out
-        active:scale-[0.98]
+        active:scale-[0.98] press-shrink
         focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2
         ${isCollapsed ? 'justify-center px-3' : 'hover:translate-x-1'}
         ${isActive 
@@ -45,13 +60,13 @@ export default function SidebarNavItem({
       aria-current={isActive ? 'page' : undefined}
       title={isCollapsed ? label : undefined}
     >
-      {/* Active indicator bar */}
+      {/* Active indicator bar with slide animation */}
       {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-full dark:shadow-[0_0_10px_var(--neon-cyan)]" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-full dark:shadow-[0_0_10px_var(--neon-cyan)] indicator-slide" />
       )}
 
-      {/* Icon with micro-interaction */}
-      <div className="relative">
+      {/* Icon with bounce on hover */}
+      <div className="relative icon-bounce-hover">
         <Icon 
           className={`w-5 h-5 flex-shrink-0 transition-all duration-200 group-hover:scale-110 ${
             isActive 
@@ -81,12 +96,13 @@ export default function SidebarNavItem({
         </span>
       )}
       
-      {/* Badge with glow effect when active - hidden when collapsed */}
+      {/* Badge with glow effect and pop animation - hidden when collapsed */}
       {!isCollapsed && typeof badge === 'number' && badge > 0 && (
         <span 
           className={`
             min-w-[22px] h-[22px] px-1.5 flex items-center justify-center
             rounded-full text-xs font-semibold transition-all duration-200
+            ${badgeAnimating ? 'badge-pop' : ''}
             ${isActive 
               ? 'bg-primary text-primary-foreground dark:shadow-[0_0_8px_var(--neon-cyan)]' 
               : 'bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary'

@@ -30,6 +30,9 @@ import {
 // Create Signal Wizard
 import { CreateSignalWizard } from './components/wizard';
 
+// Effects
+import { ClickRipple } from './components/effects';
+
 /**
  * Main App Content Component
  * Renders content based on current page from layout context
@@ -163,6 +166,7 @@ function App() {
   if (isSecondary) {
     return (
       <ThemeProvider>
+        <ClickRipple />
         <PersistentAlertSecondary />
       </ThemeProvider>
     );
@@ -202,6 +206,7 @@ function App() {
   if (loading) {
     return (
       <ThemeProvider>
+        <ClickRipple />
         <div className="min-h-screen flex items-center justify-center bg-background dark:bg-background">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
@@ -216,6 +221,7 @@ function App() {
   if (!user) {
     return (
       <ThemeProvider>
+        <ClickRipple />
         <AuthPage onLogin={login} error={loginError} success={loginSuccess} />
       </ThemeProvider>
     );
@@ -224,6 +230,9 @@ function App() {
   // Main authenticated app with Ribbit Layout
   return (
     <ThemeProvider>
+      {/* Global Click Ripple Effect */}
+      <ClickRipple />
+
       {/* Global Alert Manager (handles notifications, persistent alerts) */}
       <GlobalAlertManager
         user={user}
