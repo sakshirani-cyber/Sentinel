@@ -131,8 +131,8 @@ export default function FormTypeSelector({ onSelectFormType }: FormTypeSelectorP
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
-        <h2 className="text-mono-text mb-2">Choose Form Type</h2>
-        <p className="text-mono-text/70">Select the type of form you want to create</p>
+        <h2 className="text-foreground mb-2">Choose Form Type</h2>
+        <p className="text-foreground-secondary">Select the type of form you want to create</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -140,24 +140,24 @@ export default function FormTypeSelector({ onSelectFormType }: FormTypeSelectorP
           <button
             key={formType.id}
             onClick={() => onSelectFormType(formType.id)}
-            className="group relative bg-mono-bg border-2 border-mono-primary/20 rounded-2xl p-6 hover:border-mono-accent hover:shadow-xl transition-all duration-300 text-left"
+            className="group relative bg-card border-2 border-border rounded-2xl p-6 hover:border-primary hover:shadow-xl transition-all duration-300 text-left card-interactive-accent"
           >
-            <div className="absolute inset-0 bg-mono-accent/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-primary/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             
             <div className="relative space-y-4">
-              <div className="w-16 h-16 bg-mono-primary rounded-xl flex items-center justify-center text-mono-bg group-hover:bg-mono-accent group-hover:text-mono-primary transition-all duration-300">
+              <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-foreground group-hover:bg-accent group-hover:text-accent-foreground transition-all duration-300 shadow-md">
                 {formType.icon}
               </div>
 
               <div>
-                <h3 className="text-mono-text mb-1">{formType.name}</h3>
-                <p className="text-sm text-mono-text/60">{formType.description}</p>
+                <h3 className="text-foreground mb-1 font-semibold">{formType.name}</h3>
+                <p className="text-sm text-muted-foreground">{formType.description}</p>
               </div>
 
               <div className="space-y-2">
                 {formType.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm text-mono-text/70">
-                    <div className="w-1.5 h-1.5 bg-mono-accent rounded-full" />
+                  <div key={index} className="flex items-center gap-2 text-sm text-foreground-secondary">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full" />
                     <span>{feature}</span>
                   </div>
                 ))}

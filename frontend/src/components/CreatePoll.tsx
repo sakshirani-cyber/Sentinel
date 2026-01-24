@@ -409,7 +409,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300",
-                    isScheduled ? "bg-mono-accent text-mono-primary scale-110 shadow-lg shadow-mono-accent/20" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600"
+                    isScheduled ? "bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/20" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600"
                   )}>
                     <CalendarClock className="w-6 h-6" />
                   </div>
@@ -428,7 +428,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   <div className={cn(
                     "relative w-11 h-6 rounded-full transition-all duration-300 ease-in-out shadow-inner border",
                     isScheduled
-                      ? "bg-mono-accent border-mono-accent"
+                      ? "bg-primary border-primary"
                       : "bg-slate-200 border-slate-300"
                   )}>
                     <div
@@ -462,7 +462,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                             "w-full px-4 py-3 rounded-xl border bg-white text-slate-900 focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm",
                             showErrors && (!scheduleTime || !isScheduleTimeValid(scheduleTime, deadline))
                               ? "border-red-200 ring-red-500/10 focus:ring-red-500/20"
-                              : "border-slate-200 focus:border-mono-accent/50 ring-mono-accent/10 focus:ring-mono-accent/20"
+                              : "border-slate-200 focus:border-primary/50 ring-primary/10 focus:ring-primary/20"
                           )}
                           min={new Date().toISOString().slice(0, 16)}
                           max={deadline ? new Date(deadline).toISOString().slice(0, 16) : undefined}
@@ -498,7 +498,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               placeholder="e.g., Are you on leave tomorrow? (Type # to add labels)"
               className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !question.trim()
                 ? 'border-red-500 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-mono-accent/20'
+                : 'border-slate-300 focus:ring-primary/20'
                 }`}
             />
             {showErrors && (!question.trim() || question.trim().length < 3) && (
@@ -527,7 +527,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                     containerClassName="flex-1"
                     className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !option.trim()
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-slate-300 focus:ring-mono-accent/20'
+                      : 'border-slate-300 focus:ring-primary/20'
                       }`}
                   />
                   {options.length > 2 && (
@@ -549,7 +549,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               <button
                 onClick={handleAddOption}
                 disabled={options.length >= 10}
-                className="flex items-center gap-2 px-4 py-2 hover:bg-mono-accent/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-primary"
               >
                 <Plus className="w-4 h-4" />
                 Add Option {options.length >= 10 && <span className="text-xs text-slate-500">(Limit reached)</span>}
@@ -573,7 +573,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   id="useCustomDefault"
                   checked={useCustomDefault}
                   onChange={(e) => setUseCustomDefault(e.target.checked)}
-                  className="w-4 h-4 text-mono-accent rounded border-slate-300 focus:ring-2 focus:ring-mono-accent/20"
+                  className="w-4 h-4 text-primary accent-primary rounded border-slate-300 focus:ring-2 focus:ring-primary/20"
                 />
                 <label htmlFor="useCustomDefault" className="text-sm text-slate-700">
                   Use custom default response
@@ -588,7 +588,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   placeholder="e.g., I don't know, N/A, They are on leave tomorrow (Type # for labels)"
                   className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !customDefault.trim()
                     ? 'border-red-500 focus:ring-red-500'
-                    : 'border-slate-300 focus:ring-mono-accent/20'
+                    : 'border-slate-300 focus:ring-primary/20'
                     }`}
                 />
               ) : (
@@ -600,7 +600,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                     "w-full h-auto min-h-[42px] px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all bg-white",
                     showErrors && !defaultResponse
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-slate-300 focus:ring-mono-accent/20'
+                      : 'border-slate-300 focus:ring-primary/20'
                   )}>
                     <SelectValue placeholder="Select from options" />
                   </SelectTrigger>
@@ -637,7 +637,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 id="showDefault"
                 checked={showDefaultToConsumers}
                 onChange={(e) => setShowDefaultToConsumers(e.target.checked)}
-                className="mt-1 w-4 h-4 text-mono-accent rounded border-slate-300 focus:ring-2 focus:ring-mono-accent/20"
+                className="mt-1 w-4 h-4 text-primary accent-primary rounded border-slate-300 focus:ring-2 focus:ring-primary/20"
               />
               <label htmlFor="showDefault" className="text-slate-700">
                 Show default response to consumers
@@ -653,7 +653,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 id="persistent"
                 checked={isPersistentFinalAlert}
                 onChange={(e) => setIsPersistentFinalAlert(e.target.checked)}
-                className="mt-1 w-4 h-4 text-mono-accent rounded border-slate-300 focus:ring-2 focus:ring-mono-accent/20"
+                className="mt-1 w-4 h-4 text-primary accent-primary rounded border-slate-300 focus:ring-2 focus:ring-primary/20"
               />
               <label htmlFor="persistent" className="text-slate-700">
                 Make final alert (1 min) persistent
@@ -804,7 +804,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   name="anonymity"
                   checked={anonymityMode === 'record'}
                   onChange={() => setAnonymityMode('record')}
-                  className="w-4 h-4 text-mono-accent"
+                  className="w-4 h-4 text-primary accent-primary"
                 />
                 <div>
                   <p className="text-slate-900">Record Responses</p>
@@ -819,7 +819,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                   name="anonymity"
                   checked={anonymityMode === 'anonymous'}
                   onChange={() => setAnonymityMode('anonymous')}
-                  className="w-4 h-4 text-mono-accent"
+                  className="w-4 h-4 text-primary accent-primary"
                 />
                 <div>
                   <p className="text-slate-900">Anonymous</p>
@@ -842,7 +842,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               onChange={(e) => setDeadline(e.target.value)}
               className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-all ${showErrors && !isDateValid(deadline)
                 ? 'border-red-500 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-mono-accent/20'
+                : 'border-slate-300 focus:ring-primary/20'
                 }`}
               min={getMinDateTime()}
             />
@@ -909,10 +909,10 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                         setSelectedConsumers([]);
                       }
                     }}
-                    className="w-4 h-4 text-mono-accent rounded border-slate-300 focus:ring-2 focus:ring-mono-accent/20 cursor-pointer"
+                    className="w-4 h-4 text-primary accent-primary rounded border-slate-300 focus:ring-2 focus:ring-primary/20 cursor-pointer"
                   />
                 </div>
-                <span className="text-sm font-medium text-slate-700 group-hover:text-mono-accent transition-colors">
+                <span className="text-sm font-medium text-slate-700 group-hover:text-primary transition-colors">
                   Select All
                 </span>
               </label>
@@ -928,16 +928,16 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 .map(email => (
                   <label
                     key={email}
-                    className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer transition-colors bg-mono-accent/5"
+                    className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer transition-colors bg-primary/5"
                   >
                     <input
                       type="checkbox"
                       checked={true}
                       onChange={() => handleToggleConsumer(email)}
-                      className="w-4 h-4 text-mono-accent rounded border-slate-300 focus:ring-2 focus:ring-mono-accent/20"
+                      className="w-4 h-4 text-primary accent-primary rounded border-slate-300 focus:ring-2 focus:ring-primary/20"
                     />
                     <span className="text-slate-700">{email}</span>
-                    <span className="text-xs bg-mono-accent/20 text-mono-accent px-2 py-0.5 rounded border border-mono-accent/10 font-medium">
+                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/10 font-medium">
                       Imported
                     </span>
                   </label>
@@ -952,11 +952,11 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                     type="checkbox"
                     checked={selectedConsumers.includes(email)}
                     onChange={() => handleToggleConsumer(email)}
-                    className="w-4 h-4 text-mono-accent rounded border-slate-300 focus:ring-2 focus:ring-mono-accent/20"
+                    className="w-4 h-4 text-primary accent-primary rounded border-slate-300 focus:ring-2 focus:ring-primary/20"
                   />
                   <span className="text-slate-700">{email}</span>
                   {email === user.email && (
-                    <span className="text-xs bg-mono-accent/20 text-mono-accent px-2 py-0.5 rounded">
+                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
                       You
                     </span>
                   )}
@@ -983,8 +983,8 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               onClick={handlePublish}
               disabled={isPublishing}
               className={cn(
-                "flex items-center gap-2 px-6 py-3 bg-mono-accent text-mono-primary rounded-lg transition-all shadow-md min-w-[140px] justify-center font-bold",
-                !isValid ? "opacity-50 cursor-not-allowed" : "hover:bg-mono-accent/90 hover:shadow-lg active:scale-95",
+                "flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg transition-all shadow-md min-w-[140px] justify-center font-bold",
+                !isValid ? "opacity-50 cursor-not-allowed" : "hover:bg-primary-hover hover:shadow-lg active:scale-95 glow-on-hover",
                 isPublishing && "opacity-50 cursor-not-allowed"
               )}
             >

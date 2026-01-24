@@ -180,7 +180,7 @@ export default function ConsumerDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-mono-bg">
+    <div className="min-h-screen bg-background">
       <DashboardHeader
         user={user}
         incompleteCount={incomplete.length}
@@ -203,22 +203,22 @@ export default function ConsumerDashboard({
       )}
 
       {/* Navigation Tabs */}
-      <div className="bg-mono-primary/5 border-b border-mono-primary/10">
+      <div className="bg-primary/5 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('incomplete')}
               className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'incomplete'
-                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-primary text-foreground bg-primary/10'
+                : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-primary/5'
                 }`}
             >
               <Clock className="w-5 h-5" />
               <span className="hidden sm:inline">Incomplete</span>
               {incomplete.length > 0 && (
-                <span className={`px-2.5 py-0.5 rounded-full text-xs ${activeTab === 'incomplete'
-                  ? 'bg-mono-accent/30 text-mono-primary'
-                  : 'bg-mono-accent/20 text-mono-primary'
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${activeTab === 'incomplete'
+                  ? 'bg-primary/30 text-primary dark:text-primary-foreground'
+                  : 'bg-primary/20 text-primary'
                   }`}>
                   {incomplete.length}
                 </span>
@@ -227,16 +227,16 @@ export default function ConsumerDashboard({
             <button
               onClick={() => setActiveTab('completed')}
               className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'completed'
-                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-primary text-foreground bg-primary/10'
+                : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-primary/5'
                 }`}
             >
               <CheckCircle className="w-5 h-5" />
               <span className="hidden sm:inline">Completed</span>
               {completed.length > 0 && (
-                <span className={`px-2.5 py-0.5 rounded-full text-xs ${activeTab === 'completed'
-                  ? 'bg-mono-accent/30 text-mono-primary'
-                  : 'bg-mono-primary/20 text-mono-primary'
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${activeTab === 'completed'
+                  ? 'bg-primary/30 text-primary dark:text-primary-foreground'
+                  : 'bg-primary/20 text-primary'
                   }`}>
                   {completed.length}
                 </span>
@@ -245,8 +245,8 @@ export default function ConsumerDashboard({
             <button
               onClick={() => setActiveTab('analytics')}
               className={`flex items-center gap-2 px-6 py-4 border-b-3 transition-all rounded-t-xl ${activeTab === 'analytics'
-                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-primary text-foreground bg-primary/10'
+                : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-primary/5'
                 }`}
             >
               <BarChart3 className="w-5 h-5" />

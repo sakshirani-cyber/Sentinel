@@ -47,8 +47,8 @@ export default function LoadingSpinner({
         className={`
           ${sizeClasses[size]}
           ${borderWidths[size]}
-          border-ribbit-fern/30 dark:border-ribbit-dry-sage/30
-          border-t-ribbit-fern dark:border-t-ribbit-dry-sage
+          border-primary/30 dark:border-primary/30
+          border-t-primary dark:border-t-primary
           rounded-full
           animate-spin
         `}
@@ -56,7 +56,7 @@ export default function LoadingSpinner({
       
       {/* Text */}
       {text && (
-        <p className={`text-ribbit-pine-teal dark:text-ribbit-dust-grey font-medium ${textSizes[size]}`}>
+        <p className={`text-foreground dark:text-foreground font-medium ${textSizes[size]}`}>
           {text}
         </p>
       )}
@@ -65,7 +65,7 @@ export default function LoadingSpinner({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ribbit-dust-grey/80 dark:bg-ribbit-pine-teal/80 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 dark:bg-background/80 backdrop-blur-sm">
         {spinner}
       </div>
     );
@@ -85,7 +85,7 @@ export function LoadingDots({ className = '' }: { className?: string }) {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="w-2 h-2 rounded-full bg-ribbit-fern dark:bg-ribbit-dry-sage animate-bounce"
+          className="w-2 h-2 rounded-full bg-primary dark:bg-primary animate-bounce"
           style={{ animationDelay: `${i * 0.15}s` }}
         />
       ))}
@@ -105,7 +105,7 @@ export function Skeleton({
   className?: string;
   variant?: 'text' | 'circular' | 'rectangular';
 }) {
-  const baseClasses = 'animate-pulse bg-ribbit-dry-sage/50 dark:bg-ribbit-hunter-green/50';
+  const baseClasses = 'animate-pulse bg-muted dark:bg-muted';
   
   const variantClasses = {
     text: 'h-4 rounded',
@@ -125,7 +125,7 @@ export function Skeleton({
  */
 export function SkeletonCard() {
   return (
-    <div className="bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/30 border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 rounded-xl p-5 animate-pulse">
+    <div className="bg-card/60 dark:bg-card/80 border border-border rounded-xl p-5 animate-pulse">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Skeleton variant="circular" className="w-8 h-8" />

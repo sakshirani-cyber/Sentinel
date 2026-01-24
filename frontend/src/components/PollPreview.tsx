@@ -93,7 +93,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                     <Shield className="w-4 h-4" />
                     <span className="capitalize">{poll.anonymityMode}</span>
                   </div>
-                  <div className="px-2 py-0.5 bg-mono-accent/20 text-mono-accent rounded">
+                  <div className="px-2 py-0.5 bg-primary/20 text-primary rounded font-medium">
                     Poll
                   </div>
                   {poll.isPersistentFinalAlert && (
@@ -122,13 +122,13 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                 )}
 
                 {poll.showDefaultToConsumers && poll.defaultResponse && (
-                  <div className="mb-4 p-3 bg-mono-accent/10 border border-mono-accent/20 rounded-lg">
-                    <p className="text-sm text-mono-accent">
+                  <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                    <p className="text-sm text-primary">
                       <strong className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>Default Response:</strong> <span className="break-all max-w-full" style={{ wordBreak: 'break-all' }}>
                         <LabelText text={poll.defaultResponse} />
                       </span>
                     </p>
-                    <p className="text-xs text-mono-accent opacity-70 mt-1">
+                    <p className="text-xs text-primary opacity-70 mt-1">
                       This will be recorded if you don't submit a response
                     </p>
                   </div>
@@ -143,7 +143,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                       <input
                         type="radio"
                         name="preview-poll"
-                        className="w-4 h-4 text-mono-accent"
+                        className="w-4 h-4 text-primary accent-primary"
                         disabled
                       />
                       <span className="text-slate-700 break-all min-w-0 whitespace-pre-wrap max-w-full" style={{ wordBreak: 'break-all' }}>
@@ -155,7 +155,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
 
                 <button
                   disabled
-                  className="w-full bg-mono-accent text-mono-primary font-bold py-3 rounded-lg opacity-50 cursor-not-allowed"
+                  className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-lg opacity-50 cursor-not-allowed"
                 >
                   Submit Response
                 </button>

@@ -38,8 +38,8 @@ export default function SidebarNavItem({
         focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2
         ${isCollapsed ? 'justify-center px-3' : 'hover:translate-x-1'}
         ${isActive 
-          ? 'bg-primary/10 dark:bg-primary/15 text-primary dark:text-primary' 
-          : 'text-foreground hover:bg-primary/5 dark:hover:bg-primary/10'
+          ? 'bg-primary/10 dark:bg-primary/15 text-primary dark:text-primary dark:shadow-[0_0_15px_rgba(0,255,194,0.15)]' 
+          : 'text-foreground hover:bg-primary/5 dark:hover:bg-primary/10 hover:shadow-sm'
         }
       `}
       aria-current={isActive ? 'page' : undefined}

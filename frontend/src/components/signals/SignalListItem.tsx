@@ -91,15 +91,15 @@ export default function SignalListItem({
       onClick={onClick}
       className={`
         group relative
-        bg-ribbit-dry-sage/50 dark:bg-ribbit-hunter-green/40
+        bg-card/60 dark:bg-card/80
         backdrop-blur-sm
         border rounded-xl overflow-hidden
         transition-all duration-300 ease-out
-        ${isClickable ? 'cursor-pointer' : 'cursor-default'}
+        ${isClickable ? 'cursor-pointer card-interactive-accent' : 'cursor-default'}
         ${isClickable ? 'hover:shadow-lg hover:scale-[1.01] hover:-translate-y-0.5' : ''}
         ${timeRemaining.isUrgent && !isCompleted
-          ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/20'
-          : 'border-ribbit-fern/30 dark:border-ribbit-dry-sage/20'
+          ? 'border-destructive/30 dark:border-destructive/50 bg-destructive/5 dark:bg-destructive/10'
+          : 'border-border'
         }
         ${isClickable ? 'active:scale-[0.99]' : ''}
       `}

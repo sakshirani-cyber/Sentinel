@@ -61,30 +61,30 @@ export default function PublisherDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-mono-bg">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-mono-primary border-b border-mono-primary sticky top-0 z-40 shadow-lg">
+      <header className="bg-card-solid border-b border-border sticky top-0 z-40 shadow-lg">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="relative w-12 h-12 bg-mono-accent rounded-xl flex items-center justify-center shadow-xl overflow-hidden">
+              <div className="relative w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-xl overflow-hidden">
                 <img src={logo} alt="Sentinel Logo" className="w-full h-full object-cover" />
               </div>
               <div>
-                <h1 className="text-mono-bg">Sentinel</h1>
-                <p className="text-sm text-mono-bg/70">Publisher Dashboard</p>
+                <h1 className="text-foreground">Sentinel</h1>
+                <p className="text-sm text-foreground-secondary">Publisher Dashboard</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden sm:block text-right mr-4 px-4 py-2 bg-mono-bg/10 backdrop-blur rounded-xl border border-mono-bg/20">
-                <p className="text-sm text-mono-bg">{user.name}</p>
-                <p className="text-xs text-mono-bg/70">{user.email}</p>
+              <div className="hidden sm:block text-right mr-4 px-4 py-2 bg-muted backdrop-blur rounded-xl border border-border">
+                <p className="text-sm text-foreground">{user.name}</p>
+                <p className="text-xs text-foreground-secondary">{user.email}</p>
               </div>
 
               <button
                 onClick={onSwitchMode}
-                className="flex items-center gap-2 px-4 py-2.5 bg-mono-accent text-mono-primary rounded-xl hover:bg-mono-accent/90 transition-all shadow-lg"
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary-hover transition-all shadow-lg glow-on-hover"
               >
                 <span className="hidden sm:inline">Switch to Consumer</span>
               </button>
@@ -92,7 +92,7 @@ export default function PublisherDashboard({
               <div className="relative">
                 <button
                   onClick={() => setShowSettings(!showSettings)}
-                  className="p-2.5 text-mono-bg/70 hover:text-mono-bg hover:bg-mono-bg/10 rounded-xl transition-colors"
+                  className="p-2.5 text-foreground-secondary hover:text-foreground hover:bg-muted rounded-xl transition-colors"
                   title="Settings"
                 >
                   <Settings className="w-5 h-5" />
@@ -104,24 +104,24 @@ export default function PublisherDashboard({
                       className="fixed inset-0 z-40"
                       onClick={() => setShowSettings(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-48 bg-mono-primary rounded-xl shadow-xl border border-mono-bg/10 py-1 z-50 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-48 bg-card-solid rounded-xl shadow-xl border border-border py-1 z-50 overflow-hidden">
                       <button
                         onClick={() => {
                           setShowSettings(false);
                           onManageLabels();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-mono-bg hover:bg-mono-accent/10 flex items-center gap-2 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-primary/10 flex items-center gap-2 transition-colors"
                       >
                         <Tag className="w-4 h-4" />
                         Label
                       </button>
-                      <div className="h-px bg-mono-bg/10 my-1" />
+                      <div className="h-px bg-border my-1" />
                       <button
                         onClick={() => {
                           onLogout();
                           setShowSettings(false);
                         }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-mono-bg hover:bg-mono-accent/10 flex items-center gap-2 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-primary/10 flex items-center gap-2 transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
                         Logout
@@ -136,7 +136,7 @@ export default function PublisherDashboard({
       </header>
 
       {/* Navigation Tabs */}
-      <div className="bg-mono-primary/5 border-b border-mono-primary/10">
+      <div className="bg-primary/5 border-b border-border">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex gap-2">
             <button
@@ -145,8 +145,8 @@ export default function PublisherDashboard({
                 setSelectedFormType(null);
               }}
               className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'create'
-                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-primary text-foreground bg-primary/10'
+                : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-primary/5'
                 }`}
             >
               <PlusCircle className="w-5 h-5" />
@@ -155,16 +155,16 @@ export default function PublisherDashboard({
             <button
               onClick={() => setActiveTab('scheduled')}
               className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'scheduled'
-                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-primary text-foreground bg-primary/10'
+                : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-primary/5'
                 }`}
             >
               <CalendarClock className="w-5 h-5" />
               <span className="hidden sm:inline">Scheduled</span>
               {scheduledPolls.length > 0 && (
-                <span className={`px-2.5 py-0.5 rounded-full text-xs ${activeTab === 'scheduled'
-                  ? 'bg-mono-accent/30 text-mono-primary'
-                  : 'bg-mono-primary/20 text-mono-primary'
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${activeTab === 'scheduled'
+                  ? 'bg-primary/30 text-primary dark:text-primary-foreground'
+                  : 'bg-primary/20 text-primary'
                   }`}>
                   {scheduledPolls.length}
                 </span>
@@ -173,16 +173,16 @@ export default function PublisherDashboard({
             <button
               onClick={() => setActiveTab('published')}
               className={`flex items-center gap-2 px-6 py-4 border-b-4 transition-all rounded-t-xl ${activeTab === 'published'
-                ? 'border-b-mono-accent text-mono-primary bg-mono-accent/10'
-                : 'border-transparent text-mono-text/60 hover:text-mono-text hover:bg-mono-primary/5'
+                ? 'border-b-primary text-foreground bg-primary/10'
+                : 'border-transparent text-foreground-secondary hover:text-foreground hover:bg-primary/5'
                 }`}
             >
               <List className="w-5 h-5" />
               <span className="hidden sm:inline">Published</span>
               {activePolls.length > 0 && (
-                <span className={`px-2.5 py-0.5 rounded-full text-xs ${activeTab === 'published'
-                  ? 'bg-mono-accent/30 text-mono-primary'
-                  : 'bg-mono-primary/20 text-mono-primary'
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${activeTab === 'published'
+                  ? 'bg-primary/30 text-primary dark:text-primary-foreground'
+                  : 'bg-primary/20 text-primary'
                   }`}>
                   {activePolls.length}
                 </span>
@@ -202,7 +202,7 @@ export default function PublisherDashboard({
               <div>
                 <button
                   onClick={handleBackToSelection}
-                  className="mb-6 px-4 py-2 text-mono-text/70 hover:text-mono-text hover:bg-mono-primary/5 rounded-xl transition-colors"
+                  className="mb-6 px-4 py-2 text-foreground-secondary hover:text-foreground hover:bg-primary/5 rounded-xl transition-colors"
                 >
                   ← Back to form types
                 </button>

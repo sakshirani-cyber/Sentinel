@@ -36,9 +36,9 @@ export default function WizardStepIndicator({
         {/* Background Track */}
         <div className="absolute top-4 left-0 right-0 h-0.5 bg-border" />
         
-        {/* Progress Fill */}
+        {/* Progress Fill - Gradient from primary to accent */}
         <div 
-          className="absolute top-4 left-0 h-0.5 bg-primary transition-all duration-500"
+          className="absolute top-4 left-0 h-0.5 bg-gradient-to-r from-primary to-accent transition-all duration-500"
           style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
         />
         

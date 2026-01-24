@@ -150,7 +150,7 @@ interface SettingsSectionProps {
 
 function SettingsSection({ icon: Icon, title, description, children }: SettingsSectionProps) {
   return (
-    <div className="bg-card dark:bg-card backdrop-blur-sm border border-border rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:border-primary/30">
+    <div className="bg-card dark:bg-card backdrop-blur-sm border border-border rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:border-primary/30 accent-line-left">
       {/* Header */}
       <div className="flex items-start gap-4 mb-5">
         <div className="w-11 h-11 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">

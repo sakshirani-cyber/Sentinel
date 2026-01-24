@@ -36,7 +36,7 @@ function RibbitLayoutInner({
   // When hovering, sidebar expands OVER the content (no margin change needed)
   
   return (
-    <div className="ribbit-layout">
+    <div className="ribbit-layout gradient-mesh">
       {/* Fixed Topbar */}
       <Topbar 
         user={user} 

@@ -37,9 +37,9 @@ const variantConfig = {
   },
   success: {
     icon: CheckCircle,
-    iconBg: 'bg-ribbit-dry-sage/40 dark:bg-ribbit-fern/30',
-    iconColor: 'text-ribbit-hunter-green dark:text-ribbit-dry-sage',
-    buttonBg: 'bg-ribbit-hunter-green hover:bg-[#2f4a35]',
+    iconBg: 'bg-success/10 dark:bg-success/20',
+    iconColor: 'text-success dark:text-success',
+    buttonBg: 'bg-success hover:bg-success/90',
   },
 };
 
@@ -97,13 +97,13 @@ export default function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-ribbit-pine-teal/40 dark:bg-black/60 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={!isLoading ? onClose : undefined}
       />
 
       {/* Dialog */}
       <div
-        className="relative w-full max-w-md bg-ribbit-dust-grey dark:bg-ribbit-pine-teal border border-ribbit-fern/30 dark:border-ribbit-dry-sage/20 rounded-2xl shadow-2xl animate-scale-in"
+        className="relative w-full max-w-md bg-card dark:bg-card border border-border rounded-2xl shadow-2xl animate-scale-in"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
@@ -112,7 +112,7 @@ export default function ConfirmDialog({
         <button
           onClick={onClose}
           disabled={isLoading}
-          className="absolute top-4 right-4 p-1 rounded-lg text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 hover:text-ribbit-pine-teal dark:hover:text-ribbit-dust-grey hover:bg-ribbit-dry-sage/30 transition-all disabled:opacity-50"
+          className="absolute top-4 right-4 p-1 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-muted transition-all disabled:opacity-50"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
@@ -125,11 +125,11 @@ export default function ConfirmDialog({
               <Icon className={`w-6 h-6 ${config.iconColor}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 id="dialog-title" className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dust-grey">
+              <h2 id="dialog-title" className="text-lg font-semibold text-foreground">
                 {title}
               </h2>
               {description && (
-                <p className="mt-1 text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+                <p className="mt-1 text-sm text-foreground-secondary">
                   {description}
                 </p>
               )}
@@ -148,7 +148,7 @@ export default function ConfirmDialog({
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2.5 rounded-lg font-medium text-sm text-ribbit-pine-teal dark:text-ribbit-dust-grey bg-ribbit-dry-sage/30 dark:bg-ribbit-hunter-green/30 border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 hover:bg-ribbit-dry-sage/50 dark:hover:bg-ribbit-hunter-green/50 transition-all disabled:opacity-50"
+              className="px-4 py-2.5 rounded-lg font-medium text-sm text-foreground bg-muted border border-border hover:bg-muted/80 transition-all disabled:opacity-50"
             >
               {cancelText}
             </button>

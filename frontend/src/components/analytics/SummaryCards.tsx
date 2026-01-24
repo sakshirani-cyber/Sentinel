@@ -16,7 +16,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ icon: Icon, label, value, colorClass }: SummaryCardProps) {
   return (
-    <div className={`${colorClass} rounded-xl p-4 transition-all duration-200 hover:scale-[1.02]`}>
+    <div className={`${colorClass} rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-md`}>
       <div className="flex items-center gap-2 mb-2">
         <Icon className="w-4 h-4 opacity-80" />
         <span className="text-xs font-medium opacity-80">{label}</span>

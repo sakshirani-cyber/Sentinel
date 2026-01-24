@@ -114,15 +114,15 @@ export default function SignalRow({
     <div
       className={`
         group relative
-        bg-ribbit-dry-sage/40 dark:bg-ribbit-hunter-green/40
+        bg-card/60 dark:bg-card/80
         backdrop-blur-sm
         border rounded-xl overflow-hidden
         transition-all duration-300 ease-out
+        card-interactive-accent
         ${isUrgent && !isCompleted && !hasResponded
-          ? 'border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-900/10'
-          : 'border-ribbit-fern/20 dark:border-ribbit-dry-sage/15'
+          ? 'border-destructive/30 dark:border-destructive/50 bg-destructive/5 dark:bg-destructive/10'
+          : 'border-border'
         }
-        hover:shadow-md hover:border-ribbit-fern/40 dark:hover:border-ribbit-dry-sage/30
       `}
     >
       {/* Urgent indicator bar */}
@@ -222,7 +222,7 @@ export default function SignalRow({
 
           {/* Separator */}
           {(onAnalytics || (isCreator && viewMode === 'sent' && !isCompleted)) && (
-            <div className="w-px h-16 bg-ribbit-fern/10 dark:bg-ribbit-dry-sage/10 flex-shrink-0" />
+            <div className="w-px h-16 bg-border flex-shrink-0" />
           )}
 
           {/* Main Content: Header */}

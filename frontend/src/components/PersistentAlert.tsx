@@ -82,7 +82,7 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
             <div className="space-y-4">
               <button
                 onClick={onFill}
-                className="w-full group bg-mono-primary text-mono-bg py-4 px-6 rounded-xl font-bold shadow-lg hover:bg-mono-accent hover:text-mono-primary transition-all duration-200 flex items-center justify-center gap-3"
+                className="w-full group bg-primary text-primary-foreground py-4 px-6 rounded-xl font-bold shadow-lg hover:bg-primary-hover transition-all duration-200 flex items-center justify-center gap-3 glow-on-hover"
               >
                 <span>Fill Form</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -90,7 +90,7 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
 
               <button
                 onClick={() => setShowReasonInput(true)}
-                className="w-full bg-mono-primary/5 text-mono-text py-4 px-6 rounded-xl font-semibold border-2 border-mono-primary/10 hover:bg-mono-primary/10 transition-all duration-200 flex items-center justify-center gap-2"
+                className="w-full bg-muted text-foreground py-4 px-6 rounded-xl font-semibold border-2 border-border hover:bg-muted/80 transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <SkipForward className="w-4 h-4" />
                 <span>Skip (Provide Reason)</span>
@@ -105,7 +105,7 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
                 <textarea
                   value={skipReason}
                   onChange={(e) => setSkipReason(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-mono-primary/20 focus:outline-none focus:ring-4 focus:ring-mono-accent/20 focus:border-mono-accent bg-mono-primary/5 text-mono-text placeholder:text-mono-text/40 transition-all resize-none"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary bg-muted text-foreground placeholder:text-muted-foreground transition-all resize-none input-accent-glow"
                   placeholder="Please provide a valid reason..."
                   rows={4}
                   autoFocus
