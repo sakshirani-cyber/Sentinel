@@ -10,19 +10,23 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 
-          "bg-primary text-primary-foreground shadow-md hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[0_0_20px_rgba(0,255,194,0.3)]",
+          // Enhanced with teal-tinted shadow for light mode depth
+          "bg-primary text-primary-foreground shadow-[0_2px_4px_rgba(15,23,42,0.1),0_4px_8px_rgba(13,148,136,0.15)] hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12),0_8px_20px_rgba(13,148,136,0.2)] dark:hover:shadow-[0_0_20px_rgba(0,255,194,0.3)]",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive-hover hover:-translate-y-0.5 shadow-md hover:shadow-lg hover:shadow-destructive/25",
+          "bg-destructive text-destructive-foreground hover:bg-destructive-hover hover:-translate-y-0.5 shadow-[0_2px_4px_rgba(15,23,42,0.1),0_4px_8px_rgba(239,68,68,0.15)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.12),0_8px_16px_rgba(239,68,68,0.2)]",
         outline:
-          "border-2 border-border bg-background text-foreground hover:bg-primary/5 hover:border-primary hover:text-primary dark:hover:bg-primary/10 hover:-translate-y-0.5",
+          // Enhanced border and hover with teal accent
+          "border-2 border-border bg-background text-foreground hover:bg-primary/5 hover:border-primary hover:text-primary dark:hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(13,148,136,0.1)]",
         secondary:
-          "bg-secondary text-secondary-foreground border border-border hover:bg-secondary-hover hover:border-primary/30 hover:-translate-y-0.5 shadow-sm hover:shadow-md",
+          // Enhanced with gradient-like appearance and better shadows
+          "bg-gradient-to-b from-white to-[#FAFBFC] dark:from-[#1F1F1F] dark:to-[#151515] text-secondary-foreground border border-border hover:border-primary/30 hover:-translate-y-0.5 shadow-[0_1px_2px_rgba(15,23,42,0.06),0_2px_4px_rgba(13,148,136,0.04)] hover:shadow-[0_2px_8px_rgba(15,23,42,0.08),0_4px_12px_rgba(13,148,136,0.08)]",
         ghost:
           "text-foreground hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/15 shadow-none hover:shadow-none",
         link: 
           "text-primary underline-offset-4 hover:underline shadow-none hover:shadow-none hover:translate-y-0",
         accent:
-          "bg-accent text-accent-foreground shadow-md hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-lg hover:shadow-accent/25 dark:hover:shadow-[0_0_20px_rgba(255,92,141,0.3)]",
+          // Enhanced with pink-tinted shadow for light mode
+          "bg-accent text-accent-foreground shadow-[0_2px_4px_rgba(15,23,42,0.1),0_4px_8px_rgba(236,72,153,0.15)] hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12),0_8px_20px_rgba(236,72,153,0.2)] dark:hover:shadow-[0_0_20px_rgba(255,92,141,0.3)]",
       },
       size: {
         default: "h-10 px-5 py-2.5 has-[>svg]:px-4",

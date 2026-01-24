@@ -24,7 +24,7 @@ const statusConfig: Record<SignalStatus, {
     textClassName: 'text-primary dark:text-primary',
     borderClassName: 'border-primary/30 dark:border-primary/40',
     pulseClassName: 'status-pulse',
-    hoverClassName: 'hover:bg-primary/15 dark:hover:bg-primary/25 hover:shadow-sm dark:hover:shadow-[0_0_10px_rgba(0,255,194,0.2)]',
+    hoverClassName: 'hover:bg-primary/15 dark:hover:bg-primary/25 hover:shadow-[0_2px_8px_rgba(13,148,136,0.15)] dark:hover:shadow-[0_0_10px_rgba(0,255,194,0.2)]',
   },
   completed: {
     icon: CheckCircle,
@@ -32,7 +32,7 @@ const statusConfig: Record<SignalStatus, {
     bgClassName: 'bg-success/10 dark:bg-success/20',
     textClassName: 'text-success dark:text-success',
     borderClassName: 'border-success/30 dark:border-success/40',
-    hoverClassName: 'hover:bg-success/15 dark:hover:bg-success/25 hover:shadow-sm',
+    hoverClassName: 'hover:bg-success/15 dark:hover:bg-success/25 hover:shadow-[0_2px_8px_rgba(16,185,129,0.15)]',
   },
   incomplete: {
     icon: Clock,
@@ -41,7 +41,7 @@ const statusConfig: Record<SignalStatus, {
     textClassName: 'text-warning dark:text-warning',
     borderClassName: 'border-warning/30 dark:border-warning/40',
     pulseClassName: 'pulse-dot',
-    hoverClassName: 'hover:bg-warning/15 dark:hover:bg-warning/25 hover:shadow-sm',
+    hoverClassName: 'hover:bg-warning/15 dark:hover:bg-warning/25 hover:shadow-[0_2px_8px_rgba(245,158,11,0.15)]',
   },
   scheduled: {
     icon: Calendar,
@@ -49,7 +49,7 @@ const statusConfig: Record<SignalStatus, {
     bgClassName: 'bg-info/10 dark:bg-info/20',
     textClassName: 'text-info dark:text-info',
     borderClassName: 'border-info/30 dark:border-info/40',
-    hoverClassName: 'hover:bg-info/15 dark:hover:bg-info/25 hover:shadow-sm',
+    hoverClassName: 'hover:bg-info/15 dark:hover:bg-info/25 hover:shadow-[0_2px_8px_rgba(59,130,246,0.15)]',
   },
   draft: {
     icon: FileEdit,
@@ -57,7 +57,7 @@ const statusConfig: Record<SignalStatus, {
     bgClassName: 'bg-muted dark:bg-muted',
     textClassName: 'text-muted-foreground',
     borderClassName: 'border-border',
-    hoverClassName: 'hover:bg-muted/80 hover:shadow-sm',
+    hoverClassName: 'hover:bg-muted/80 hover:shadow-[0_2px_6px_rgba(15,23,42,0.08)]',
   },
   expired: {
     icon: AlertCircle,
@@ -65,7 +65,7 @@ const statusConfig: Record<SignalStatus, {
     bgClassName: 'bg-destructive/10 dark:bg-destructive/20',
     textClassName: 'text-destructive dark:text-destructive',
     borderClassName: 'border-destructive/30 dark:border-destructive/40',
-    hoverClassName: 'hover:bg-destructive/15 dark:hover:bg-destructive/25 hover:shadow-sm',
+    hoverClassName: 'hover:bg-destructive/15 dark:hover:bg-destructive/25 hover:shadow-[0_2px_8px_rgba(239,68,68,0.15)]',
   },
 };
 

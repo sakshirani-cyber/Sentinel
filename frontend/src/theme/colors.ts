@@ -9,10 +9,13 @@
 
 export const palette = {
   // ============================================
-  // LIGHT MODE PRIMARIES
+  // LIGHT MODE PRIMARIES - Enhanced for Visual Depth
   // ============================================
   white: '#FFFFFF',
-  mint: '#F0FDFA',              // Secondary background - soft mint tint
+  offWhite: '#F8FAFC',          // Softer base background - easier on eyes
+  cream: '#FAFBFC',             // Card gradient end
+  mint: '#F0FDF9',              // Secondary background - warmer mint tint
+  mintLight: '#F5FFFD',         // Elevated surface tint
   teal: '#0D9488',              // Primary - vibrant teal
   tealDark: '#0F766E',          // Primary hover - deeper teal
   tealDeeper: '#115E59',        // Primary active
@@ -21,7 +24,8 @@ export const palette = {
   slate: '#0F172A',             // Primary text - deep slate
   slateMuted: '#475569',        // Secondary text
   slateLight: '#64748B',        // Muted text
-  border: '#E2E8F0',            // Light mode borders
+  border: '#CBD5E1',            // Light mode borders - stronger for definition
+  borderSubtle: '#E2E8F0',      // Subtle borders
 
   // ============================================
   // DARK MODE PRIMARIES
@@ -84,21 +88,28 @@ export const palette = {
   coral15: 'rgba(255, 92, 141, 0.15)',
   coral20: 'rgba(255, 92, 141, 0.2)',
 
-  // Glass effects
+  // Glass effects - Enhanced for Light Mode Depth
   whiteGlass: 'rgba(255, 255, 255, 0.75)',
-  whiteGlassStrong: 'rgba(255, 255, 255, 0.9)',
+  whiteGlassStrong: 'rgba(255, 255, 255, 0.92)',
   whiteGlassFull: 'rgba(255, 255, 255, 0.98)',
+  offWhiteGlass: 'rgba(248, 250, 252, 0.85)',  // Softer glass for light mode
+  mintGlass: 'rgba(240, 253, 249, 0.9)',       // Mint-tinted glass
   blackGlass: 'rgba(21, 21, 21, 0.8)',
   blackGlassStrong: 'rgba(21, 21, 21, 0.9)',
   blackGlassFull: 'rgba(21, 21, 21, 0.98)',
 
-  // Shadows
+  // Shadows - Enhanced with Teal Tints for Light Mode Depth
   shadowLight: '15, 23, 42',    // Slate RGB for light mode shadows
+  shadowTeal: '13, 148, 136',   // Teal RGB for tinted shadows (light mode depth)
   shadowDark: '0, 0, 0',        // Black RGB for dark mode shadows
   glowTeal: '13, 148, 136',     // Teal RGB for glow effects
   glowCyan: '0, 255, 194',      // Cyan RGB for dark mode glow
   glowPink: '236, 72, 153',     // Pink RGB for accent glow
   glowCoral: '255, 92, 141',    // Coral RGB for dark accent glow
+
+  // Light Mode Surface Highlights
+  innerHighlight: 'rgba(255, 255, 255, 0.9)',   // Top edge highlight for cards
+  innerShadow: 'rgba(15, 23, 42, 0.03)',        // Subtle inner shadow for depth
 } as const;
 
 // Type for the palette

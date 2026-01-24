@@ -24,9 +24,12 @@
    * See: src/theme/colors.ts for source of truth
    * ============================================ */
   
-  /* Core Neon Marsh Palette - Light Mode */
+  /* Core Neon Marsh Palette - Light Mode (Enhanced for Visual Depth) */
   --neon-white: #FFFFFF;
-  --neon-mint: #F0FDFA;           /* Secondary background - soft mint tint */
+  --neon-off-white: #F8FAFC;      /* Softer base background - easier on eyes */
+  --neon-cream: #FAFBFC;          /* Card gradient end */
+  --neon-mint: #F0FDF9;           /* Secondary background - warmer mint tint */
+  --neon-mint-light: #F5FFFD;     /* Elevated surface tint */
   --neon-teal: #0D9488;           /* Primary - vibrant teal */
   --neon-teal-dark: #0F766E;      /* Primary hover - deeper teal */
   --neon-teal-deeper: #115E59;    /* Primary active */
@@ -34,7 +37,8 @@
   --neon-pink-dark: #DB2777;      /* Accent hover */
   --neon-slate: #0F172A;          /* Primary text - deep slate */
   --neon-slate-muted: #475569;    /* Secondary text */
-  --neon-border: #E2E8F0;         /* Borders - soft slate */
+  --neon-border: #CBD5E1;         /* Borders - stronger for definition */
+  --neon-border-subtle: #E2E8F0;  /* Subtle borders */
   
   /* Extended Light Palette */
   --neon-teal-10: rgba(13, 148, 136, 0.1);
@@ -91,23 +95,29 @@
 
   /* ============================================
    * SEMANTIC COLORS - LIGHT MODE
-   * Clean white base with teal accents
+   * Soft off-white base with teal accents for visual depth
    * ============================================ */
   
-  /* Backgrounds */
-  --background: var(--neon-white);
+  /* Backgrounds - Softer, easier on eyes */
+  --background: var(--neon-off-white);
   --background-secondary: var(--neon-mint);
+  --background-elevated: var(--neon-white);
   --foreground: var(--neon-slate);
   --foreground-secondary: var(--neon-slate-muted);
   --foreground-muted: #64748B;
 
-  /* Cards & Surfaces - Clean with subtle depth */
-  --card: rgba(255, 255, 255, 0.9);
+  /* Cards & Surfaces - Enhanced with gradients and depth */
+  --card: var(--neon-white);
+  --card-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 100%);
   --card-solid: var(--neon-white);
   --card-foreground: var(--neon-slate);
-  --card-hover: rgba(255, 255, 255, 1);
-  --popover: rgba(255, 255, 255, 0.98);
+  --card-hover: var(--neon-mint-light);
+  --popover: var(--neon-white);
   --popover-foreground: var(--neon-slate);
+  
+  /* Surface highlights for 3D effect */
+  --surface-highlight: rgba(255, 255, 255, 0.9);
+  --surface-shadow: rgba(15, 23, 42, 0.03);
 
   /* Primary - Vibrant Teal */
   --primary: var(--neon-teal);
@@ -143,42 +153,54 @@
   --info: #3B82F6;
   --info-foreground: #ffffff;
 
-  /* Borders */
+  /* Borders - Stronger for better definition */
   --border: var(--neon-border);
-  --border-subtle: #F1F5F9;
+  --border-subtle: var(--neon-border-subtle);
   --border-strong: var(--neon-teal);
+  --border-muted: #E2E8F0;
 
-  /* Inputs */
+  /* Inputs - Enhanced with depth */
   --input: transparent;
   --input-background: var(--neon-white);
   --input-border: var(--neon-border);
   --input-focus: var(--neon-teal);
+  --input-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
   --switch-background: #CBD5E1;
 
-  /* Focus Ring - Teal glow */
+  /* Focus Ring - Enhanced teal glow */
   --ring: var(--neon-teal-40);
-  --ring-offset: var(--neon-white);
-  --focus-ring: 0 0 0 3px var(--neon-teal-40);
+  --ring-offset: var(--neon-off-white);
+  --focus-ring: 0 0 0 3px var(--neon-teal-40), 0 0 12px rgba(13, 148, 136, 0.15);
 
-  /* Sidebar - Clean with glass effect */
-  --sidebar-bg: rgba(255, 255, 255, 0.85);
+  /* Sidebar - Enhanced glass with gradient */
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --sidebar-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 249, 0.92) 100%);
   --sidebar-foreground: var(--neon-slate);
   --sidebar-muted: var(--neon-slate-muted);
   --sidebar-hover: var(--neon-teal-10);
   --sidebar-active: var(--neon-teal-20);
   --sidebar-active-foreground: var(--neon-teal-dark);
   --sidebar-border: var(--neon-border);
+  --sidebar-shadow: 
+    1px 0 0 rgba(255, 255, 255, 0.6),
+    4px 0 20px rgba(15, 23, 42, 0.06),
+    8px 0 40px rgba(13, 148, 136, 0.04);
 
-  /* Topbar - Transparent with blur */
-  --topbar-bg: rgba(255, 255, 255, 0.8);
+  /* Topbar - Enhanced gradient with depth */
+  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --topbar-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.9) 100%);
   --topbar-foreground: var(--neon-slate);
   --topbar-muted: var(--neon-slate-muted);
   --topbar-hover: var(--neon-teal-10);
+  --topbar-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.6),
+    0 4px 16px rgba(15, 23, 42, 0.05),
+    0 1px 3px rgba(13, 148, 136, 0.04);
 
   /* Legacy mono compatibility */
   --mono-primary: var(--neon-slate);
   --mono-accent: var(--neon-teal);
-  --mono-bg: var(--neon-white);
+  --mono-bg: var(--neon-off-white);
   --mono-text: var(--neon-slate);
 
   /* Font Weights */
@@ -188,36 +210,53 @@
   --font-weight-bold: 700;
 
   /* ============================================
-   * SHADOWS - Teal-tinted ambient shadows
-   * Multi-layer depth for premium feel
+   * SHADOWS - Enhanced Teal-tinted Ambient Shadows
+   * Multi-layer depth for premium feel with brand color hints
    * ============================================ */
   --shadow-color: 15, 23, 42; /* Slate RGB */
+  --shadow-teal: 13, 148, 136; /* Teal RGB for tinted shadows */
   --shadow-primary: 13, 148, 136; /* Teal RGB for glow */
   --shadow-accent: 236, 72, 153; /* Pink RGB for accent glow */
   
-  --shadow-sm: 0 1px 2px rgba(var(--shadow-color), 0.05);
-  --shadow: 0 1px 3px rgba(var(--shadow-color), 0.1), 0 1px 2px rgba(var(--shadow-color), 0.06);
-  --shadow-md: 0 4px 6px rgba(var(--shadow-color), 0.07), 0 2px 4px rgba(var(--shadow-color), 0.06);
-  --shadow-lg: 0 10px 15px rgba(var(--shadow-color), 0.1), 0 4px 6px rgba(var(--shadow-color), 0.05);
-  --shadow-xl: 0 20px 25px rgba(var(--shadow-color), 0.1), 0 10px 10px rgba(var(--shadow-color), 0.04);
-  --shadow-2xl: 0 25px 50px rgba(var(--shadow-color), 0.15);
+  /* Base shadows with subtle teal tint for brand cohesion */
+  --shadow-sm: 0 1px 2px rgba(var(--shadow-color), 0.06), 0 1px 3px rgba(var(--shadow-teal), 0.04);
+  --shadow: 0 1px 3px rgba(var(--shadow-color), 0.1), 0 2px 6px rgba(var(--shadow-teal), 0.06);
+  --shadow-md: 0 4px 8px rgba(var(--shadow-color), 0.08), 0 2px 4px rgba(var(--shadow-teal), 0.08);
+  --shadow-lg: 0 10px 20px rgba(var(--shadow-color), 0.1), 0 4px 8px rgba(var(--shadow-teal), 0.08);
+  --shadow-xl: 0 20px 30px rgba(var(--shadow-color), 0.12), 0 10px 15px rgba(var(--shadow-teal), 0.08);
+  --shadow-2xl: 0 25px 50px rgba(var(--shadow-color), 0.18), 0 10px 20px rgba(var(--shadow-teal), 0.1);
   
   /* Glow effects with primary color */
-  --shadow-glow: 0 0 20px rgba(var(--shadow-primary), 0.3);
-  --shadow-glow-primary: 0 0 30px rgba(var(--shadow-primary), 0.4);
-  --shadow-glow-accent: 0 0 25px rgba(var(--shadow-accent), 0.35);
+  --shadow-glow: 0 0 25px rgba(var(--shadow-primary), 0.25), 0 4px 12px rgba(var(--shadow-primary), 0.15);
+  --shadow-glow-primary: 0 0 35px rgba(var(--shadow-primary), 0.35), 0 4px 16px rgba(var(--shadow-primary), 0.2);
+  --shadow-glow-accent: 0 0 30px rgba(var(--shadow-accent), 0.3), 0 4px 12px rgba(var(--shadow-accent), 0.15);
   
-  /* Elevation shadows for hover states */
-  --shadow-elevated: 0 10px 40px rgba(var(--shadow-color), 0.12), 0 4px 12px rgba(var(--shadow-color), 0.08);
+  /* Elevation shadows for hover states - Enhanced with teal */
+  --shadow-elevated: 
+    0 12px 40px rgba(var(--shadow-color), 0.14), 
+    0 4px 12px rgba(var(--shadow-teal), 0.1),
+    0 0 0 1px rgba(var(--shadow-teal), 0.05);
   
-  /* Premium 3D depth shadows */
+  /* Premium 3D depth shadows with layered teal tinting */
   --shadow-3d: 
     0 2px 4px rgba(var(--shadow-color), 0.04),
+    0 4px 8px rgba(var(--shadow-teal), 0.05),
+    0 8px 16px rgba(var(--shadow-color), 0.06),
+    0 16px 32px rgba(var(--shadow-teal), 0.08);
+  --shadow-float: 0 25px 50px rgba(var(--shadow-color), 0.16), 0 12px 24px rgba(var(--shadow-teal), 0.12);
+  --shadow-inset: inset 0 2px 4px rgba(var(--shadow-color), 0.05), inset 0 0 0 1px rgba(var(--shadow-teal), 0.03);
+  
+  /* Card-specific depth shadow */
+  --shadow-card: 
+    0 1px 2px rgba(var(--shadow-color), 0.04),
+    0 2px 4px rgba(var(--shadow-teal), 0.04),
+    0 4px 8px rgba(var(--shadow-color), 0.04),
+    0 8px 16px rgba(var(--shadow-teal), 0.03);
+  --shadow-card-hover: 
     0 4px 8px rgba(var(--shadow-color), 0.06),
-    0 8px 16px rgba(var(--shadow-color), 0.08),
-    0 16px 32px rgba(var(--shadow-color), 0.1);
-  --shadow-float: 0 25px 50px rgba(var(--shadow-color), 0.15), 0 12px 24px rgba(var(--shadow-color), 0.1);
-  --shadow-inset: inset 0 2px 4px rgba(var(--shadow-color), 0.06);
+    0 8px 16px rgba(var(--shadow-teal), 0.08),
+    0 16px 32px rgba(var(--shadow-color), 0.06),
+    0 0 0 1px rgba(var(--shadow-teal), 0.1);
 
   /* Border Radius - Larger for modern feel */
   --radius: 0.5rem;
@@ -263,16 +302,27 @@
   --z-toast: 800;
   --z-tooltip: 900;
 
-  /* Glassmorphism - Premium glass effects */
+  /* Glassmorphism - Premium glass effects with enhanced depth */
   --glass-blur: 20px;
   --glass-blur-heavy: 40px;
-  --glass-bg: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.3);
-  --glass-shine: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 50%);
-  --glass-reflection: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 40%);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-bg-soft: rgba(248, 250, 252, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-border-visible: rgba(203, 213, 225, 0.5);
+  --glass-shine: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%);
+  --glass-reflection: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 40%);
+  --glass-inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(15, 23, 42, 0.02);
 
   /* Grain texture for backgrounds */
-  --grain-opacity: 0.03;
+  --grain-opacity: 0.025;
+  
+  /* Gradient backgrounds for visual depth */
+  --gradient-surface: linear-gradient(180deg, var(--neon-white) 0%, var(--neon-cream) 100%);
+  --gradient-mesh-light: 
+    radial-gradient(at 0% 0%, rgba(13, 148, 136, 0.06) 0%, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.04) 0%, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(13, 148, 136, 0.04) 0%, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(240, 253, 249, 0.7) 0%, transparent 50%);
 }
 
 /* ============================================
@@ -1022,19 +1072,15 @@ html {
   transition: background-color var(--transition-theme);
 }
 
-/* Topbar - Floating transparent header with enhanced glass */
+/* Topbar - Floating transparent header with enhanced glass and depth */
 .ribbit-topbar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   height: var(--topbar-height);
-  /* Enhanced gradient background for light mode */
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(255, 255, 255, 0.88) 100%
-  );
+  /* Enhanced gradient background for light mode - softer, with depth */
+  background: var(--topbar-gradient);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--topbar-foreground);
@@ -1043,15 +1089,25 @@ html {
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-6);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  /* Layered shadow for depth */
-  box-shadow: 
-    0 1px 0 rgba(255, 255, 255, 0.5),
-    0 4px 12px rgba(15, 23, 42, 0.04);
+  border-bottom: 1px solid rgba(203, 213, 225, 0.6);
+  /* Enhanced layered shadow with teal tint for depth */
+  box-shadow: var(--topbar-shadow);
   transition: 
     background var(--transition-theme),
     border-color var(--transition-theme),
     box-shadow var(--transition-theme);
+}
+
+/* Inner highlight for 3D glass effect */
+.ribbit-topbar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
+  pointer-events: none;
 }
 
 .dark .ribbit-topbar {
@@ -1066,7 +1122,11 @@ html {
     0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
-/* Sidebar - Floating glassmorphism with enhanced depth */
+.dark .ribbit-topbar::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 194, 0.1) 50%, transparent 100%);
+}
+
+/* Sidebar - Floating glassmorphism with enhanced depth and visual richness */
 .ribbit-sidebar {
   position: fixed;
   top: calc(var(--topbar-height) + var(--sidebar-margin));
@@ -1074,15 +1134,11 @@ html {
   bottom: var(--sidebar-margin);
   /* Width is controlled by Tailwind classes in component for collapsed/expanded states */
   /* Mobile uses full width, desktop uses md:w-[72px] or md:w-[var(--sidebar-width)] */
-  /* Enhanced gradient background for light mode */
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(240, 253, 250, 0.9) 100%
-  );
+  /* Enhanced gradient background for light mode - richer depth */
+  background: var(--sidebar-gradient);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(203, 213, 225, 0.6);
   border-radius: var(--radius-2xl);
   z-index: var(--z-sidebar);
   display: flex;
@@ -1090,18 +1146,27 @@ html {
   padding: var(--space-4);
   overflow-y: auto;
   overflow-x: hidden;
-  /* Layered shadow for floating effect */
-  box-shadow: 
-    1px 0 0 rgba(255, 255, 255, 0.5),
-    4px 0 16px rgba(15, 23, 42, 0.05),
-    8px 0 32px rgba(15, 23, 42, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  /* Enhanced layered shadow with teal accent for depth */
+  box-shadow: var(--sidebar-shadow);
   transition: 
     transform var(--transition-slow),
     width var(--transition-slow),
     background var(--transition-theme),
     border-color var(--transition-theme),
     box-shadow var(--transition-theme);
+}
+
+/* Inner edge highlight for 3D glass effect */
+.ribbit-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 10%, rgba(255, 255, 255, 0.9) 50%, transparent 90%);
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  pointer-events: none;
 }
 
 .dark .ribbit-sidebar {
@@ -1117,6 +1182,10 @@ html {
     8px 0 48px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 0 40px rgba(0, 255, 194, 0.03);
+}
+
+.dark .ribbit-sidebar::before {
+  background: linear-gradient(90deg, transparent 10%, rgba(0, 255, 194, 0.15) 50%, transparent 90%);
 }
 
 /* Sidebar Nav Item with micro-interactions */
@@ -1404,13 +1473,13 @@ html {
 
 .ribbit-status-card {
   padding: var(--space-5);
-  background: var(--card);
+  background: var(--card-gradient);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
   transition: 
     all var(--transition),
     transform var(--micro-scale),
@@ -1419,25 +1488,46 @@ html {
   overflow: hidden;
 }
 
+/* Top edge highlight for 3D depth */
 .ribbit-status-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.95) 30%, rgba(255, 255, 255, 0.95) 70%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Glass reflection overlay */
+.ribbit-status-card::after {
   content: '';
   position: absolute;
   inset: 0;
   background: var(--glass-reflection);
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .ribbit-status-card:hover {
-  box-shadow: var(--shadow-elevated);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-4px) scale(1.02);
   border-color: var(--primary);
 }
 
 .ribbit-status-card.active {
   border-color: var(--primary);
-  background: var(--primary-muted);
-  box-shadow: var(--shadow-glow);
+  background: linear-gradient(180deg, rgba(13, 148, 136, 0.08) 0%, rgba(13, 148, 136, 0.12) 100%);
+  box-shadow: var(--shadow-glow), var(--shadow-card);
+}
+
+.dark .ribbit-status-card {
+  background: linear-gradient(180deg, rgba(21, 21, 21, 1) 0%, rgba(15, 15, 15, 0.95) 100%);
+}
+
+.dark .ribbit-status-card::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 194, 0.08) 30%, rgba(0, 255, 194, 0.08) 70%, transparent 100%);
 }
 
 .ribbit-status-card-label {
