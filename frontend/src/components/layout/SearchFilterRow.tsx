@@ -173,7 +173,7 @@ export default function SearchFilterRow({
         top: menuPosition.top,
         left: menuPosition.left,
         right: menuPosition.right,
-        zIndex: 99999,
+        zIndex: 350,
         backgroundColor: 'var(--background)',
         border: '1px solid var(--border)',
         borderRadius: '16px',

@@ -71,27 +71,28 @@ export default function SortDropdown({ value, onChange }: SortDropdownProps) {
         onClick={() => setIsOpen(!isOpen)}
         className="
           flex items-center gap-2 px-3 py-2.5
-          bg-ribbit-dry-sage/40 backdrop-blur-sm
-          border border-ribbit-fern/30 rounded-lg
-          text-sm text-ribbit-pine-teal
-          hover:bg-ribbit-dry-sage/60 hover:border-ribbit-fern/50
+          bg-secondary border border-border rounded-xl
+          text-sm font-medium text-foreground
+          hover:bg-primary/5 hover:border-primary/30
           hover:scale-[1.02]
           active:scale-[0.98]
-          focus:outline-none focus:ring-2 focus:ring-ribbit-fern/40 focus:border-ribbit-fern
+          focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary
           transition-all duration-200
-          dark:bg-ribbit-hunter-green/30 dark:border-ribbit-dry-sage/20
-          dark:text-ribbit-dust-grey
+          dark:hover:bg-primary/10
         "
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
-        <ArrowUpDown className="w-4 h-4 text-ribbit-fern" />
+        <ArrowUpDown className="w-4 h-4 text-primary" />
         <span>{selectedOption?.label || 'Sort'}</span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-ribbit-dry-sage/90 backdrop-blur-md rounded-lg shadow-xl border border-ribbit-fern/30 overflow-hidden z-50 animate-fade-in">
-          <ul role="listbox" className="py-1">
+        <div 
+          className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl border border-border overflow-hidden z-50 animate-fade-in"
+          style={{ backgroundColor: 'var(--background)' }}
+        >
+          <ul role="listbox" className="py-1" style={{ backgroundColor: 'var(--background)' }}>
             {sortOptions.map((option) => (
               <li key={option.value}>
                 <button
@@ -100,8 +101,8 @@ export default function SortDropdown({ value, onChange }: SortDropdownProps) {
                     w-full flex items-center justify-between px-4 py-2.5 text-sm
                     transition-all duration-200
                     ${value === option.value
-                      ? 'bg-ribbit-hunter-green/20 text-ribbit-hunter-green font-medium'
-                      : 'text-ribbit-pine-teal hover:bg-ribbit-hunter-green/10 hover:translate-x-1'
+                      ? 'bg-primary/20 text-primary font-medium dark:bg-primary/25'
+                      : 'text-foreground hover:bg-muted hover:translate-x-1'
                     }
                   `}
                   role="option"
