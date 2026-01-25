@@ -51,10 +51,10 @@ console.log(`[BOOT] SENTINEL MAIN PROCESS STARTING | ${new Date().toLocaleString
 console.log('#'.repeat(80) + '\n');
 // autoUpdater.autoDownload = true; // default is true
 // Set app name for notifications (Windows/macOS/Linux)
-electron_1.app.setName('Sentinel');
+electron_1.app.setName('Ribbit');
 // Set AppUserModelId for Windows notifications to show correct app name
 if (process.platform === 'win32') {
-    electron_1.app.setAppUserModelId('Sentinel');
+    electron_1.app.setAppUserModelId('Ribbit');
 }
 // Global Crash Protection
 process.on('uncaughtException', (err) => {
@@ -88,8 +88,8 @@ const handleWindowMinimize = () => {
         electron_1.app.focus({ steal: true });
     }
 };
-// Simple icon for tray (16x16 blue circle)
-const iconBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFMSURBVDiNpZMxSwNBEIW/vb29JBcQFBELsbATrPwBNv4CK/+Alf9AO0EQrGwsLCwEwUKwsLOxEQQLC0EQbCwUQUQQvLu9nZndsUgOc5dEfM3uzHvfzO4MrLH+V8AYcwI0gQPgEHgCboAr4FJKebcSgDHmGDgFdoEt4BV4AC6Acynl8xKAMWYPOAO2gQ/gHrgFbqSUH0sAxpgGcAzsAJ/APXADXEsp3xcAjDFN4AjYBl6AO+AauJBSvi0CGGN2gUNgC3gG7oBr4FJK+bIIYIzZBw6ATeAJuAWugXMp5esiQB04ADaAR+AWuAHOpZRviwB14BDYBx6AW+AGuJBSvi8C1IFDoBZ4AG6BG+BcSvm+CFAHjoAa8ADcAjfAhZTyfRGgDhwBNeABuAVugHMp5ccigDHmCGgAD8AtcANcSCk/FwGMMUdAA3gAbv8A/FbXX2v9D/gBnqV8VC6kqXwAAAAASUVORK5CYII=';
+// Ribbit logo icon path for tray and window
+const getIconPath = () => path.join(__dirname, electron_is_dev_1.default ? '../public/icon.png' : '../dist/icon.png');
 function createWindow() {
     win = new electron_1.BrowserWindow({
         width: 1200,
@@ -102,7 +102,7 @@ function createWindow() {
         minimizable: true, // Allow minimize by default
         closable: true, // Allow close by default
         movable: true, // Allow dragging by default
-        icon: path.join(__dirname, electron_is_dev_1.default ? '../public/logo.png' : '../dist/logo.png')
+        icon: getIconPath()
     });
     // Remove menu bar
     win.setMenuBarVisibility(false);
@@ -477,12 +477,14 @@ electron_1.app.whenReady().then(async () => {
             event.preventDefault();
         }
     });
-    // Create system tray
-    const icon = electron_1.nativeImage.createFromDataURL(iconBase64);
-    tray = new electron_1.Tray(icon);
+    // Create system tray with Ribbit logo
+    const trayIcon = electron_1.nativeImage.createFromPath(getIconPath());
+    // Resize for tray (16x16 on Windows, 22x22 on macOS, varies on Linux)
+    const resizedTrayIcon = trayIcon.resize({ width: 16, height: 16 });
+    tray = new electron_1.Tray(resizedTrayIcon);
     const contextMenu = electron_1.Menu.buildFromTemplate([
         {
-            label: 'Show Sentinel',
+            label: 'Show Ribbit',
             click: () => {
                 win?.show();
                 win?.focus();
@@ -494,7 +496,7 @@ electron_1.app.whenReady().then(async () => {
         }
         // Removed Quit option to prevent user from stopping the app
     ]);
-    tray.setToolTip('Sentinel - Signal Enforcement System');
+    tray.setToolTip('Ribbit - Signal with Nature\'s Clarity');
     tray.setContextMenu(contextMenu);
     // Double-click tray icon to show window
     tray.on('double-click', () => {

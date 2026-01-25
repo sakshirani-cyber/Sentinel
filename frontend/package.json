@@ -1,7 +1,7 @@
 {
-      "name": "sentinel-app",
-      "productName": "Sentinel",
-      "description": "Sentinel Desktop App",
+      "name": "ribbit-app",
+      "productName": "Ribbit",
+      "description": "Ribbit - Signal with Nature's Clarity",
       "author": "Arrise Solutions",
       "version": "0.1.0",
       "private": true,
@@ -75,12 +75,15 @@
             "cross-env": "^10.1.0",
             "electron": "^39.2.4",
             "electron-builder": "^26.0.12",
+            "electron-icon-builder": "^2.0.1",
             "eslint": "^9.39.2",
             "eslint-config-prettier": "^10.1.8",
             "eslint-plugin-react": "^7.37.5",
             "eslint-plugin-react-hooks": "^7.0.1",
             "eslint-plugin-react-refresh": "^0.4.26",
+            "png-to-ico": "^3.0.1",
             "prettier": "^3.8.1",
+            "sharp": "^0.34.5",
             "vite": "6.3.5",
             "wait-on": "^9.0.3"
       },
@@ -94,8 +97,9 @@
             "build:win": "npm run build:electron -- --win"
       },
       "build": {
-            "appId": "com.arrise.sentinel",
-            "productName": "Sentinel",
+            "appId": "com.arrise.ribbit",
+            "productName": "Ribbit",
+            "icon": "public/icon.png",
             "directories": {
                   "output": "dist-build"
             },
@@ -105,7 +109,15 @@
                   "package.json"
             ],
             "win": {
-                  "target": "nsis"
+                  "target": "nsis",
+                  "icon": "public/icon.ico"
+            },
+            "mac": {
+                  "icon": "public/icon.png"
+            },
+            "linux": {
+                  "target": "AppImage",
+                  "icon": "public/icon.png"
             },
             "publish": {
                   "provider": "github",

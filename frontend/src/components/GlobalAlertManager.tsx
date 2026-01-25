@@ -95,7 +95,7 @@ export default function GlobalAlertManager({
             const notification = new Notification(`New Poll from ${poll.publisherName}`, {
                 body: stripMarkersFromText(poll.question),
                 silent: false,
-                icon: '/logo.png'
+                icon: '/icon.png'
             });
 
             notification.onclick = () => {
@@ -132,7 +132,7 @@ export default function GlobalAlertManager({
                 const notification = new Notification(`Poll Updated: ${poll.publisherName}`, {
                     body: `The poll "${stripMarkersFromText(poll.question)}" has been updated. Please check the new details.`,
                     silent: false,
-                    icon: '/logo.png'
+                    icon: '/icon.png'
                 });
 
                 notification.onclick = () => {
@@ -196,7 +196,7 @@ export default function GlobalAlertManager({
                             const notification = new Notification(`Sentinel Alert: ${poll.publisherName}`, {
                                 body: `${threshold} min left: ${stripMarkersFromText(poll.question)}`,
                                 silent: false,
-                                icon: '/logo.png'
+                                icon: '/icon.png'
                             });
                             notification.onclick = () => {
                                 if ((window as any).electron) (window as any).electron.ipcRenderer.send('restore-window');
