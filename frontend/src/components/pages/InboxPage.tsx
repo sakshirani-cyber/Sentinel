@@ -60,6 +60,10 @@ export default function InboxPage({
     consumerPolls.forEach(p => {
       const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
       const isExpired = p.status === 'completed' || new Date(p.deadline) < now;
+      const isDeleted = p.status === 'deleted';
+      
+      // Skip deleted polls entirely
+      if (isDeleted) return;
       
       if (!hasResponse && !isExpired) {
         incomplete.push(p);

@@ -66,7 +66,8 @@ export default function GlobalAlertManager({
         return userPolls.filter(p => {
             const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
             const isExpired = p.status === 'completed' || new Date(p.deadline) < new Date();
-            return !hasResponse && !isExpired;
+            const isDeleted = p.status === 'deleted';
+            return !hasResponse && !isExpired && !isDeleted;
         });
     }, [userPolls, responses, user.email]);
 
@@ -83,7 +84,9 @@ export default function GlobalAlertManager({
 
         userPolls.forEach(poll => {
             const hasResponded = responses.some(r => r.pollId === poll.id && r.consumerEmail === user.email);
-            if (hasResponded || notifiedPolls.has(poll.id)) return;
+            // Skip notifications for expired or deleted signals
+            const isExpired = poll.status === 'completed' || poll.status === 'deleted' || new Date(poll.deadline) < new Date();
+            if (hasResponded || notifiedPolls.has(poll.id) || isExpired) return;
 
             setNotifiedPolls(prev => {
                 const newSet = new Set(prev);
@@ -120,8 +123,10 @@ export default function GlobalAlertManager({
         userPolls.forEach(poll => {
             const notificationKey = poll.updatedAt ? `${poll.id}_${poll.updatedAt}` : poll.id;
             const userResponse = responses.find(r => r.pollId === poll.id && r.consumerEmail === user.email);
+            // Skip notifications for expired or deleted signals
+            const isExpired = poll.status === 'completed' || poll.status === 'deleted' || new Date(poll.deadline) < new Date();
 
-            if (poll.isEdited && !userResponse && !notifiedUpdates.has(notificationKey)) {
+            if (poll.isEdited && !userResponse && !notifiedUpdates.has(notificationKey) && !isExpired) {
                 setNotifiedUpdates(prev => {
                     const newSet = new Set(prev);
                     newSet.add(notificationKey);

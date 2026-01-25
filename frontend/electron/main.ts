@@ -37,9 +37,17 @@ let win: BrowserWindow | null = null;
 let secondaryWindows: { win: BrowserWindow; displayId: number }[] = [];
 let isPersistentAlertLocked = false;
 
+// Debounce variable to prevent focus flapping on Linux
+let lastFocusTime = 0;
+
 // Global blur handler to prevent focus stealing on Linux/Wayland
 const handleWindowBlur = () => {
     if (isPersistentAlertLocked && win) {
+        // Debounce to prevent focus flapping (especially on Linux)
+        const now = Date.now();
+        if (now - lastFocusTime < 100) return;
+        lastFocusTime = now;
+        
         console.log('[Main] Window blurred during persistent alert, reclaiming focus...');
         if (win.isMinimized()) win.restore();
         win.focus();
@@ -717,6 +725,15 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
 
             if (isLinux && sessionType === 'wayland') {
                 console.warn('[Main] ⚠️ Running on Wayland. System shortcuts (Alt+Tab) might NOT be fully blockable due to OS security policy.');
+                // Send warning to renderer for user notification
+                win.webContents.send('wayland-limitation-warning', true);
+            }
+
+            // X11-specific: More aggressive window control is possible
+            if (isLinux && sessionType !== 'wayland') {
+                console.log('[Main] X11 session detected, applying enhanced window controls');
+                win.setSkipTaskbar(true);
+                win.setAlwaysOnTop(true, 'screen-saver', 1);
             }
 
             win.setMinimizable(false);
@@ -778,6 +795,33 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
                 }
             });
 
+            // Linux-specific: Try to block additional shortcuts that might work on some Linux WMs
+            if (isLinux) {
+                const linuxShortcuts = [
+                    'Super+D',          // Show desktop (GNOME/KDE)
+                    'Super+L',          // Lock screen
+                    'Ctrl+Alt+Delete',  // System menu
+                    'Ctrl+Alt+T',       // Terminal
+                    'Super+Tab',        // Window switcher
+                    'Super+A',          // Activities (GNOME)
+                    'Super+S',          // Settings
+                    'Alt+F1',           // Application menu
+                    'Alt+F2',           // Run dialog
+                    'Ctrl+Alt+D',       // Show desktop (alternative)
+                    'Ctrl+Alt+L',       // Lock screen (alternative)
+                ];
+                linuxShortcuts.forEach(shortcut => {
+                    try {
+                        globalShortcut.register(shortcut, () => {
+                            console.log(`[Main] Blocked Linux shortcut: ${shortcut}`);
+                        });
+                    } catch (e) {
+                        // Ignore failures - many of these won't work on Wayland
+                    }
+                });
+                console.log('[Main] Linux-specific shortcuts registration attempted');
+            }
+
             // Multi-monitor support: Create secondary windows for other displays
             const displays = screen.getAllDisplays();
             const primaryDisplay = screen.getPrimaryDisplay();
@@ -802,6 +846,7 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
                 if (win) {
                     win.setAlwaysOnTop(true, 'screen-saver', 1);
                     if (isLinux) {
+                        // Re-assert all window states on every heartbeat for Linux
                         win.setSkipTaskbar(true);
                         win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
@@ -811,17 +856,30 @@ ipcMain.on('set-persistent-alert-active', (_event, isActive: boolean) => {
                             if (!win.isKiosk()) win.setKiosk(true);
                             if (!win.isFullScreen()) win.setFullScreen(true);
 
-                            // Force bounds reset in case of resize attempts
+                            // Force window to primary display bounds (position AND size)
                             const bounds = screen.getPrimaryDisplay().bounds;
                             const current = win.getBounds();
-                            if (current.width !== bounds.width || current.height !== bounds.height) {
-                                win.setBounds(bounds);
+                            if (current.x !== bounds.x || current.y !== bounds.y || 
+                                current.width !== bounds.width || current.height !== bounds.height) {
+                                win.setBounds({
+                                    x: bounds.x,
+                                    y: bounds.y,
+                                    width: bounds.width,
+                                    height: bounds.height
+                                });
                             }
+
+                            // Re-assert window properties that WM might have changed
+                            win.setMinimizable(false);
+                            win.setClosable(false);
+                            win.setMovable(false);
+                            win.setResizable(false);
 
                             // Aggressively claim focus
                             win.moveTop();
                             win.focus();
                             win.show();
+                            app.focus({ steal: true });
                         } catch (err) {
                             // Ignore errors if window is destroyed
                         }

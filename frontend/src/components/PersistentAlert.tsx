@@ -15,6 +15,23 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
   const [skipReason, setSkipReason] = useState('');
   const [isSkipping, setIsSkipping] = useState(false);
   const [minutesLeft, setMinutesLeft] = useState(0);
+  const [isWaylandLimited, setIsWaylandLimited] = useState(false);
+
+  // Listen for Wayland limitation warning from main process
+  useEffect(() => {
+    if ((window as any).electron?.ipcRenderer) {
+      const handleWaylandWarning = (_event: any, isWayland: boolean) => {
+        console.log('[PersistentAlert] Wayland limitation warning received:', isWayland);
+        setIsWaylandLimited(isWayland);
+      };
+      
+      (window as any).electron.ipcRenderer.on('wayland-limitation-warning', handleWaylandWarning);
+      
+      return () => {
+        (window as any).electron.ipcRenderer.removeListener('wayland-limitation-warning', handleWaylandWarning);
+      };
+    }
+  }, []);
 
   // Calculate and update time remaining every second
   useEffect(() => {
@@ -284,6 +301,16 @@ export default function PersistentAlert({ poll, onSkip, onFill }: PersistentAler
             <AlertTriangle className="w-3.5 h-3.5" />
             This notification cannot be dismissed without taking action
           </p>
+          
+          {/* Wayland Limitation Warning */}
+          {isWaylandLimited && (
+            <p className="text-xs text-center font-medium mt-2
+              text-amber-600/80 dark:text-amber-400/70
+              flex items-center justify-center gap-1.5">
+              <AlertTriangle className="w-3 h-3" />
+              Linux Wayland: Some system shortcuts may not be fully blocked
+            </p>
+          )}
         </div>
 
         {/* Bottom reflection glow (dark mode) */}

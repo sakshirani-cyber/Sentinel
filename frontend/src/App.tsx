@@ -194,7 +194,8 @@ function App() {
     const incompleteCount = userConsumerPolls.filter(p => {
       const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
       const isExpired = p.status === 'completed' || new Date(p.deadline) < now;
-      return !hasResponse && !isExpired;
+      const isDeleted = p.status === 'deleted';
+      return !hasResponse && !isExpired && !isDeleted;
     }).length;
 
     const sentCount = polls.filter(p => p.publisherEmail === user.email && p.status !== 'scheduled').length;

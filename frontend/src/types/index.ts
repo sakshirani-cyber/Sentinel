@@ -17,7 +17,7 @@ export interface Poll {
     publisherEmail: string;
     publisherName: string;
     deadline: string;
-    status: 'active' | 'completed' | 'scheduled';
+    status: 'active' | 'completed' | 'scheduled' | 'deleted';
     scheduledFor?: string;
     consumers: string[];
     defaultResponse?: string;

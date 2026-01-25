@@ -85,13 +85,15 @@ export default function ConsumerDashboard({
     const incomplete = userPolls.filter(p => {
       const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
       const isExpired = p.status === 'completed' || new Date(p.deadline) < now;
-      return !hasResponse && !isExpired;
+      const isDeleted = p.status === 'deleted';
+      return !hasResponse && !isExpired && !isDeleted;
     });
 
     const completed = userPolls.filter(p => {
       const hasResponse = responses.some(r => r.pollId === p.id && r.consumerEmail === user.email);
       const isExpired = p.status === 'completed' || new Date(p.deadline) < now;
-      return hasResponse || isExpired;
+      const isDeleted = p.status === 'deleted';
+      return (hasResponse || isExpired) && !isDeleted;
     }).sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime());
 
     const analytics = [...userPolls].sort((a, b) => {
