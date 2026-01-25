@@ -145,8 +145,14 @@ export default function SignalDetail({
   const status = getStatus();
 
   return (
-    <div className={`fixed inset-0 ${isPersistentContext ? 'bg-background' : 'bg-black/50 dark:bg-black/70 backdrop-blur-sm'} flex items-center justify-center p-4 z-50 animate-fade-in`}>
-      <div className="bg-card dark:bg-card rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-border scale-bounce">
+    <div className={`fixed inset-0 flex items-center justify-center p-4 z-50 animate-fade-in
+      ${isPersistentContext 
+        ? 'bg-[#FEF2F2] dark:bg-[#0C0A0A]' 
+        : 'bg-black/50 dark:bg-black/70 backdrop-blur-sm'}`}>
+      <div className={`rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col scale-bounce
+        ${isPersistentContext 
+          ? 'bg-white dark:bg-[#0F1214] border border-red-200/60 dark:border-red-900/40 shadow-[0_4px_24px_rgba(220,38,38,0.12),0_12px_48px_rgba(220,38,38,0.08)] dark:shadow-[0_4px_24px_rgba(248,113,113,0.15),0_12px_48px_rgba(0,0,0,0.4)]' 
+          : 'bg-card dark:bg-card border border-border'}`}>
         
         {/* Status Bar */}
         <div className={`
@@ -168,7 +174,10 @@ export default function SignalDetail({
         </div>
 
         {/* Header */}
-        <div className="flex-shrink-0 p-6 border-b border-border">
+        <div className={`flex-shrink-0 p-6 border-b 
+          ${isPersistentContext 
+            ? 'border-red-100/50 dark:border-red-900/30 bg-white dark:bg-[#0F1214]' 
+            : 'border-border'}`}>
           {/* Close Button - Top Right */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -269,7 +278,10 @@ export default function SignalDetail({
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 bg-background-secondary">
+        <div className={`flex-1 overflow-y-auto p-6 
+          ${isPersistentContext 
+            ? 'bg-[#FFFAFA] dark:bg-[#0C0E10]' 
+            : 'bg-background-secondary'}`}>
           
           {/* Expired Warning */}
           {isExpired && !userResponse && (
@@ -449,7 +461,10 @@ export default function SignalDetail({
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 p-4 border-t border-ribbit-deep-teal/10 dark:border-ribbit-muted-teal/10 bg-ribbit-ash-lighter dark:bg-ribbit-ocean-deep">
+        <div className={`flex-shrink-0 p-4 border-t 
+          ${isPersistentContext 
+            ? 'border-red-100/50 dark:border-red-900/30 bg-red-50/80 dark:bg-red-950/30' 
+            : 'border-ribbit-deep-teal/10 dark:border-ribbit-muted-teal/10 bg-ribbit-ash-lighter dark:bg-ribbit-ocean-deep'}`}>
           {userResponse ? (
             <div className="flex items-center justify-center gap-2 py-2 text-ribbit-deep-teal dark:text-ribbit-muted-teal">
               <CheckCircle className="w-5 h-5" />
@@ -484,8 +499,14 @@ export default function SignalDetail({
 
       {/* Confirmation Modal */}
       {showConfirmation && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-ribbit-ash-grey dark:bg-ribbit-charcoal rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-ribbit-deep-teal/20 dark:border-ribbit-muted-teal/20 scale-bounce">
+        <div className={`fixed inset-0 flex items-center justify-center p-4 z-[60] animate-fade-in
+          ${isPersistentContext 
+            ? 'bg-[#FEF2F2]/95 dark:bg-[#0C0A0A]/95' 
+            : 'bg-black/70 backdrop-blur-sm'}`}>
+          <div className={`rounded-2xl shadow-2xl max-w-md w-full overflow-hidden scale-bounce
+            ${isPersistentContext 
+              ? 'bg-white dark:bg-[#0F1214] border border-red-200/60 dark:border-red-900/40' 
+              : 'bg-ribbit-ash-grey dark:bg-ribbit-charcoal border border-ribbit-deep-teal/20 dark:border-ribbit-muted-teal/20'}`}>
             {/* Modal Header */}
             <div className="p-6 text-center border-b border-ribbit-deep-teal/10 dark:border-ribbit-muted-teal/10">
               <div className="w-16 h-16 bg-ribbit-deep-teal/10 dark:bg-ribbit-muted-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
