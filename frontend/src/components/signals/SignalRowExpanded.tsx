@@ -323,7 +323,7 @@ export default function SignalRowExpanded({
                 Mandatory final alert enabled
               </p>
               <p className="text-xs text-warning/80 mt-1">
-                You'll receive a persistent alert 1 minute before deadline.
+                You'll receive a persistent alert 15 minutes before deadline.
               </p>
             </div>
           </div>

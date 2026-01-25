@@ -140,7 +140,7 @@ export default function EditSettingsStep({ formData, updateFormData, onValidatio
         <ToggleCard
           icon={Bell}
           title="Persistent final alert"
-          description="The 1-minute warning will require action before it can be dismissed"
+          description="The 15-minute warning will require action before it can be dismissed"
           checked={formData.isPersistentFinalAlert}
           onChange={(checked) => updateFormData({ isPersistentFinalAlert: checked })}
           warning={bufferInsufficient ? "Requires at least 15 minutes notice. Extend deadline." : undefined}

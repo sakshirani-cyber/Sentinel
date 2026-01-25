@@ -440,7 +440,7 @@ export default function SignalDetail({
                     Mandatory final alert enabled
                   </p>
                   <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
-                    You'll receive a persistent alert 1 minute before deadline.
+                    You'll receive a persistent alert 15 minutes before deadline.
                   </p>
                 </div>
               </div>

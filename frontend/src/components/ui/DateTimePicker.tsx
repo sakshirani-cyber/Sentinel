@@ -41,6 +41,31 @@ export default function DateTimePicker({
 
   // Parse current value
   const selectedDate = value ? new Date(value) : null;
+  
+  // Local state for time inputs to allow proper typing of 2-digit numbers
+  const [hoursInput, setHoursInput] = useState(() => 
+    selectedDate ? selectedDate.getHours().toString().padStart(2, '0') : '12'
+  );
+  const [minutesInput, setMinutesInput] = useState(() => 
+    selectedDate ? selectedDate.getMinutes().toString().padStart(2, '0') : '00'
+  );
+  const [isEditingHours, setIsEditingHours] = useState(false);
+  const [isEditingMinutes, setIsEditingMinutes] = useState(false);
+
+  // Sync local state with value when it changes externally (not during editing)
+  useEffect(() => {
+    if (!isEditingHours && selectedDate) {
+      setHoursInput(selectedDate.getHours().toString().padStart(2, '0'));
+    }
+  }, [selectedDate?.getHours(), isEditingHours]);
+
+  useEffect(() => {
+    if (!isEditingMinutes && selectedDate) {
+      setMinutesInput(selectedDate.getMinutes().toString().padStart(2, '0'));
+    }
+  }, [selectedDate?.getMinutes(), isEditingMinutes]);
+
+  // Derived values for when no date is selected
   const selectedHours = selectedDate ? selectedDate.getHours().toString().padStart(2, '0') : '12';
   const selectedMinutes = selectedDate ? selectedDate.getMinutes().toString().padStart(2, '0') : '00';
 
@@ -535,10 +560,10 @@ export default function DateTimePicker({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={2}
-                value={selectedHours}
+                value={isEditingHours ? hoursInput : selectedHours}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-                  handleTimeChange(val || '0', selectedMinutes);
+                  setHoursInput(val);
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 className="datetime-picker-time-input"
@@ -546,14 +571,18 @@ export default function DateTimePicker({
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = 'var(--primary)';
                   e.currentTarget.style.boxShadow = '0 0 0 3px var(--ring)';
-                  e.currentTarget.select();
+                  setIsEditingHours(true);
+                  setHoursInput(selectedHours);
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = 'var(--border)';
                   e.currentTarget.style.boxShadow = 'none';
-                  // Pad with zero on blur
-                  const val = parseInt(e.currentTarget.value) || 0;
-                  handleTimeChange(val.toString().padStart(2, '0'), selectedMinutes);
+                  setIsEditingHours(false);
+                  // Pad with zero and apply on blur
+                  const val = parseInt(hoursInput) || 0;
+                  const paddedVal = Math.min(23, Math.max(0, val)).toString().padStart(2, '0');
+                  setHoursInput(paddedVal);
+                  handleTimeChange(paddedVal, selectedMinutes);
                 }}
               />
               <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--foreground)' }}>:</span>
@@ -562,10 +591,10 @@ export default function DateTimePicker({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={2}
-                value={selectedMinutes}
+                value={isEditingMinutes ? minutesInput : selectedMinutes}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-                  handleTimeChange(selectedHours, val || '0');
+                  setMinutesInput(val);
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 className="datetime-picker-time-input"
@@ -573,14 +602,18 @@ export default function DateTimePicker({
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = 'var(--primary)';
                   e.currentTarget.style.boxShadow = '0 0 0 3px var(--ring)';
-                  e.currentTarget.select();
+                  setIsEditingMinutes(true);
+                  setMinutesInput(selectedMinutes);
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = 'var(--border)';
                   e.currentTarget.style.boxShadow = 'none';
-                  // Pad with zero on blur
-                  const val = parseInt(e.currentTarget.value) || 0;
-                  handleTimeChange(selectedHours, val.toString().padStart(2, '0'));
+                  setIsEditingMinutes(false);
+                  // Pad with zero and apply on blur
+                  const val = parseInt(minutesInput) || 0;
+                  const paddedVal = Math.min(59, Math.max(0, val)).toString().padStart(2, '0');
+                  setMinutesInput(paddedVal);
+                  handleTimeChange(selectedHours, paddedVal);
                 }}
               />
             </div>

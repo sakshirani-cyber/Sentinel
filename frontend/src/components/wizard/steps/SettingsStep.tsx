@@ -127,7 +127,7 @@ export default function SettingsStep({ formData, updateFormData, onValidationCha
         <ToggleCard
           icon={Bell}
           title="Persistent final alert"
-          description="The 1-minute warning will require action before it can be dismissed"
+          description="The 15-minute warning will require action before it can be dismissed"
           checked={formData.isPersistentFinalAlert}
           onChange={(checked) => updateFormData({ isPersistentFinalAlert: checked })}
         />

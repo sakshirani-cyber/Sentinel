@@ -493,7 +493,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                 <label htmlFor="persistent" className="text-foreground text-sm">
                                     <span className="font-medium">Make final alert (1 min) persistent</span>
                                     <p className="text-foreground/60 mt-0.5">
-                                        The 1-minute warning will require action before it can be dismissed
+                                        The 15-minute warning will require action before it can be dismissed
                                     </p>
                                     {showErrors && isBufferInsufficient && (
                                         <p className="text-red-500 text-xs mt-2 font-medium flex items-start gap-2 bg-red-50 p-2 rounded border border-red-100">

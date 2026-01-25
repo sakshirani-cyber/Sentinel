@@ -658,7 +658,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
               <label htmlFor="persistent" className="text-slate-700">
                 Make final alert (1 min) persistent
                 <p className="text-sm text-slate-500 mt-1">
-                  The 1-minute warning will require action before it can be dismissed
+                  The 15-minute warning will require action before it can be dismissed
                 </p>
               </label>
             </div>

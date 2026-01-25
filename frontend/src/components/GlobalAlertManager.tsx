@@ -212,9 +212,9 @@ export default function GlobalAlertManager({
 
                 // --- Persistent Alert Logic ---
                 const timeUntilDeadline = deadline.getTime() - now.getTime();
-                const isMin1 = timeUntilDeadline <= 60000 && timeUntilDeadline > 0;
+                const isMin15 = timeUntilDeadline <= 900000 && timeUntilDeadline > 0;
 
-                if (poll.isPersistentFinalAlert && isMin1 && !showPersistentAlert) {
+                if (poll.isPersistentFinalAlert && isMin15 && !showPersistentAlert) {
                     // Check device status check
                     if ((window as any).electron) {
                         (window as any).electron.getDeviceStatus().then((status: string) => {

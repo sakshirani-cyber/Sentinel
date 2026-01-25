@@ -99,7 +99,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                   {poll.isPersistentFinalAlert && (
                     <div className="px-2 py-0.5 bg-red-50 text-red-700 rounded flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      Persistent Alert Enabled (1-min)
+                      Persistent Alert Enabled (15-min)
                     </div>
                   )}
                 </div>
@@ -169,7 +169,7 @@ export default function PollPreview({ poll, onClose }: PollPreviewProps) {
                   <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-red-900">Persistent Window Alert</p>
-                    <p className="text-xs text-red-700">This signal will lock the screen for a mandatory response 1 minute before deadline.</p>
+                    <p className="text-xs text-red-700">This signal will lock the screen for a mandatory response 15 minutes before deadline.</p>
                   </div>
                 </div>
               </div>
