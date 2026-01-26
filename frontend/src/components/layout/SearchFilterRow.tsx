@@ -5,6 +5,7 @@ import SortDropdown, { SortOption } from './SortDropdown';
 import { FilterState } from './FiltersButton';
 import { Filter, X, Tag, Users, CalendarDays, ToggleLeft, ToggleRight, Calendar } from 'lucide-react';
 import DateRangePicker from '../common/DateRangePicker';
+import SearchableLabelDropdown from '../common/SearchableLabelDropdown';
 
 interface SearchFilterRowProps {
   // Search
@@ -49,14 +50,19 @@ export default function SearchFilterRow({
   onSortChange,
   filters,
   onFiltersChange,
-  availableLabels = [],
+  availableLabels: _availableLabels = [], // Kept for backward compatibility but not used (we fetch all labels now)
   availablePublishers = [],
   showFilters = true,
   isPublisher = false,
 }: SearchFilterRowProps) {
+  // Mark availableLabels as intentionally unused (we fetch all labels from DB instead)
+  void _availableLabels;
+  
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<FilterState>(filters || defaultFilters);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, right: 0 });
+  const [allLabels, setAllLabels] = useState<Array<{ id: string; name: string; description?: string }>>([]);
+  const [loadingLabels, setLoadingLabels] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -88,6 +94,29 @@ export default function SearchFilterRow({
       setLocalFilters(filters);
     }
   }, [filters]);
+
+  // Fetch all labels when filters menu opens
+  useEffect(() => {
+    if (isFiltersOpen) {
+      const fetchLabels = async () => {
+        setLoadingLabels(true);
+        try {
+          if ((window as any).electron?.backend) {
+            const result = await (window as any).electron.ipcRenderer.invoke('db-get-labels');
+            if (result.success) {
+              setAllLabels(result.data || []);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch labels:', error);
+          setAllLabels([]);
+        } finally {
+          setLoadingLabels(false);
+        }
+      };
+      fetchLabels();
+    }
+  }, [isFiltersOpen]);
 
   // Update position when menu opens and on scroll/resize
   useEffect(() => {
@@ -144,12 +173,10 @@ export default function SearchFilterRow({
     setIsFiltersOpen(false);
   };
 
-  const toggleLabel = (label: string) => {
+  const handleLabelSelectionChange = (selected: string[]) => {
     setLocalFilters(prev => ({
       ...prev,
-      labels: prev.labels.includes(label)
-        ? prev.labels.filter(l => l !== label)
-        : [...prev.labels, label],
+      labels: selected,
     }));
   };
 
@@ -197,37 +224,18 @@ export default function SearchFilterRow({
                   <Tag className="w-4 h-4 text-primary flex-shrink-0" />
                   <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Labels</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {availableLabels.length > 0 ? (
-                    availableLabels.slice(0, 6).map(label => {
-                      const isSelected = localFilters.labels.includes(label);
-                      return (
-                        <button
-                          key={label}
-                          onClick={() => toggleLabel(label)}
-                          style={isSelected ? {
-                            backgroundColor: 'var(--primary)',
-                            color: 'var(--primary-foreground)',
-                            boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
-                          } : {
-                            backgroundColor: 'var(--muted)',
-                            color: 'var(--muted-foreground)',
-                          }}
-                          className={`
-                            px-2.5 py-1 rounded-md text-xs font-medium
-                            transition-all duration-150
-                            ${!isSelected ? 'hover:opacity-80' : ''}
-                          `}
-                        >
-                          {isSelected && <span className="mr-1">✓</span>}
-                          {label}
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">None</span>
-                  )}
-                </div>
+                {loadingLabels ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <SearchableLabelDropdown
+                    labels={allLabels}
+                    selectedLabels={localFilters.labels}
+                    onSelectionChange={handleLabelSelectionChange}
+                    placeholder="Search labels..."
+                  />
+                )}
               </div>
 
               {/* Divider */}

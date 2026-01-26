@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Filter, X, Tag, Users, CalendarDays, ToggleLeft, ToggleRight, Calendar } from 'lucide-react';
 import DateRangePicker from '../common/DateRangePicker';
+import SearchableLabelDropdown from '../common/SearchableLabelDropdown';
 
 export interface FilterState {
   labels: string[];
@@ -41,6 +42,8 @@ export default function FiltersButton({
 }: FiltersButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
+  const [allLabels, setAllLabels] = useState<Array<{ id: string; name: string; description?: string }>>([]);
+  const [loadingLabels, setLoadingLabels] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Calculate active filter count
@@ -54,6 +57,29 @@ export default function FiltersButton({
   useEffect(() => {
     setLocalFilters(filters);
   }, [filters]);
+
+  // Fetch all labels when filters menu opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchLabels = async () => {
+        setLoadingLabels(true);
+        try {
+          if ((window as any).electron?.backend) {
+            const result = await (window as any).electron.ipcRenderer.invoke('db-get-labels');
+            if (result.success) {
+              setAllLabels(result.data || []);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch labels:', error);
+          setAllLabels([]);
+        } finally {
+          setLoadingLabels(false);
+        }
+      };
+      fetchLabels();
+    }
+  }, [isOpen]);
 
   // Close on outside click
   useEffect(() => {
@@ -100,12 +126,10 @@ export default function FiltersButton({
     setIsOpen(false);
   };
 
-  const toggleLabel = (label: string) => {
+  const handleLabelSelectionChange = (selected: string[]) => {
     setLocalFilters(prev => ({
       ...prev,
-      labels: prev.labels.includes(label)
-        ? prev.labels.filter(l => l !== label)
-        : [...prev.labels, label],
+      labels: selected,
     }));
   };
 
@@ -197,28 +221,18 @@ export default function FiltersButton({
                       <Tag className="w-4 h-4 text-primary" />
                       <span className="font-semibold text-sm uppercase tracking-wide">Labels</span>
                     </div>
-                    <div className="flex flex-wrap gap-2 min-h-[60px] max-h-[100px] overflow-y-auto pr-1">
-                      {availableLabels.length > 0 ? (
-                        availableLabels.map(label => (
-                          <button
-                            key={label}
-                            onClick={() => toggleLabel(label)}
-                            className={`
-                              px-3 py-1.5 rounded-lg text-xs font-medium
-                              transition-all duration-200 hover:scale-105
-                              ${localFilters.labels.includes(label)
-                                ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]'
-                                : 'bg-muted text-foreground border border-border hover:border-primary/50 hover:text-primary'
-                              }
-                            `}
-                          >
-                            {label}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="text-sm text-foreground-muted italic">No labels available</p>
-                      )}
-                    </div>
+                    {loadingLabels ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                      </div>
+                    ) : (
+                      <SearchableLabelDropdown
+                        labels={allLabels}
+                        selectedLabels={localFilters.labels}
+                        onSelectionChange={handleLabelSelectionChange}
+                        placeholder="Search labels..."
+                      />
+                    )}
                   </div>
 
                   {/* Publishers */}
