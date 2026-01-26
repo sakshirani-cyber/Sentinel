@@ -99,6 +99,7 @@ class PollScheduler {
             try {
                 const pollToSync = {
                     ...poll,
+                    title: poll.title || poll.question, // Ensure title is set (use question as fallback if title not available)
                     ...updates
                 };
                 const result = await backendApi.createPoll(pollToSync);

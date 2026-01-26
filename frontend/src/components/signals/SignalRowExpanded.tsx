@@ -8,7 +8,6 @@ import { Poll, Response } from '../../types';
 interface Label {
   id: string;
   name: string;
-  color: string;
   description?: string;
 }
 

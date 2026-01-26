@@ -109,6 +109,7 @@ export default function CreateSignalWizard({
         id: `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         publisherEmail: user.email,
         publisherName: user.name,
+        title: formData.title?.trim() || formData.question.trim(), // Use title if provided, otherwise fallback to question
         question: formData.question,
         options: formData.options.filter(o => o.trim()).map((text, index) => ({
           id: `opt-${index}`,

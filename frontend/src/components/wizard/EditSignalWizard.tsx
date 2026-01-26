@@ -126,6 +126,7 @@ export default function EditSignalWizard({
 
       // Build updates object
       const updates: Partial<Poll> = {
+        title: formData.title?.trim() || formData.question.trim(), // Use title if provided, otherwise fallback to question
         question: formData.question,
         options: formData.options.filter(o => o.trim()).map((text, index) => ({
           id: `opt-${index}`,

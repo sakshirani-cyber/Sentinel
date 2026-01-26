@@ -24,7 +24,6 @@ import {
 interface Label {
     id: string;
     name: string;
-    color: string;
     description?: string;
 }
 
@@ -57,6 +56,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     const isOptionDefault = poll.options.some(o => o.text === poll.defaultResponse);
     const [customDefault, setCustomDefault] = useState(isOptionDefault ? '' : poll.defaultResponse);
     const [useCustomDefault, setUseCustomDefault] = useState(!isOptionDefault);
+    const [title, setTitle] = useState(poll.title || poll.question);
     const [question, setQuestion] = useState(poll.question);
     const [options, setOptions] = useState<string[]>(poll.options.map(o => o.text));
     const [defaultResponse, setDefaultResponse] = useState(isOptionDefault ? poll.defaultResponse : '');
@@ -225,6 +225,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
             const finalDefaultResponse = useCustomDefault ? customDefault : defaultResponse;
 
             const updates: Partial<Poll> = {
+                title: title.trim() || question.trim(), // Use title if provided, otherwise fallback to question
                 question,
                 options: validOptions.map((text, index) => ({
                     id: `opt-${index}`,
@@ -275,6 +276,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
     };
 
     const hasChanges =
+        (title.trim() || question.trim()) !== (poll.title || poll.question) ||
         question !== poll.question ||
         JSON.stringify(options) !== JSON.stringify(poll.options.map(o => o.text)) ||
         currentDefaultResponse !== poll.defaultResponse ||
@@ -301,6 +303,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
 
     const isValid =
         question.trim() &&
+        (title.trim().length === 0 || title.trim().length <= 200) && // Title is optional but must be <= 200 if provided
         options.filter(o => o.trim()).length >= 2 &&
         !hasDuplicateOptions() &&
         currentDefaultResponse &&
@@ -328,6 +331,30 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* Title */}
+                    <div>
+                        <label className="block text-foreground mb-2 font-medium">
+                            Title <span className="text-muted-foreground text-sm font-normal">(optional)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g., Team Meeting Availability"
+                            className={`w-full px-4 py-3 rounded-xl border bg-card focus:outline-none transition-all ${
+                                title && title.length > 200
+                                    ? 'border-red-500 focus:ring-1 focus:ring-red-500'
+                                    : 'border-border focus:border-primary focus:ring-1 focus:ring-primary'
+                            }`}
+                        />
+                        {title && title.length > 200 && (
+                            <p className="text-red-500 text-xs mt-1">Title must be less than 200 characters</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                            A short title for this poll. If not provided, the question will be used as the title.
+                        </p>
+                    </div>
+
                     {/* Question */}
                     <div>
                         <label className="block text-foreground mb-2 font-medium">
@@ -675,9 +702,9 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                                             <div
                                                                 className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm cursor-pointer transition-all hover:scale-105 active:scale-95"
                                                                 style={{
-                                                                    backgroundColor: `${label.color}15`,
-                                                                    borderColor: `${label.color}40`,
-                                                                    color: label.color
+                                                                    backgroundColor: '#3b82f615',
+                                                                    borderColor: '#3b82f640',
+                                                                    color: '#3b82f6'
                                                                 }}
                                                                 onClick={() => setExplicitLabels(prev => [...prev, stripLabelMarkers(label.name)])}
                                                             >

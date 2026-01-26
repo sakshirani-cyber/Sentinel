@@ -14,9 +14,12 @@ export default function BasicInfoStep({ formData, updateFormData, onValidationCh
 
   // Validate on change
   useEffect(() => {
-    const isValid = formData.question.trim().length >= 3 && formData.question.trim().length <= 1000;
+    const isValid = 
+      formData.question.trim().length >= 3 && 
+      formData.question.trim().length <= 1000 &&
+      (!formData.title || formData.title.trim().length <= 200); // Title is optional but must be <= 200 if provided
     onValidationChange?.(isValid);
-  }, [formData.question, onValidationChange]);
+  }, [formData.question, formData.title, onValidationChange]);
 
   const questionError = touched.question && formData.question.trim().length < 3
     ? 'Question must be at least 3 characters'
@@ -37,6 +40,50 @@ export default function BasicInfoStep({ formData, updateFormData, onValidationCh
         <p className="text-foreground-secondary">
           Write a clear question for your recipients
         </p>
+      </div>
+
+      {/* Title Input */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Title <span className="text-muted-foreground font-normal">(optional)</span>
+        </label>
+        <input
+          type="text"
+          value={formData.title || ''}
+          onChange={(e) => updateFormData({ title: e.target.value })}
+          placeholder="e.g., Team Meeting Availability"
+          className={`
+            w-full px-4 py-3 rounded-xl
+            bg-input-background dark:bg-input
+            border-2 transition-all duration-200
+            text-foreground
+            placeholder:text-muted-foreground
+            focus:outline-none focus:ring-4
+            hover:border-foreground-muted
+            ${formData.title && formData.title.length > 200
+              ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
+              : 'border-border focus:border-primary focus:ring-ring'
+            }
+          `}
+        />
+        <div className="flex items-center justify-between mt-2">
+          {formData.title && formData.title.length > 200 ? (
+            <p className="text-sm text-destructive font-medium">Title must be less than 200 characters</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              A short title for this signal. If not provided, the question will be used.
+            </p>
+          )}
+          {formData.title && (
+            <span className={`text-xs font-medium ${
+              formData.title.length > 180 
+                ? 'text-destructive' 
+                : 'text-muted-foreground'
+            }`}>
+              {formData.title.length}/200
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Question Input */}

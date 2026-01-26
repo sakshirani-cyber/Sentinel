@@ -6,7 +6,6 @@ import { parseLabelsFromText, stripLabelMarkers, parseLabelName } from '../../..
 interface Label {
   id: string;
   name: string;
-  color: string;
   description?: string;
 }
 

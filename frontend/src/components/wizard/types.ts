@@ -4,6 +4,7 @@ import { stripLabelMarkers } from '../../utils/labelUtils';
 
 export interface SignalFormData {
   // Step 1: Basic Info
+  title?: string; // Optional title for the signal
   question: string;
   description?: string;
   
@@ -90,6 +91,7 @@ export const initialFormData: SignalFormData = {
   consumers: [],
   deadline: '',
   isScheduled: false,
+  title: '',
   scheduleTime: '',
   labels: [],
 };
@@ -117,6 +119,7 @@ export function initializeEditFormData(poll: Poll): EditSignalFormData {
   
   return {
     // Basic Info
+    title: poll.title,
     question: poll.question,
     description: '',
     

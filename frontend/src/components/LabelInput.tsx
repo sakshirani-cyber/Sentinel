@@ -5,7 +5,6 @@ import { parseLabelName, stripLabelMarkers } from '../utils/labelUtils';
 interface Label {
     id: string;
     name: string;
-    color: string;
     description?: string;
 }
 
@@ -270,14 +269,15 @@ export default function LabelInput({
             const label = (Array.isArray(labels) ? labels : []).find(l => stripLabelMarkers(l.name).toLowerCase() === labelName.toLowerCase());
 
             if (label) {
+                const defaultColor = '#3b82f6'; // Default blue color
                 segments.push(
                     <span
                         key={match.index}
                         className="inline-flex items-center mx-0.5 rounded-full px-1.5 py-0 border shadow-sm align-baseline break-words"
                         style={{
-                            backgroundColor: `${label.color}20`,
-                            borderColor: `${label.color}50`,
-                            color: label.color,
+                            backgroundColor: `${defaultColor}20`,
+                            borderColor: `${defaultColor}50`,
+                            color: defaultColor,
                             fontSize: '0.9em', // Slightly smaller
                             // Ensure the width roughly matches by keeping font same
                             // We use inline-flex but ensure baseline alignment
@@ -398,9 +398,9 @@ export default function LabelInput({
                                 <span
                                     className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm"
                                     style={{
-                                        backgroundColor: `${label.color}20`,
-                                        borderColor: `${label.color}50`,
-                                        color: label.color
+                                        backgroundColor: `#3b82f620`,
+                                        borderColor: `#3b82f650`,
+                                        color: '#3b82f6'
                                     }}
                                 >
                                     {parseLabelName(label.name)}

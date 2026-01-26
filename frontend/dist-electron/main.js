@@ -68,9 +68,16 @@ let tray = null;
 let win = null;
 let secondaryWindows = [];
 let isPersistentAlertLocked = false;
+// Debounce variable to prevent focus flapping on Linux
+let lastFocusTime = 0;
 // Global blur handler to prevent focus stealing on Linux/Wayland
 const handleWindowBlur = () => {
     if (isPersistentAlertLocked && win) {
+        // Debounce to prevent focus flapping (especially on Linux)
+        const now = Date.now();
+        if (now - lastFocusTime < 100)
+            return;
+        lastFocusTime = now;
         console.log('[Main] Window blurred during persistent alert, reclaiming focus...');
         if (win.isMinimized())
             win.restore();
@@ -360,6 +367,11 @@ electron_1.app.whenReady().then(async () => {
             // Try to sync to backend
             if (signalId) {
                 // BACKEND VALIDATION RULE: Exactly one of [selectedOption, defaultResponse, reason] must be present.
+                // Validate that exactly one is provided
+                const providedCount = [selectedOption, defaultResponse, reason].filter(v => v !== undefined && v !== null && v !== '').length;
+                if (providedCount !== 1) {
+                    throw new Error('Exactly one of selectedOption, defaultResponse, or reason must be provided');
+                }
                 // We prioritize: reason > selectedOption > defaultResponse
                 let syncSelectedOption = undefined;
                 let syncDefaultResponse = undefined;
@@ -675,6 +687,14 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
             console.log(`[Main] Platform: ${process.platform}, Session: ${sessionType}, Linux Handling: ${isLinux}`);
             if (isLinux && sessionType === 'wayland') {
                 console.warn('[Main] ⚠️ Running on Wayland. System shortcuts (Alt+Tab) might NOT be fully blockable due to OS security policy.');
+                // Send warning to renderer for user notification
+                win.webContents.send('wayland-limitation-warning', true);
+            }
+            // X11-specific: More aggressive window control is possible
+            if (isLinux && sessionType !== 'wayland') {
+                console.log('[Main] X11 session detected, applying enhanced window controls');
+                win.setSkipTaskbar(true);
+                win.setAlwaysOnTop(true, 'screen-saver', 1);
             }
             win.setMinimizable(false);
             win.setClosable(false);
@@ -729,6 +749,33 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                     console.warn(`[Main] Could not register shortcut: ${shortcut}`);
                 }
             });
+            // Linux-specific: Try to block additional shortcuts that might work on some Linux WMs
+            if (isLinux) {
+                const linuxShortcuts = [
+                    'Super+D', // Show desktop (GNOME/KDE)
+                    'Super+L', // Lock screen
+                    'Ctrl+Alt+Delete', // System menu
+                    'Ctrl+Alt+T', // Terminal
+                    'Super+Tab', // Window switcher
+                    'Super+A', // Activities (GNOME)
+                    'Super+S', // Settings
+                    'Alt+F1', // Application menu
+                    'Alt+F2', // Run dialog
+                    'Ctrl+Alt+D', // Show desktop (alternative)
+                    'Ctrl+Alt+L', // Lock screen (alternative)
+                ];
+                linuxShortcuts.forEach(shortcut => {
+                    try {
+                        electron_1.globalShortcut.register(shortcut, () => {
+                            console.log(`[Main] Blocked Linux shortcut: ${shortcut}`);
+                        });
+                    }
+                    catch (e) {
+                        // Ignore failures - many of these won't work on Wayland
+                    }
+                });
+                console.log('[Main] Linux-specific shortcuts registration attempted');
+            }
             // Multi-monitor support: Create secondary windows for other displays
             const displays = electron_1.screen.getAllDisplays();
             const primaryDisplay = electron_1.screen.getPrimaryDisplay();
@@ -750,6 +797,7 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                 if (win) {
                     win.setAlwaysOnTop(true, 'screen-saver', 1);
                     if (isLinux) {
+                        // Re-assert all window states on every heartbeat for Linux
                         win.setSkipTaskbar(true);
                         win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                         // [Linux Specific] Aggressively re-assert Kiosk / Fullscreen state
@@ -759,16 +807,28 @@ electron_1.ipcMain.on('set-persistent-alert-active', (_event, isActive) => {
                                 win.setKiosk(true);
                             if (!win.isFullScreen())
                                 win.setFullScreen(true);
-                            // Force bounds reset in case of resize attempts
+                            // Force window to primary display bounds (position AND size)
                             const bounds = electron_1.screen.getPrimaryDisplay().bounds;
                             const current = win.getBounds();
-                            if (current.width !== bounds.width || current.height !== bounds.height) {
-                                win.setBounds(bounds);
+                            if (current.x !== bounds.x || current.y !== bounds.y ||
+                                current.width !== bounds.width || current.height !== bounds.height) {
+                                win.setBounds({
+                                    x: bounds.x,
+                                    y: bounds.y,
+                                    width: bounds.width,
+                                    height: bounds.height
+                                });
                             }
+                            // Re-assert window properties that WM might have changed
+                            win.setMinimizable(false);
+                            win.setClosable(false);
+                            win.setMovable(false);
+                            win.setResizable(false);
                             // Aggressively claim focus
                             win.moveTop();
                             win.focus();
                             win.show();
+                            electron_1.app.focus({ steal: true });
                         }
                         catch (err) {
                             // Ignore errors if window is destroyed
@@ -969,7 +1029,6 @@ electron_1.ipcMain.handle('db-create-label', async (event, label) => {
         console.log(`[IPC Handler] [${time}] ☁️ Syncing new label to cloud: "${label.name}"`);
         backendApi.createLabel({
             name: label.name,
-            color: label.color,
             description: label.description,
             localId: label.id
         }).then((response) => {
@@ -1041,8 +1100,7 @@ electron_1.ipcMain.handle('db-update-label', async (event, { id, updates }) => {
                 console.log(`[IPC Handler] [${time}] ☁️ Syncing edit to cloud for label CloudID: ${updatedLabel.cloudId}`);
                 await backendApi.editLabel({
                     id: updatedLabel.cloudId,
-                    description: updates.description,
-                    color: updates.color
+                    description: updates.description
                 });
                 // Mark as synced again after successful cloud update
                 (0, db_1.updateLabelSyncStatus)(id, 'synced');

@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 interface Label {
     id: string;
     name: string;
-    color: string;
     description?: string;
 }
 
@@ -44,9 +43,9 @@ export default function LabelText({ text, labels: propLabels, className = '' }: 
                             key={index}
                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[0.85em] font-medium border shadow-sm align-baseline mx-0.5"
                             style={{
-                                backgroundColor: `${segment.label.color}20`,
-                                borderColor: `${segment.label.color}50`,
-                                color: segment.label.color,
+                                backgroundColor: '#3b82f620',
+                                borderColor: '#3b82f650',
+                                color: '#3b82f6', // Default primary color
                             }}
                             title={segment.label.description || segment.label.name}
                         >

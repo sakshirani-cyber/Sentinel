@@ -366,6 +366,12 @@ app.whenReady().then(async () => {
             // Try to sync to backend
             if (signalId) {
                 // BACKEND VALIDATION RULE: Exactly one of [selectedOption, defaultResponse, reason] must be present.
+                // Validate that exactly one is provided
+                const providedCount = [selectedOption, defaultResponse, reason].filter(v => v !== undefined && v !== null && v !== '').length;
+                if (providedCount !== 1) {
+                    throw new Error('Exactly one of selectedOption, defaultResponse, or reason must be provided');
+                }
+
                 // We prioritize: reason > selectedOption > defaultResponse
                 let syncSelectedOption: string | undefined = undefined;
                 let syncDefaultResponse: string | undefined = undefined;
@@ -1093,7 +1099,6 @@ ipcMain.handle('db-create-label', async (event, label) => {
         console.log(`[IPC Handler] [${time}] ☁️ Syncing new label to cloud: "${label.name}"`);
         backendApi.createLabel({
             name: label.name,
-            color: label.color,
             description: label.description,
             localId: label.id
         }).then((response) => {
@@ -1170,8 +1175,7 @@ ipcMain.handle('db-update-label', async (event, { id, updates }) => {
 
                 await backendApi.editLabel({
                     id: updatedLabel.cloudId,
-                    description: updates.description,
-                    color: updates.color
+                    description: updates.description
                 });
 
                 // Mark as synced again after successful cloud update

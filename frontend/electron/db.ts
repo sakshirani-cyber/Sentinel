@@ -32,6 +32,7 @@ export function initDB() {
             db.exec(`
                 CREATE TABLE IF NOT EXISTS polls (
                     localId TEXT PRIMARY KEY,
+                    title TEXT, -- Optional title for the poll
                     question TEXT NOT NULL,
                     options TEXT NOT NULL, -- JSON array
                     publisherEmail TEXT,
@@ -69,7 +70,6 @@ export function initDB() {
                 CREATE TABLE IF NOT EXISTS labels (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE,
-                    color TEXT NOT NULL,
                     description TEXT,
                     syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending'
                     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -125,6 +125,15 @@ export function initDB() {
                 db.exec("ALTER TABLE polls ADD COLUMN anonymousReasons TEXT");
             }
 
+            // Migration: Add title column to polls table
+            if (!columns.includes('title')) {
+                console.log('[SQLite DB] Migrating: Adding title column to polls table');
+                db.exec("ALTER TABLE polls ADD COLUMN title TEXT");
+                // Populate existing polls with question as title (for backward compatibility)
+                db.exec("UPDATE polls SET title = question WHERE title IS NULL OR title = ''");
+                console.log('[SQLite DB] Populated existing polls with question as title');
+            }
+
             const respTableInfo = db.prepare("PRAGMA table_info(responses)").all();
             const respColumns = (respTableInfo as any[]).map(col => col.name);
             if (!respColumns.includes('syncStatus')) {
@@ -145,6 +154,41 @@ export function initDB() {
             if (!labelColumns.includes('editedAt')) {
                 console.log('[SQLite DB] Migrating: Adding editedAt to labels table');
                 db.exec("ALTER TABLE labels ADD COLUMN editedAt TEXT");
+            }
+
+            // Migration: Remove color column from labels table (SQLite doesn't support DROP COLUMN)
+            if (labelColumns.includes('color')) {
+                console.log('[SQLite DB] Migrating: Removing color column from labels table');
+                try {
+                    db.exec(`
+                        BEGIN TRANSACTION;
+                        
+                        CREATE TABLE labels_new (
+                            id TEXT PRIMARY KEY,
+                            name TEXT NOT NULL UNIQUE,
+                            description TEXT,
+                            syncStatus TEXT DEFAULT 'pending',
+                            createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+                            cloudId INTEGER,
+                            editedAt TEXT
+                        );
+                        
+                        INSERT INTO labels_new (id, name, description, syncStatus, createdAt, cloudId, editedAt)
+                        SELECT id, name, description, syncStatus, createdAt, cloudId, editedAt
+                        FROM labels;
+                        
+                        DROP TABLE labels;
+                        
+                        ALTER TABLE labels_new RENAME TO labels;
+                        
+                        COMMIT;
+                    `);
+                    console.log('[SQLite DB] Successfully removed color column from labels table');
+                } catch (migrationErr) {
+                    console.error('[SQLite DB] Error removing color column:', migrationErr);
+                    db.exec('ROLLBACK;');
+                    // Continue execution - this is not critical for app startup
+                }
             }
 
             console.log('[SQLite DB] Migrations check complete.');
@@ -209,6 +253,7 @@ interface Poll {
     id: string; // This maps to localId
     publisherEmail: string;
     publisherName: string;
+    title?: string; // Optional for backward compatibility, but required for new polls
     question: string;
     options: { id: string; text: string }[];
     defaultResponse: string;
@@ -296,17 +341,18 @@ export function createPoll(poll: Poll) {
 
         const stmt = database.prepare(`
             INSERT INTO polls (
-                localId, question, options, publisherEmail, publisherName, 
+                localId, title, question, options, publisherEmail, publisherName, 
                 status, deadline, anonymityMode, isPersistentFinalAlert, 
                 consumers, defaultResponse, showDefaultToConsumers, publishedAt,
                 cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor, labels, anonymousReasons
             ) VALUES (
-                @localId, @question, @options, @publisherEmail, @publisherName, 
+                @localId, @title, @question, @options, @publisherEmail, @publisherName, 
                 @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
                 @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
                 @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor, @labels, @anonymousReasons
             )
             ON CONFLICT(localId) DO UPDATE SET
+                title = excluded.title,
                 question = excluded.question,
                 options = excluded.options,
                 publisherEmail = excluded.publisherEmail,
@@ -325,10 +371,11 @@ export function createPoll(poll: Poll) {
                 updatedAt = excluded.updatedAt,
                 scheduledFor = excluded.scheduledFor,
                 anonymousReasons = excluded.anonymousReasons
-        `);
+            `);
 
         const info = stmt.run({
             localId: poll.id,
+            title: poll.title || poll.question.trim(), // Use title if provided, otherwise fallback to question
             question: poll.question.trim(),
             options: JSON.stringify(poll.options),
             publisherEmail: poll.publisherEmail,
@@ -366,6 +413,7 @@ export function getPolls(): Poll[] {
 
         return rows.map((row: any) => ({
             id: row.localId,
+            title: row.title || row.question, // Use title if available, otherwise fallback to question
             question: row.question,
             options: JSON.parse(row.options),
             publisherEmail: row.publisherEmail,
@@ -589,11 +637,11 @@ export function updateResponseSyncStatus(pollLocalId: string, userId: string, st
 }
 
 // Labels
-export function createLabel(label: { id: string, name: string, color: string, description?: string, syncStatus?: string, createdAt: string, cloudId?: number, editedAt?: string }) {
+export function createLabel(label: { id: string, name: string, description?: string, syncStatus?: string, createdAt: string, cloudId?: number, editedAt?: string }) {
     try {
         const stmt = getDb().prepare(`
-            INSERT INTO labels (id, name, color, description, syncStatus, createdAt, cloudId, editedAt)
-            VALUES (@id, @name, @color, @description, @syncStatus, @createdAt, @cloudId, @editedAt)
+            INSERT INTO labels (id, name, description, syncStatus, createdAt, cloudId, editedAt)
+            VALUES (@id, @name, @description, @syncStatus, @createdAt, @cloudId, @editedAt)
         `);
         return stmt.run({
             ...label,
@@ -627,7 +675,7 @@ export function deleteLabel(id: string) {
     }
 }
 
-export function updateLabel(id: string, updates: { name?: string, color?: string, description?: string, cloudId?: number, syncStatus?: string, editedAt?: string }) {
+export function updateLabel(id: string, updates: { name?: string, description?: string, cloudId?: number, syncStatus?: string, editedAt?: string }) {
     try {
         const fields: string[] = [];
         const values: any[] = [];
@@ -635,10 +683,6 @@ export function updateLabel(id: string, updates: { name?: string, color?: string
         if (updates.name !== undefined) {
             fields.push('name = ?');
             values.push(updates.name);
-        }
-        if (updates.color !== undefined) {
-            fields.push('color = ?');
-            values.push(updates.color);
         }
         if (updates.description !== undefined) {
             fields.push('description = ?');

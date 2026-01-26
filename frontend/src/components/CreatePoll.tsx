@@ -25,7 +25,6 @@ import {
 interface Label {
   id: string;
   name: string;
-  color: string;
   description?: string;
 }
 
@@ -37,6 +36,7 @@ interface CreatePollProps {
 }
 
 export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
+  const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<string[]>(['', '']);
   const [defaultResponse, setDefaultResponse] = useState('');
@@ -218,6 +218,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         id: `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         publisherEmail: user.email,
         publisherName: user.name,
+        title: title.trim() || question.trim(), // Use title if provided, otherwise fallback to question
         question,
         options: validOptions.map((text, index) => ({
           id: `opt-${index}`,
@@ -252,6 +253,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
       console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] ✅ Poll creation completed successfully`);
 
       // Reset form
+      setTitle('');
       setQuestion('');
       setOptions(['', '']);
       setDefaultResponse('');
@@ -370,6 +372,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
   const isValid =
     question.trim().length >= 3 &&
     question.trim().length <= 1000 &&
+    (title.trim().length === 0 || title.trim().length <= 200) && // Title is optional but must be <= 200 if provided
     options.filter(o => o.trim()).length >= 2 &&
     options.filter(o => o.trim()).length <= 10 &&
     !hasDuplicateOptions() &&
@@ -483,6 +486,30 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="block text-slate-700 mb-2">
+              Title <span className="text-slate-500 text-sm">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Team Meeting Availability"
+              className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 transition-all ${
+                showErrors && title.trim().length > 200
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-slate-300 focus:ring-primary/20'
+              }`}
+            />
+            {showErrors && title.trim().length > 200 && (
+              <p className="text-red-500 text-xs mt-1">Title must be less than 200 characters</p>
+            )}
+            <p className="text-xs text-slate-500 mt-1">
+              A short title for this poll. If not provided, the question will be used as the title.
+            </p>
           </div>
 
           {/* Question */}
@@ -688,11 +715,10 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                       if (combined.length === 0) return <span className="text-slate-500">Select Labels...</span>;
 
                       return combined.map(name => {
-                        const labelObj = labels.find(l => stripLabelMarkers(l.name) === name);
-                        const color = labelObj?.color || '#3b82f6';
                         const count = tLabels.filter(l => l === name).length;
                         const isDerived = derived.has(name);
                         const isExplicit = explicitLabels.includes(name);
+                        const defaultColor = '#3b82f6'; // Default primary color
 
                         return (
                           <span
@@ -703,23 +729,23 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                               count > 0 ? "cursor-pointer hover:opacity-80" : "cursor-default"
                             )}
                             style={{
-                              backgroundColor: `${color}20`,
-                              borderColor: `${color}50`,
-                              color: color
+                              backgroundColor: `${defaultColor}20`,
+                              borderColor: `${defaultColor}50`,
+                              color: defaultColor
                             }}
                           >
                             {parseLabelName(name)}
                             {isDerived ? (
                               <span
                                 className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
-                                style={{ backgroundColor: color }}
+                                style={{ backgroundColor: defaultColor }}
                               >
                                 {count}
                               </span>
                             ) : isExplicit ? (
                               <span
                                 className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-white shadow-sm ring-1 ring-white cursor-pointer hover:opacity-80 transition-opacity"
-                                style={{ backgroundColor: color }}
+                                style={{ backgroundColor: defaultColor }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setExplicitLabels(prev => prev.filter(l => l !== name));
@@ -761,9 +787,9 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                               <div
                                 className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm cursor-pointer transition-all hover:scale-105 active:scale-95"
                                 style={{
-                                  backgroundColor: `${label.color}15`,
-                                  borderColor: `${label.color}40`,
-                                  color: label.color
+                                  backgroundColor: '#3b82f615',
+                                  borderColor: '#3b82f640',
+                                  color: '#3b82f6'
                                 }}
                                 onClick={() => setExplicitLabels(prev => [...prev, stripLabelMarkers(label.name)])}
                               >
@@ -1011,6 +1037,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
             id: 'preview',
             publisherEmail: user.email,
             publisherName: user.name,
+            title: title.trim() || question.trim(),
             question,
             options: options.filter(o => o.trim()).map((text, index) => ({
               id: `opt-${index}`,

@@ -58,6 +58,7 @@ interface PollCreateDTO {
     defaultFlag?: boolean;
     defaultOption?: string;
     persistentAlert: boolean;
+    title: string; // Required by backend
     question: string;
     options: string[];
     labels?: string[];
@@ -66,7 +67,6 @@ interface PollCreateDTO {
 
 export interface LabelCreateDTO {
     name: string;
-    color: string;
     description?: string;
     localId?: string | number; // Numeric ID from frontend (timestamp)
 }
@@ -74,13 +74,11 @@ export interface LabelCreateDTO {
 export interface LabelEditDTO {
     id: number; // Backend ID
     description?: string;
-    color?: string;
 }
 
 export interface LabelResponseDTO {
     id: number;
     name: string;
-    color: string;
     description: string;
     createdAt: string;
     editedAt?: string;
@@ -120,6 +118,7 @@ interface PollResultDTO {
 
     removedOptions: Record<string, UserVoteDTO[]>;
     removedUsers: Record<string, UserVoteDTO[]>;
+    removedOptionCount?: Record<string, number>; // Count of votes for removed options
 
     defaultResponses: UserVoteDTO[];
     reasonResponses: Record<string, string>;
@@ -174,6 +173,7 @@ function mapPollToDTO(poll: any): PollCreateDTO {
         defaultFlag: poll.showDefaultToConsumers,
         defaultOption: poll.defaultResponse || poll.options[0]?.text || '',
         persistentAlert: !!poll.isPersistentFinalAlert,
+        title: poll.title || poll.question, // Use title if provided, otherwise fallback to question (backend requires title)
         question: poll.question,
         options: poll.options.map((o: any) => o.text),
         labels: poll.labels || [],
@@ -181,12 +181,14 @@ function mapPollToDTO(poll: any): PollCreateDTO {
     };
 
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);
+    console.log('  title:', poll.title || poll.question, '→ title:', dto.title);
     console.log('  showDefaultToConsumers:', poll.showDefaultToConsumers, '→ defaultFlag:', dto.defaultFlag);
     console.log('  defaultResponse:', poll.defaultResponse, '→ defaultOption:', dto.defaultOption);
     console.log('  isPersistentFinalAlert:', poll.isPersistentFinalAlert, '→ persistentAlert:', dto.persistentAlert);
     console.log('  anonymityMode:', poll.anonymityMode, '→ anonymous:', dto.anonymous);
     console.log('  consumers.length:', poll.consumers?.length, '→ sharedWith.length:', dto.sharedWith?.length);
     console.log('  labels:', poll.labels);
+    console.log('  scheduledTime:', poll.scheduledFor, '→ scheduledTime:', dto.scheduledTime);
 
     return dto;
 }
@@ -332,7 +334,6 @@ export async function createLabel(label: LabelCreateDTO): Promise<CreateLabelRes
     // Note: Label is already formatted as ~#name~ by LabelManager before reaching here
     const payload = {
         label: label.name,
-        color: label.color,
         description: label.description && label.description.trim() !== '' ? label.description : label.name,
         localId: Number(label.localId) // Sent as a number (Long) to match backend expectation
     };
@@ -370,8 +371,7 @@ export async function editLabel(label: LabelEditDTO): Promise<void> {
 
     const payload = {
         id: label.id,
-        description: label.description,
-        color: label.color
+        description: label.description
     };
 
     console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
@@ -385,26 +385,50 @@ export async function editLabel(label: LabelEditDTO): Promise<void> {
     }
 }
 
+export async function triggerDataSync(userEmail: string): Promise<void> {
+    console.log(`[🌐 API] 🔄 Triggering data sync for user: ${userEmail}`);
+    try {
+        await apiClient.get('/data/sync', { params: { userEmail } });
+        console.log(`[🌐 API] ✅ Data sync triggered successfully`);
+    } catch (error: any) {
+        console.error('[🌐 API] ❌ Failed to trigger data sync:', error.response?.status || error.message);
+        // Don't throw - this is not critical, SSE will still work
+    }
+}
+
 export async function getAllLabels(): Promise<LabelResponseDTO[]> {
     console.log('[🌐 API] 📥 Fetching all labels from backend...');
-    const response = await apiClient.get<ApiResponse<any[]>>('/labels'); // Use any[] to handle raw backend DTO
-    console.log(`[🌐 API] ✅ Received ${response.data.data.length} labels from backend`);
+    try {
+        const response = await apiClient.get<ApiResponse<any[]>>('/labels'); // Use any[] to handle raw backend DTO
+        
+        // Check if response is valid
+        if (!response.data || !response.data.data) {
+            console.warn('[🌐 API] ⚠️ Invalid response from /labels endpoint, returning empty array');
+            return [];
+        }
 
-    // Map backend 'label' -> frontend 'name'
-    // Keep raw format (~#name~) for sync consistency. UI will handle unwrapping.
-    const labels: LabelResponseDTO[] = response.data.data.map((l: any) => ({
-        id: l.id,
-        name: l.label,
-        color: l.color,
-        description: l.description,
-        createdAt: l.createdAt,
-        editedAt: l.editedAt // Added support for editedAt
-    }));
+        console.log(`[🌐 API] ✅ Received ${response.data.data.length} labels from backend`);
 
-    if (labels.length > 0) {
-        console.log('[🌐 API] Labels:', labels.map(l => l.name).join(', '));
+        // Map backend 'label' -> frontend 'name'
+        // Keep raw format (~#name~) for sync consistency. UI will handle unwrapping.
+        const labels: LabelResponseDTO[] = response.data.data.map((l: any) => ({
+            id: l.id,
+            name: l.label,
+            description: l.description,
+            createdAt: l.createdAt,
+            editedAt: l.editedAt // Added support for editedAt
+        }));
+
+        if (labels.length > 0) {
+            console.log('[🌐 API] Labels:', labels.map(l => l.name).join(', '));
+        }
+        return labels;
+    } catch (error: any) {
+        console.error('[🌐 API] ❌ Failed to fetch labels from backend:', error.response?.status || error.message);
+        // Return empty array instead of throwing to allow sync to continue
+        // This prevents label sync failures from blocking other sync operations
+        return [];
     }
-    return labels;
 }
 
 // ============================================================================

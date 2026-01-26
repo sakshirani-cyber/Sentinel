@@ -47,6 +47,7 @@ export interface PollResultDTO {
 
     removedOptions: Record<string, UserVoteDTO[]>;
     removedUsers: Record<string, UserVoteDTO[]>;
+    removedOptionCount?: Record<string, number>; // Count of votes for removed options
 
     defaultResponses: UserVoteDTO[];
     reasonResponses: Record<string, string>;
@@ -289,6 +290,17 @@ class PollService {
         defaultResponse?: string,
         reason?: string
     ): Promise<void> {
+        // Validate that exactly one of selectedOption, defaultResponse, or reason is provided
+        const providedCount = [
+            selectedOption ? 1 : 0,
+            defaultResponse ? 1 : 0,
+            reason ? 1 : 0
+        ].reduce((sum, val) => sum + val, 0);
+
+        if (providedCount !== 1) {
+            throw new Error('Exactly one of selectedOption, defaultResponse, or reason must be provided');
+        }
+
         const request: SubmitPollRequest = {
             signalId,
             userEmail,

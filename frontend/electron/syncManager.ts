@@ -125,8 +125,13 @@ export class SyncManager {
             const sse = new EventSource(url) as any;
             this.sse = sse;
 
-            sse.addEventListener('CONNECTED', (event: any) => {
+            sse.addEventListener('CONNECTED', async (event: any) => {
                 console.log('[SyncManager] SSE Handshake successful:', event.data);
+                // Trigger initial data sync to fetch existing polls
+                if (this.email) {
+                    console.log('[SyncManager] 🔄 Triggering initial data sync...');
+                    await backendApi.triggerDataSync(this.email);
+                }
             });
 
             sse.addEventListener('POLL_CREATED', async (event: any) => {
@@ -139,7 +144,7 @@ export class SyncManager {
                     if (payload.labels) console.log(`[📡 SSE] 🏷️ Payload Labels:`, payload.labels);
 
                     await this.handleIncomingPoll(payload);
-                } catch (e) {
+                } catch (e: any) {
                     console.error(`[📡 SSE] [${time}] ❌ Error handling POLL_CREATED:`, e);
                 }
             });
@@ -196,6 +201,44 @@ export class SyncManager {
                     }
                 } catch (e) {
                     console.error(`[SyncManager] [${time}] ❌ Error handling POLL_DELETED:`, e);
+                }
+            });
+
+            // Listen for DATA_SYNC events to fetch existing polls
+            sse.addEventListener('DATA_SYNC', async (event: any) => {
+                const time = new Date().toLocaleTimeString();
+                console.log(`[SyncManager] [${time}] 📥 SSE EVENT: DATA_SYNC - Fetching existing polls`);
+                try {
+                    const data = JSON.parse(event.data);
+                    const polls = Array.isArray(data) ? data : (data.payload || []);
+                    console.log(`[SyncManager] [${time}] 📦 Received ${polls.length} polls from DATA_SYNC`);
+                    
+                    for (const pollData of polls) {
+                        try {
+                            // Transform DataSyncDTO to handleIncomingPoll format
+                            // DataSyncDTO uses camelCase: signalId, publisher, sharedWith, etc.
+                            const payload = {
+                                signalId: pollData.signalId,
+                                question: pollData.question,
+                                options: Array.isArray(pollData.options) ? pollData.options : [],
+                                publisherEmail: pollData.publisher,
+                                publisherName: pollData.publisher,
+                                endTimestamp: pollData.endTimestamp,
+                                defaultOption: pollData.defaultOption,
+                                defaultFlag: pollData.defaultFlag,
+                                anonymous: pollData.anonymous,
+                                persistentAlert: pollData.persistentAlert,
+                                sharedWith: Array.isArray(pollData.sharedWith) ? pollData.sharedWith : [],
+                                labels: pollData.labels || [] // May not be in DataSyncDTO, but handle if present
+                            };
+                            await this.handleIncomingPoll(payload);
+                        } catch (e) {
+                            console.error(`[SyncManager] [${time}] ❌ Error processing poll from DATA_SYNC:`, e);
+                        }
+                    }
+                    console.log(`[SyncManager] [${time}] ✅ DATA_SYNC complete: ${polls.length} polls processed`);
+                } catch (e: any) {
+                    console.error(`[SyncManager] [${time}] ❌ Error handling DATA_SYNC:`, e);
                 }
             });
 
@@ -293,7 +336,7 @@ export class SyncManager {
         try {
             // 1. Fetch unsynced polls created locally (though mostly publishers write to cloud first currently)
             // But per new requirement, they write to Local DB first.
-            const allPolls = await getPolls();
+            const allPolls = getPolls();
             const unsyncedPolls = allPolls.filter(p => p.syncStatus === 'pending' || p.syncStatus === 'error');
 
             for (const poll of unsyncedPolls) {
@@ -396,7 +439,6 @@ export class SyncManager {
                     try {
                         await backendApi.createLabel({
                             name: label.name,
-                            color: label.color,
                             description: label.description
                         });
                         await updateLabelSyncStatus(label.id, 'synced');
@@ -408,7 +450,13 @@ export class SyncManager {
             }
 
             // 2. PULL: Fetch updates from backend
-            const backendLabels = await backendApi.getAllLabels();
+            let backendLabels: any[] = [];
+            try {
+                backendLabels = await backendApi.getAllLabels();
+            } catch (pullErr) {
+                console.error('[🏷️ LABELS] ❌ Failed to fetch labels from backend, continuing with local labels only:', pullErr);
+                // Continue with empty array - we'll still sync pending local labels
+            }
 
             let newCount = 0;
             let updateCount = 0;
@@ -422,7 +470,6 @@ export class SyncManager {
                     createLabel({
                         id: (Date.now() + Math.floor(Math.random() * 1000)).toString(),
                         name: bLabel.name,
-                        color: bLabel.color,
                         description: bLabel.description,
                         syncStatus: 'synced',
                         createdAt: bLabel.createdAt || new Date().toISOString(),
@@ -431,10 +478,9 @@ export class SyncManager {
                     newCount++;
                 } else {
                     // Update local if backend is different or cloudId is missing
-                    if (exists.color !== bLabel.color || exists.description !== bLabel.description || exists.syncStatus !== 'synced' || exists.cloudId !== bLabel.id) {
+                    if (exists.description !== bLabel.description || exists.syncStatus !== 'synced' || exists.cloudId !== bLabel.id) {
                         console.log(`[🏷️ LABELS] ♻️ Updating/Syncing label "${bLabel.name}" from backend`);
                         updateLabel(exists.id, {
-                            color: bLabel.color,
                             description: bLabel.description,
                             cloudId: bLabel.id,
                             syncStatus: 'synced'

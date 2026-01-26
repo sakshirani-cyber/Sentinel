@@ -5,7 +5,6 @@ import { Tag } from 'lucide-react';
 interface Label {
   id: string;
   name: string;
-  color: string;
   description?: string;
 }
 

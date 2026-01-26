@@ -12,6 +12,7 @@ export interface Option {
 
 export interface Poll {
     id: string;
+    title?: string; // Optional for backward compatibility, but required for new polls
     question: string;
     options: Option[];
     publisherEmail: string;

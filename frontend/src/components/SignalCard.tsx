@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 interface Label {
   id: string;
   name: string;
-  color: string;
   description?: string;
 }
 

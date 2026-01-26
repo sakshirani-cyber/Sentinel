@@ -11,7 +11,6 @@ import LabelPill from './LabelPill';
 interface Label {
   id: string;
   name: string;
-  color: string;
   description?: string;
 }
 
