@@ -12,7 +12,9 @@ interface NotificationBellProps {
  */
 export default function NotificationBell({ count = 0 }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<{ top?: number; left?: number; right?: number }>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -48,9 +50,57 @@ export default function NotificationBell({ count = 0 }: NotificationBellProps) {
     };
   }, [isOpen]);
 
+  // Calculate dropdown position - bottom-right of icon (aligns right edge)
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const updatePosition = () => {
+        if (!buttonRef.current) return;
+        
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const margin = 8; // Minimum margin from viewport edges
+        const dropdownWidth = 320; // w-80 = 320px
+        const viewportWidth = window.innerWidth;
+        const topPos = buttonRect.bottom + 8;
+        
+        // Position dropdown so its right edge aligns with button's right edge
+        let rightPos = viewportWidth - buttonRect.right;
+        let leftPos: number | undefined = undefined;
+        
+        // If dropdown would overflow on the left, adjust to stay within viewport
+        if (buttonRect.right - dropdownWidth < margin) {
+          // Not enough space, position from left with margin
+          leftPos = margin;
+          rightPos = undefined;
+        } else {
+          // Enough space, align right edge of dropdown to right edge of button
+          rightPos = viewportWidth - buttonRect.right;
+          leftPos = undefined;
+        }
+        
+        setDropdownStyle({ 
+          top: topPos,
+          left: leftPos,
+          right: rightPos
+        });
+      };
+      
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true);
+      
+      return () => {
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
+      };
+    } else {
+      setDropdownStyle({});
+    }
+  }, [isOpen]);
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg text-topbar-foreground/70 hover:text-topbar-foreground hover:bg-topbar-hover transition-all duration-200 hover:scale-110 active:scale-95"
         aria-label={`Notifications${count > 0 ? ` (${count} unread)` : ''}`}
@@ -66,14 +116,20 @@ export default function NotificationBell({ count = 0 }: NotificationBellProps) {
         )}
       </button>
 
-      {/* Dropdown - Glassmorphism */}
+      {/* Dropdown - Fully opaque with proper positioning */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-ribbit-dry-sage/90 backdrop-blur-md rounded-xl shadow-xl border border-ribbit-fern/30 overflow-hidden z-50 animate-fade-in">
+        <div 
+          className="fixed w-80 max-w-[calc(100vw-1rem)] rounded-xl shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] border border-border overflow-hidden z-50 animate-fade-in"
+          style={{ 
+            backgroundColor: 'var(--card-solid)',
+            ...dropdownStyle
+          }}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ribbit-fern/20 bg-ribbit-dry-sage/50">
-            <h3 className="font-semibold text-ribbit-hunter-green">Notifications</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted dark:bg-secondary">
+            <h3 className="font-semibold text-foreground">Notifications</h3>
             {count > 0 && (
-              <button className="text-xs text-ribbit-fern hover:text-ribbit-hunter-green transition-colors font-medium hover:underline">
+              <button className="text-xs text-foreground-secondary hover:text-foreground transition-colors font-medium hover:underline">
                 Mark all read
               </button>
             )}
@@ -83,21 +139,21 @@ export default function NotificationBell({ count = 0 }: NotificationBellProps) {
           <div className="max-h-80 overflow-y-auto">
             {count === 0 ? (
               <div className="py-8 px-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-ribbit-fern/20 flex items-center justify-center mx-auto mb-3">
-                  <Check className="w-6 h-6 text-ribbit-hunter-green" />
+                <div className="w-12 h-12 rounded-full bg-muted dark:bg-secondary flex items-center justify-center mx-auto mb-3">
+                  <Check className="w-6 h-6 text-foreground" />
                 </div>
-                <p className="text-sm text-ribbit-pine-teal/70">
+                <p className="text-sm text-foreground-secondary">
                   You're all caught up!
                 </p>
               </div>
             ) : (
               <div className="py-2">
                 {/* Placeholder for notifications - will be populated later */}
-                <div className="px-4 py-3 hover:bg-ribbit-hunter-green/10 cursor-pointer transition-all duration-200">
-                  <p className="text-sm font-medium text-ribbit-hunter-green">
+                <div className="px-4 py-3 hover:bg-muted dark:hover:bg-secondary cursor-pointer transition-all duration-200">
+                  <p className="text-sm font-medium text-foreground">
                     {count} pending signal{count !== 1 ? 's' : ''}
                   </p>
-                  <p className="text-xs text-ribbit-pine-teal/70 mt-1">
+                  <p className="text-xs text-foreground-secondary mt-1">
                     You have signals waiting for your response
                   </p>
                 </div>
@@ -106,9 +162,9 @@ export default function NotificationBell({ count = 0 }: NotificationBellProps) {
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-3 border-t border-ribbit-fern/20 bg-ribbit-dry-sage/50">
+          <div className="px-4 py-3 border-t border-border bg-muted dark:bg-secondary">
             <button 
-              className="w-full text-center text-sm text-ribbit-fern hover:text-ribbit-hunter-green transition-colors font-medium hover:underline"
+              className="w-full text-center text-sm text-foreground-secondary hover:text-foreground transition-colors font-medium hover:underline"
               onClick={() => setIsOpen(false)}
             >
               View all notifications

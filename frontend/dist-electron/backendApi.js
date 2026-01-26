@@ -18,7 +18,7 @@ const axios_1 = __importDefault(require("axios"));
 console.log('>>> [Backend API] MODULE LOADED <<<');
 // Backend API service for Electron main process
 // This bypasses CORS since Node.js doesn't have browser CORS restrictions
-const API_BASE_URL = process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com';
+const API_BASE_URL = process.env.VITE_BACKEND_URL || 'http://localhost:8080';
 console.log(`[Backend API] Initialized with BASE_URL: ${API_BASE_URL}`);
 const apiClient = axios_1.default.create({
     baseURL: API_BASE_URL,
@@ -33,11 +33,6 @@ apiClient.interceptors.request.use(config => {
     if (config.data) {
         console.log('[🌐 API PAYLOAD] Full Body:', JSON.stringify(config.data, null, 2));
     }
-    // #region agent log
-    if (config.url?.includes('labels')) {
-        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'backendApi.ts:24', message: 'Request interceptor for labels', data: { method: config.method, url: config.url, fullUrl: config.baseURL + config.url, headers: config.headers, params: config.params }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,B,C' }) }).catch(() => { });
-    }
-    // #endregion
     return config;
 }, error => {
     console.error(`[🌐 API ERROR] [${new Date().toLocaleTimeString()}] Request failed:`, error);
@@ -258,24 +253,11 @@ async function triggerDataSync(userEmail) {
 }
 async function getAllLabels() {
     console.log('[🌐 API] 📥 Fetching all labels from backend...');
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'backendApi.ts:388', message: 'getAllLabels entry', data: { endpoint: '/labels', baseUrl: API_BASE_URL }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,B,C' }) }).catch(() => { });
-    // #endregion
     try {
-        // #region agent log
-        const requestConfig = { url: '/labels', method: 'get', headers: apiClient.defaults.headers };
-        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'backendApi.ts:392', message: 'Before API call', data: { config: requestConfig, hasAuth: !!apiClient.defaults.headers?.Authorization }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-        // #endregion
         const response = await apiClient.get('/labels'); // Use any[] to handle raw backend DTO
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'backendApi.ts:395', message: 'After API call success', data: { status: response.status, hasData: !!response.data, dataLength: response.data?.data?.length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,C' }) }).catch(() => { });
-        // #endregion
         // Check if response is valid
         if (!response.data || !response.data.data) {
             console.warn('[🌐 API] ⚠️ Invalid response from /labels endpoint, returning empty array');
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'backendApi.ts:399', message: 'Invalid response detected', data: { responseData: response.data }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-            // #endregion
             return [];
         }
         console.log(`[🌐 API] ✅ Received ${response.data.data.length} labels from backend`);
@@ -291,15 +273,9 @@ async function getAllLabels() {
         if (labels.length > 0) {
             console.log('[🌐 API] Labels:', labels.map(l => l.name).join(', '));
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'backendApi.ts:415', message: 'getAllLabels success exit', data: { labelCount: labels.length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,B,C' }) }).catch(() => { });
-        // #endregion
         return labels;
     }
     catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'backendApi.ts:418', message: 'getAllLabels error caught', data: { status: error.response?.status, statusText: error.response?.statusText, url: error.config?.url, fullUrl: error.config?.baseURL + error.config?.url, headers: error.config?.headers, message: error.message }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,B,C,D' }) }).catch(() => { });
-        // #endregion
         console.error('[🌐 API] ❌ Failed to fetch labels from backend:', error.response?.status || error.message);
         // Return empty array instead of throwing to allow sync to continue
         // This prevents label sync failures from blocking other sync operations

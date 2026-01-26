@@ -58,10 +58,6 @@ class SyncManager {
     async login(email) {
         this.email = email;
         console.log(`[SyncManager] Logged in as ${email}`);
-        // #region agent log
-        const localPolls = (0, db_1.getPolls)();
-        fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:27', message: 'SyncManager login', data: { email, localPollsCount: localPolls.length, hasSSE: !!this.sse }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'A,B' }) }).catch(() => { });
-        // #endregion
         this.startSyncLoop();
         this.updateConnection();
     }
@@ -143,16 +139,13 @@ class SyncManager {
             setTimeout(() => this.updateConnection(), 10000);
             return;
         }
-        const url = `${process.env.VITE_BACKEND_URL || 'https://sentinel-ha37.onrender.com'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
+        const url = `${process.env.VITE_BACKEND_URL || 'http://localhost:8080'}/sse/connect?userEmail=${encodeURIComponent(this.email)}`;
         console.log(`[SyncManager] Connecting to SSE: ${this.email}`);
         try {
             const sse = new EventSource(url);
             this.sse = sse;
             sse.addEventListener('CONNECTED', async (event) => {
                 console.log('[SyncManager] SSE Handshake successful:', event.data);
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:131', message: 'SSE CONNECTED event', data: { eventData: event.data, localPollsCount: (0, db_1.getPolls)().length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'A,C' }) }).catch(() => { });
-                // #endregion
                 // Trigger initial data sync to fetch existing polls
                 if (this.email) {
                     console.log('[SyncManager] 🔄 Triggering initial data sync...');
@@ -162,29 +155,16 @@ class SyncManager {
             sse.addEventListener('POLL_CREATED', async (event) => {
                 const time = new Date().toLocaleTimeString();
                 console.log(`[📡 SSE] [${time}] 📥 EVENT RECEIVED: POLL_CREATED`);
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:135', message: 'POLL_CREATED event received', data: { hasEventData: !!event.data }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'C,D' }) }).catch(() => { });
-                // #endregion
                 try {
                     const data = JSON.parse(event.data);
                     const payload = data.payload || data;
                     console.log(`[📡 SSE] 📦 Payload Question: "${payload.question}"`);
                     if (payload.labels)
                         console.log(`[📡 SSE] 🏷️ Payload Labels:`, payload.labels);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:144', message: 'Before handleIncomingPoll', data: { signalId: payload.signalId, question: payload.question, publisherEmail: payload.publisherEmail }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'D' }) }).catch(() => { });
-                    // #endregion
                     await this.handleIncomingPoll(payload);
-                    // #region agent log
-                    const pollsAfter = (0, db_1.getPolls)();
-                    fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:147', message: 'After handleIncomingPoll', data: { pollsCount: pollsAfter.length, hasPoll: pollsAfter.some(p => p.cloudSignalId === payload.signalId) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'D' }) }).catch(() => { });
-                    // #endregion
                 }
                 catch (e) {
                     console.error(`[📡 SSE] [${time}] ❌ Error handling POLL_CREATED:`, e);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:150', message: 'POLL_CREATED error', data: { error: e?.message || String(e) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'D' }) }).catch(() => { });
-                    // #endregion
                 }
             });
             sse.addEventListener('POLL_EDITED', async (event) => {
@@ -241,16 +221,10 @@ class SyncManager {
             sse.addEventListener('DATA_SYNC', async (event) => {
                 const time = new Date().toLocaleTimeString();
                 console.log(`[SyncManager] [${time}] 📥 SSE EVENT: DATA_SYNC - Fetching existing polls`);
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:218', message: 'DATA_SYNC event received', data: { hasEventData: !!event.data }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'A' }) }).catch(() => { });
-                // #endregion
                 try {
                     const data = JSON.parse(event.data);
                     const polls = Array.isArray(data) ? data : (data.payload || []);
                     console.log(`[SyncManager] [${time}] 📦 Received ${polls.length} polls from DATA_SYNC`);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:223', message: 'DATA_SYNC polls received', data: { pollCount: polls.length, polls: polls.map((p) => ({ signalId: p.signalId || p.signal_id, question: p.question })) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'A' }) }).catch(() => { });
-                    // #endregion
                     for (const pollData of polls) {
                         try {
                             // Transform DataSyncDTO to handleIncomingPoll format
@@ -275,17 +249,10 @@ class SyncManager {
                             console.error(`[SyncManager] [${time}] ❌ Error processing poll from DATA_SYNC:`, e);
                         }
                     }
-                    // #region agent log
-                    const pollsAfter = (0, db_1.getPolls)();
-                    fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:241', message: 'After DATA_SYNC processing', data: { pollsCount: pollsAfter.length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'A' }) }).catch(() => { });
-                    // #endregion
                     console.log(`[SyncManager] [${time}] ✅ DATA_SYNC complete: ${polls.length} polls processed`);
                 }
                 catch (e) {
                     console.error(`[SyncManager] [${time}] ❌ Error handling DATA_SYNC:`, e);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:246', message: 'DATA_SYNC error', data: { error: e?.message || String(e) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'A' }) }).catch(() => { });
-                    // #endregion
                 }
             });
             sse.onerror = (err) => {
@@ -372,13 +339,9 @@ class SyncManager {
         console.log(`[SyncManager]   - Online: ${this.isOnline}`);
         console.log(`[SyncManager]   - User: ${this.email}`);
         try {
-            // #region agent log
-            const localPollsBefore = (0, db_1.getPolls)();
-            fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:296', message: 'Before sync - local polls', data: { localPollsCount: localPollsBefore.length, hasSSE: !!this.sse, email: this.email }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'A,B' }) }).catch(() => { });
-            // #endregion
             // 1. Fetch unsynced polls created locally (though mostly publishers write to cloud first currently)
             // But per new requirement, they write to Local DB first.
-            const allPolls = localPollsBefore;
+            const allPolls = (0, db_1.getPolls)();
             const unsyncedPolls = allPolls.filter(p => p.syncStatus === 'pending' || p.syncStatus === 'error');
             for (const poll of unsyncedPolls) {
                 try {
@@ -481,13 +444,7 @@ class SyncManager {
             // 2. PULL: Fetch updates from backend
             let backendLabels = [];
             try {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:411', message: 'Before getAllLabels call', data: { email: this.email, isOnline: this.isOnline }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
-                // #endregion
                 backendLabels = await backendApi.getAllLabels();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/b037c4cd-e290-4f65-92ad-6438505f9618', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'syncManager.ts:414', message: 'After getAllLabels call', data: { labelCount: backendLabels.length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
-                // #endregion
             }
             catch (pullErr) {
                 console.error('[🏷️ LABELS] ❌ Failed to fetch labels from backend, continuing with local labels only:', pullErr);
