@@ -250,6 +250,7 @@ export default function SentPage({
         onFilterChange={setStatusFilter}
         counts={counts}
         showDraft={false}
+        useSentPageLabels={true}
       />
 
       {/* Search, Filter, Sort Row */}

@@ -20,6 +20,8 @@ interface StatusFilterCardsProps {
   };
   /** Show the draft card (publisher only) */
   showDraft?: boolean;
+  /** Use Sent page labels (Active/Scheduled) instead of Inbox labels (Incomplete/Completed) */
+  useSentPageLabels?: boolean;
 }
 
 /**
@@ -36,13 +38,24 @@ export default function StatusFilterCards({
   onFilterChange,
   counts,
   showDraft = false,
+  useSentPageLabels = false,
 }: StatusFilterCardsProps) {
   const cards: StatusCardData[] = useMemo(() => [
     { id: 'all', label: 'All', count: counts.all, visible: true },
-    { id: 'incomplete', label: 'Active', count: counts.incomplete, visible: true },
-    { id: 'completed', label: 'Scheduled', count: counts.completed, visible: true },
+    { 
+      id: 'incomplete', 
+      label: useSentPageLabels ? 'Active' : 'Incomplete', 
+      count: counts.incomplete, 
+      visible: true 
+    },
+    { 
+      id: 'completed', 
+      label: useSentPageLabels ? 'Scheduled' : 'Completed', 
+      count: counts.completed, 
+      visible: true 
+    },
     { id: 'draft', label: 'Draft', count: counts.draft || 0, visible: showDraft },
-  ], [counts, showDraft]);
+  ], [counts, showDraft, useSentPageLabels]);
 
   const visibleCards = cards.filter(card => card.visible);
 
