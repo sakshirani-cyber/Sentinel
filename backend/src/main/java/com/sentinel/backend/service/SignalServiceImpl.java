@@ -444,7 +444,7 @@ public class SignalServiceImpl implements SignalService {
         Poll poll = new Poll();
         poll.setSignalId(signalId);
         poll.setQuestion((String) data.get("question"));
-        poll.setOptions((String[]) data.get("options"));
+        poll.setOptions(parseStringArray(data.get("options")));
         log.info("[POLL][CACHE_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
         return poll;
     }
@@ -469,7 +469,7 @@ public class SignalServiceImpl implements SignalService {
             result.setSelectedOption((String) voteData.get("selectedOption"));
             result.setDefaultResponse((String) voteData.get("defaultResponse"));
             result.setReason((String) voteData.get("reason"));
-            result.setTimeOfSubmission((Instant) voteData.get("timeOfSubmission"));
+            result.setTimeOfSubmission(parseInstant(voteData.get("timeOfSubmission")));
             results.add(result);
         }
 
@@ -513,20 +513,64 @@ public class SignalServiceImpl implements SignalService {
         Signal signal = new Signal();
         signal.setId(((Number) data.get("signalId")).longValue());
         signal.setCreatedBy((String) data.get("createdBy"));
-        signal.setCreatedOn((Instant) data.get("createdOn"));
-        signal.setLastEdited((Instant) data.get("lastEdited"));
-        signal.setAnonymous((Boolean) data.get("anonymous"));
-        signal.setEndTimestamp((Instant) data.get("endTimestamp"));
+        signal.setCreatedOn(parseInstant(data.get("createdOn")));
+        signal.setLastEdited(parseInstant(data.get("lastEdited")));
+        signal.setAnonymous(parseBoolean(data.get("anonymous")));
+        signal.setEndTimestamp(parseInstant(data.get("endTimestamp")));
         signal.setTypeOfSignal((String) data.get("typeOfSignal"));
-        signal.setDefaultFlag((Boolean) data.get("defaultFlag"));
+        signal.setDefaultFlag(parseBoolean(data.get("defaultFlag")));
         signal.setDefaultOption((String) data.get("defaultOption"));
-        signal.setSharedWith((String[]) data.get("sharedWith"));
+        signal.setSharedWith(parseStringArray(data.get("sharedWith")));
         signal.setStatus((String) data.get("status"));
         signal.setLastEditedBy((String) data.get("lastEditedBy"));
-        signal.setPersistentAlert((Boolean) data.get("persistentAlert"));
-        signal.setLabels((String[]) data.get("labels"));
+        signal.setPersistentAlert(parseBoolean(data.get("persistentAlert")));
+        signal.setLabels(parseStringArray(data.get("labels")));
         signal.setTitle((String) data.get("title"));
         return signal;
+    }
+
+    private Instant parseInstant(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Instant) {
+            return (Instant) value;
+        }
+        if (value instanceof String) {
+            return Instant.parse((String) value);
+        }
+        if (value instanceof Number) {
+            return Instant.ofEpochMilli(((Number) value).longValue());
+        }
+        throw new IllegalArgumentException("Cannot parse Instant from: " + value.getClass());
+    }
+
+    private Boolean parseBoolean(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            return Boolean.parseBoolean((String) value);
+        }
+        throw new IllegalArgumentException("Cannot parse Boolean from: " + value.getClass());
+    }
+
+    @SuppressWarnings("unchecked")
+    private String[] parseStringArray(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String[]) {
+            return (String[]) value;
+        }
+        if (value instanceof List) {
+            List<String> list = (List<String>) value;
+            return list.toArray(new String[0]);
+        }
+        throw new IllegalArgumentException("Cannot parse String[] from: " + value.getClass());
     }
 
     private Signal buildSignal(PollCreateDTO dto) {

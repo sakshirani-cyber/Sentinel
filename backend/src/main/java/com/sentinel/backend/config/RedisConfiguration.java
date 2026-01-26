@@ -4,13 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.lettuce.core.ClientOptions;
-import io.lettuce.core.ReadFrom;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.TimeoutOptions;
 import io.lettuce.core.resource.ClientResources;
 import io.lettuce.core.resource.DefaultClientResources;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -68,9 +69,40 @@ public class RedisConfiguration {
         return mapper;
     }
 
+    @Bean(destroyMethod = "shutdown")
+    public RedissonClient redissonClient() {
+        Config config = new Config();
+        
+        String address = String.format("rediss://%s:%d", masterHost, masterPort);
+        
+        config.useSingleServer()
+                .setAddress(address)
+                .setPassword(masterPassword)
+                .setDatabase(0)
+                .setConnectionPoolSize(64)
+                .setConnectionMinimumIdleSize(10)
+                .setConnectTimeout(10000)
+                .setTimeout(3000)
+                .setRetryAttempts(3)
+                .setRetryInterval(1500)
+                .setSubscriptionsPerConnection(5)
+                .setClientName("sentinel-redisson")
+                .setKeepAlive(true)
+                .setTcpNoDelay(true);
+
+        config.setThreads(16);
+        config.setNettyThreads(32);
+        config.setLockWatchdogTimeout(30000);
+        config.setKeepPubSubOrder(true);
+
+        log.info("[REDIS][REDISSON] Configured | host={}:{}", masterHost, masterPort);
+        
+        return Redisson.create(config);
+    }
+
     @Bean
     @Primary
-    public LettuceConnectionFactory redisMasterConnectionFactory(ClientResources clientResources) {
+    public LettuceConnectionFactory redisConnectionFactory(ClientResources clientResources) {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(masterHost, masterPort);
         if (masterPassword != null && !masterPassword.isEmpty()) {
             config.setPassword(masterPassword);
@@ -82,53 +114,32 @@ public class RedisConfiguration {
                 .clientOptions(clientOptions)
                 .clientResources(clientResources)
                 .commandTimeout(COMMAND_TIMEOUT)
+                .useSsl()
                 .build();
 
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
         factory.setValidateConnection(true);
         factory.setShareNativeConnection(false);
 
-        log.info("[REDIS][CONFIG] Master configured | host={}:{}", masterHost, masterPort);
-        return factory;
-    }
-
-    @Bean
-    public LettuceConnectionFactory redisSlaveConnectionFactory(ClientResources clientResources) {
-        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(slaveHost, slavePort);
-        if (slavePassword != null && !slavePassword.isEmpty()) {
-            config.setPassword(slavePassword);
-        }
-
-        ClientOptions clientOptions = buildClientOptions();
-
-        LettuceClientConfiguration clientConfig = LettucePoolingClientConfiguration.builder()
-                .clientOptions(clientOptions)
-                .clientResources(clientResources)
-                .commandTimeout(COMMAND_TIMEOUT)
-                .readFrom(ReadFrom.REPLICA_PREFERRED)
-                .build();
-
-        LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
-        factory.setValidateConnection(true);
-        factory.setShareNativeConnection(false);
-
-        log.info("[REDIS][CONFIG] Slave configured | host={}:{}", slaveHost, slavePort);
+        log.info("[REDIS][CONFIG] Connection factory configured (SSL enabled) | host={}:{}", masterHost, masterPort);
         return factory;
     }
 
     @Bean
     @Primary
     public RedisTemplate<String, Object> redisMasterTemplate(
-            @Qualifier("redisMasterConnectionFactory") LettuceConnectionFactory connectionFactory,
+            LettuceConnectionFactory redisConnectionFactory,
             ObjectMapper redisObjectMapper) {
-        return buildRedisTemplate(connectionFactory, redisObjectMapper);
+        log.info("[REDIS][CONFIG] Master template created for WRITES");
+        return buildRedisTemplate(redisConnectionFactory, redisObjectMapper);
     }
 
     @Bean
     public RedisTemplate<String, Object> redisSlaveTemplate(
-            @Qualifier("redisSlaveConnectionFactory") LettuceConnectionFactory connectionFactory,
+            LettuceConnectionFactory redisConnectionFactory,
             ObjectMapper redisObjectMapper) {
-        return buildRedisTemplate(connectionFactory, redisObjectMapper);
+        log.info("[REDIS][CONFIG] Slave template created for READS");
+        return buildRedisTemplate(redisConnectionFactory, redisObjectMapper);
     }
 
     private ClientOptions buildClientOptions() {
