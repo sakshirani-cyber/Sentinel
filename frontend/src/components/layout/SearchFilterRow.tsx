@@ -6,6 +6,7 @@ import { FilterState } from './FiltersButton';
 import { Filter, X, Tag, Users, CalendarDays, ToggleLeft, ToggleRight, Calendar } from 'lucide-react';
 import DateRangePicker from '../common/DateRangePicker';
 import SearchableLabelDropdown from '../common/SearchableLabelDropdown';
+import SearchablePublisherDropdown from '../common/SearchablePublisherDropdown';
 
 interface SearchFilterRowProps {
   // Search
@@ -26,6 +27,7 @@ interface SearchFilterRowProps {
   
   // Publisher-specific options
   isPublisher?: boolean;
+  isSentPage?: boolean;
 }
 
 const defaultFilters: FilterState = {
@@ -34,6 +36,7 @@ const defaultFilters: FilterState = {
   dateRange: { start: null, end: null },
   signalType: [],
   scheduledOnly: false,
+  activeOnly: false,
 };
 
 /**
@@ -54,6 +57,7 @@ export default function SearchFilterRow({
   availablePublishers = [],
   showFilters = true,
   isPublisher = false,
+  isSentPage = false,
 }: SearchFilterRowProps) {
   // Mark availableLabels as intentionally unused (we fetch all labels from DB instead)
   void _availableLabels;
@@ -72,7 +76,8 @@ export default function SearchFilterRow({
     filters.labels.length +
     filters.publishers.length +
     (filters.dateRange.start || filters.dateRange.end ? 1 : 0) +
-    (isPublisher && filters.scheduledOnly ? 1 : 0)
+    (isPublisher && filters.scheduledOnly ? 1 : 0) +
+    (isSentPage && filters.activeOnly ? 1 : 0)
   ) : 0;
 
   // Calculate menu position - from left of container to right edge of filter button
@@ -180,12 +185,10 @@ export default function SearchFilterRow({
     }));
   };
 
-  const togglePublisher = (publisher: string) => {
+  const handlePublisherSelectionChange = (selected: string[]) => {
     setLocalFilters(prev => ({
       ...prev,
-      publishers: prev.publishers.includes(publisher)
-        ? prev.publishers.filter(p => p !== publisher)
-        : [...prev.publishers, publisher],
+      publishers: selected,
     }));
   };
 
@@ -247,80 +250,90 @@ export default function SearchFilterRow({
                   <Users className="w-4 h-4 text-primary flex-shrink-0" />
                   <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Publishers</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {availablePublishers.length > 0 ? (
-                    availablePublishers.slice(0, 4).map(publisher => {
-                      const isSelected = localFilters.publishers.includes(publisher);
-                      return (
-                        <button
-                          key={publisher}
-                          onClick={() => togglePublisher(publisher)}
-                          style={isSelected ? {
-                            backgroundColor: 'var(--primary)',
-                            color: 'var(--primary-foreground)',
-                            boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
-                          } : {
-                            backgroundColor: 'var(--muted)',
-                            color: 'var(--muted-foreground)',
-                          }}
-                          className={`
-                            px-2.5 py-1 rounded-md text-xs font-medium truncate max-w-[140px]
-                            transition-all duration-150
-                            ${!isSelected ? 'hover:opacity-80' : ''}
-                          `}
-                          title={publisher}
-                        >
-                          {isSelected && <span className="mr-1">✓</span>}
-                          {publisher}
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">None</span>
-                  )}
-                </div>
+                <SearchablePublisherDropdown
+                  publishers={availablePublishers}
+                  selectedPublishers={localFilters.publishers}
+                  onSelectionChange={handlePublisherSelectionChange}
+                  placeholder="Search publishers..."
+                />
               </div>
             </div>
 
-            {/* Row 2: Scheduled Toggle (Publisher only) */}
+            {/* Row 2: Options Toggles (Publisher only) */}
             {isPublisher && (
               <div className="flex items-start gap-6 pt-2 border-t border-border/50">
-                {/* Scheduled Toggle - Only for publishers */}
                 <div className="flex-shrink-0">
                   <div className="flex items-center gap-2 mb-3">
                     <CalendarDays className="w-4 h-4 text-primary flex-shrink-0" />
                     <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Options</span>
                   </div>
-                  <button
-                    onClick={() => setLocalFilters(prev => ({ ...prev, scheduledOnly: !prev.scheduledOnly }))}
-                    style={localFilters.scheduledOnly ? {
-                      backgroundColor: 'var(--primary)',
-                      color: 'var(--primary-foreground)',
-                      boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
-                    } : {
-                      backgroundColor: 'var(--muted)',
-                      color: 'var(--muted-foreground)',
-                    }}
-                    className={`
-                      flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
-                      transition-all duration-150
-                      ${!localFilters.scheduledOnly ? 'hover:opacity-80' : ''}
-                    `}
-                    role="switch"
-                    aria-checked={localFilters.scheduledOnly}
-                  >
-                    {localFilters.scheduledOnly ? (
-                      <>
-                        <ToggleRight className="w-4 h-4" />
-                        <span>✓ Scheduled Only</span>
-                      </>
-                    ) : (
-                      <>
-                        <ToggleLeft className="w-4 h-4" />
-                        <span>Scheduled Only</span>
-                      </>
+                  <div className="flex flex-wrap gap-3">
+                    {/* Scheduled Toggle - Only for publishers */}
+                    <button
+                      onClick={() => setLocalFilters(prev => ({ ...prev, scheduledOnly: !prev.scheduledOnly }))}
+                      style={localFilters.scheduledOnly ? {
+                        backgroundColor: 'var(--primary)',
+                        color: 'var(--primary-foreground)',
+                        boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
+                      } : {
+                        backgroundColor: 'var(--muted)',
+                        color: 'var(--muted-foreground)',
+                      }}
+                      className={`
+                        flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
+                        transition-all duration-150
+                        ${!localFilters.scheduledOnly ? 'hover:opacity-80' : ''}
+                      `}
+                      role="switch"
+                      aria-checked={localFilters.scheduledOnly}
+                    >
+                      {localFilters.scheduledOnly ? (
+                        <>
+                          <ToggleRight className="w-4 h-4" />
+                          <span>✓ Scheduled Only</span>
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft className="w-4 h-4" />
+                          <span>Scheduled Only</span>
+                        </>
+                      )}
+                    </button>
+                    
+                    {/* Active Toggle - Only for sent page */}
+                    {isSentPage && (
+                      <button
+                        onClick={() => setLocalFilters(prev => ({ ...prev, activeOnly: !prev.activeOnly }))}
+                        style={localFilters.activeOnly ? {
+                          backgroundColor: 'var(--primary)',
+                          color: 'var(--primary-foreground)',
+                          boxShadow: '0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,0.15)',
+                        } : {
+                          backgroundColor: 'var(--muted)',
+                          color: 'var(--muted-foreground)',
+                        }}
+                        className={`
+                          flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
+                          transition-all duration-150
+                          ${!localFilters.activeOnly ? 'hover:opacity-80' : ''}
+                        `}
+                        role="switch"
+                        aria-checked={localFilters.activeOnly}
+                      >
+                        {localFilters.activeOnly ? (
+                          <>
+                            <ToggleRight className="w-4 h-4" />
+                            <span>✓ Active Only</span>
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-4 h-4" />
+                            <span>Active Only</span>
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -431,4 +444,5 @@ export const defaultFilterState: FilterState = {
   dateRange: { start: null, end: null },
   signalType: [],
   scheduledOnly: false,
+  activeOnly: false,
 };

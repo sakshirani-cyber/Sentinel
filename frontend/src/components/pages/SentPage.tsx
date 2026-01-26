@@ -139,6 +139,14 @@ export default function SentPage({
       result = result.filter(p => p.status === 'scheduled');
     }
 
+    // Active only filter (only show polls that are not scheduled and deadline hasn't passed)
+    if (filters.activeOnly) {
+      const now = new Date();
+      result = result.filter(p => 
+        p.status !== 'scheduled' && new Date(p.deadline) >= now
+      );
+    }
+
     // Sort
     result.sort((a, b) => {
       switch (sortOption) {
@@ -257,6 +265,7 @@ export default function SentPage({
         availablePublishers={availableConsumers}
         showFilters={true}
         isPublisher={true}
+        isSentPage={true}
       />
 
       {/* Signal Lists */}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Filter, X, Tag, Users, CalendarDays, ToggleLeft, ToggleRight, Calendar } from 'lucide-react';
 import DateRangePicker from '../common/DateRangePicker';
 import SearchableLabelDropdown from '../common/SearchableLabelDropdown';
+import SearchablePublisherDropdown from '../common/SearchablePublisherDropdown';
 
 export interface FilterState {
   labels: string[];
@@ -9,6 +10,7 @@ export interface FilterState {
   dateRange: { start: string | null; end: string | null };
   signalType: string[];
   scheduledOnly: boolean;
+  activeOnly: boolean;
 }
 
 interface FiltersButtonProps {
@@ -25,6 +27,7 @@ const defaultFilters: FilterState = {
   dateRange: { start: null, end: null },
   signalType: [],
   scheduledOnly: false,
+  activeOnly: false,
 };
 
 /**
@@ -133,15 +136,6 @@ export default function FiltersButton({
     }));
   };
 
-  const togglePublisher = (publisher: string) => {
-    setLocalFilters(prev => ({
-      ...prev,
-      publishers: prev.publishers.includes(publisher)
-        ? prev.publishers.filter(p => p !== publisher)
-        : [...prev.publishers, publisher],
-    }));
-  };
-
   return (
     <div className="relative" ref={panelRef}>
       <button
@@ -241,28 +235,12 @@ export default function FiltersButton({
                       <Users className="w-4 h-4 text-primary" />
                       <span className="font-semibold text-sm uppercase tracking-wide">Publishers</span>
                     </div>
-                    <div className="flex flex-wrap gap-2 min-h-[60px] max-h-[100px] overflow-y-auto pr-1">
-                      {availablePublishers.length > 0 ? (
-                        availablePublishers.slice(0, 8).map(publisher => (
-                          <button
-                            key={publisher}
-                            onClick={() => togglePublisher(publisher)}
-                            className={`
-                              px-3 py-1.5 rounded-lg text-xs font-medium
-                              transition-all duration-200 hover:scale-105
-                              ${localFilters.publishers.includes(publisher)
-                                ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]'
-                                : 'bg-muted text-foreground border border-border hover:border-primary/50 hover:text-primary'
-                              }
-                            `}
-                          >
-                            {publisher}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="text-sm text-foreground-muted italic">No publishers available</p>
-                      )}
-                    </div>
+                    <SearchablePublisherDropdown
+                      publishers={availablePublishers}
+                      selectedPublishers={localFilters.publishers}
+                      onSelectionChange={(selected) => setLocalFilters(prev => ({ ...prev, publishers: selected }))}
+                      placeholder="Search publishers..."
+                    />
                   </div>
                 </div>
 
