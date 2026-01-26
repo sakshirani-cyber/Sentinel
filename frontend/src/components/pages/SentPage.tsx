@@ -21,7 +21,7 @@ interface SentPageProps {
  * SentPage Component
  * 
  * Publisher view showing:
- * - Status filter cards (All, Published, Scheduled)
+ * - Status filter cards (All, Active, Scheduled)
  * - Published and scheduled signal lists
  */
 export default function SentPage({
@@ -50,22 +50,29 @@ export default function SentPage({
     [polls, user.email]
   );
 
-  const activePolls = useMemo(() => 
-    userPolls.filter(p => p.status !== 'scheduled'), 
-    [userPolls]
-  );
+  const activePolls = useMemo(() => {
+    const now = new Date();
+    return userPolls.filter(p => 
+      p.status !== 'scheduled' && new Date(p.deadline) >= now
+    );
+  }, [userPolls]);
 
   const scheduledPolls = useMemo(() => 
     userPolls.filter(p => p.status === 'scheduled'), 
     [userPolls]
   );
 
+  // All published polls (regardless of expiration) for "All" filter
+  const allPublishedPolls = useMemo(() => 
+    userPolls.filter(p => p.status !== 'scheduled'), 
+    [userPolls]
+  );
+
   // Status counts
   const counts = useMemo(() => ({
     all: userPolls.length,
-    incomplete: activePolls.length, // Using "incomplete" slot for "published"
-    completed: 0,
-    draft: scheduledPolls.length,
+    incomplete: activePolls.length, // Will display as "Active"
+    completed: scheduledPolls.length, // Will display as "Scheduled"
   }), [userPolls.length, activePolls.length, scheduledPolls.length]);
 
   // Available filter options
@@ -157,17 +164,18 @@ export default function SentPage({
     let scheduled: Poll[];
 
     switch (statusFilter) {
-      case 'incomplete': // Published
+      case 'incomplete': // Active (deadline not expired)
         published = activePolls;
         scheduled = [];
         break;
-      case 'draft': // Scheduled
+      case 'completed': // Scheduled
         published = [];
         scheduled = scheduledPolls;
         break;
       case 'all':
       default:
-        published = activePolls;
+        // Show ALL polls: all published (including expired) and all scheduled
+        published = allPublishedPolls;
         scheduled = scheduledPolls;
         break;
     }
@@ -177,7 +185,7 @@ export default function SentPage({
       filteredPublished: applyFilters(published),
       filteredScheduled: applyFilters(scheduled),
     };
-  }, [statusFilter, activePolls, scheduledPolls, applyFilters]);
+  }, [statusFilter, activePolls, scheduledPolls, allPublishedPolls, applyFilters]);
 
   const hasNoSignals = filteredPublished.length === 0 && filteredScheduled.length === 0;
 
@@ -233,7 +241,7 @@ export default function SentPage({
         activeFilter={statusFilter}
         onFilterChange={setStatusFilter}
         counts={counts}
-        showDraft={true}
+        showDraft={false}
       />
 
       {/* Search, Filter, Sort Row */}

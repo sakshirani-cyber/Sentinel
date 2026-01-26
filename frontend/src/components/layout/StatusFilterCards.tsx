@@ -25,11 +25,11 @@ interface StatusFilterCardsProps {
 /**
  * StatusFilterCards Component
  * 
- * A row of 4 clickable cards for filtering signals by status.
+ * A row of clickable cards for filtering signals by status.
  * - All: Shows total count
- * - Incomplete: Shows incomplete/pending count
- * - Completed: Shows completed count
- * - Draft: Shows draft/scheduled count (publisher only)
+ * - Active: Shows active signals (deadline not expired)
+ * - Scheduled: Shows scheduled signals (not published but scheduled for future)
+ * - Draft: Shows draft/scheduled count (publisher only, optional)
  */
 export default function StatusFilterCards({
   activeFilter,
@@ -39,8 +39,8 @@ export default function StatusFilterCards({
 }: StatusFilterCardsProps) {
   const cards: StatusCardData[] = useMemo(() => [
     { id: 'all', label: 'All', count: counts.all, visible: true },
-    { id: 'incomplete', label: 'Incomplete', count: counts.incomplete, visible: true },
-    { id: 'completed', label: 'Completed', count: counts.completed, visible: true },
+    { id: 'incomplete', label: 'Active', count: counts.incomplete, visible: true },
+    { id: 'completed', label: 'Scheduled', count: counts.completed, visible: true },
     { id: 'draft', label: 'Draft', count: counts.draft || 0, visible: showDraft },
   ], [counts, showDraft]);
 
