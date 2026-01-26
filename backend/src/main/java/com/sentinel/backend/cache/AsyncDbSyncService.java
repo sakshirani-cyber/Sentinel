@@ -97,7 +97,8 @@ public class AsyncDbSyncService {
             log.debug("[DB_SYNC][SIGNAL_POLL][SIGNAL_SAVED] signalId={} | durationMs={}", 
                     signal.getId(), System.currentTimeMillis() - start);
 
-            poll.setSignal(null);
+            poll.setSignal(signal);
+            poll.setSignalId(signal.getId());
             pollRepository.save(poll);
             
             log.info("[DB_SYNC][SIGNAL_POLL][COMPLETE] signalId={} | totalDurationMs={}", 
