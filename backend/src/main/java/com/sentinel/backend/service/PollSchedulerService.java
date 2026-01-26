@@ -139,8 +139,7 @@ public class PollSchedulerService {
 
             pollCacheHelper.savePollToCache(signal, poll);
 
-            asyncDbSync.asyncSaveSignal(signal);
-            asyncDbSync.asyncSavePoll(poll);
+            asyncDbSync.asyncSaveSignalWithPoll(signal, poll);
 
             pollSsePublisher.publish(
                     signal.getSharedWith(),

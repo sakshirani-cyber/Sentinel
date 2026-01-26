@@ -106,8 +106,7 @@ public class SignalServiceImpl implements SignalService {
 
             pollCacheHelper.savePollToCache(signal, poll);
 
-            asyncDbSync.asyncSaveSignal(signal);
-            asyncDbSync.asyncSavePoll(poll);
+            asyncDbSync.asyncSaveSignalWithPoll(signal, poll);
 
             publishPollEvent(signal, poll, POLL_CREATED, false);
 

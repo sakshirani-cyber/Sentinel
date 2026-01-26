@@ -42,28 +42,6 @@ public class AsyncDbSyncService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @CircuitBreaker(name = "database")
     @Retry(name = "database")
-    public CompletableFuture<Void> asyncSaveSignal(Signal signal) {
-        if (!syncEnabled) {
-            log.debug("[DB_SYNC][SIGNAL][SKIP] Sync disabled");
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            long start = System.currentTimeMillis();
-            signalRepository.save(signal);
-            log.info("[DB_SYNC][SIGNAL][SAVE] signalId={} | durationMs={}", signal.getId(), System.currentTimeMillis() - start);
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            log.error("[DB_SYNC][SIGNAL][SAVE][ERROR] signalId={} | error={}", signal.getId(), e.getMessage(), e);
-            storeFailedOperation("signal:save:" + signal.getId(), signal);
-            throw e;
-        }
-    }
-
-    @Async("asyncExecutor")
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    @CircuitBreaker(name = "database")
-    @Retry(name = "database")
     public CompletableFuture<Void> asyncUpdateSignal(Signal signal) {
         if (!syncEnabled) {
             return CompletableFuture.completedFuture(null);
@@ -106,19 +84,28 @@ public class AsyncDbSyncService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @CircuitBreaker(name = "database")
     @Retry(name = "database")
-    public CompletableFuture<Void> asyncSavePoll(Poll poll) {
+    public CompletableFuture<Void> asyncSaveSignalWithPoll(Signal signal, Poll poll) {
         if (!syncEnabled) {
+            log.debug("[DB_SYNC][SIGNAL_POLL][SKIP] Sync disabled");
             return CompletableFuture.completedFuture(null);
         }
 
         try {
             long start = System.currentTimeMillis();
+
+            signalRepository.save(signal);
+            log.debug("[DB_SYNC][SIGNAL_POLL][SIGNAL_SAVED] signalId={} | durationMs={}", 
+                    signal.getId(), System.currentTimeMillis() - start);
+
+            poll.setSignal(null);
             pollRepository.save(poll);
-            log.info("[DB_SYNC][POLL][SAVE] signalId={} | durationMs={}", poll.getSignalId(), System.currentTimeMillis() - start);
+            
+            log.info("[DB_SYNC][SIGNAL_POLL][COMPLETE] signalId={} | totalDurationMs={}", 
+                    signal.getId(), System.currentTimeMillis() - start);
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
-            log.error("[DB_SYNC][POLL][SAVE][ERROR] signalId={} | error={}", poll.getSignalId(), e.getMessage(), e);
-            storeFailedOperation("poll:save:" + poll.getSignalId(), poll);
+            log.error("[DB_SYNC][SIGNAL_POLL][ERROR] signalId={} | error={}", signal.getId(), e.getMessage(), e);
+            storeFailedOperation("signal_poll:save:" + signal.getId(), signal);
             throw e;
         }
     }
@@ -205,27 +192,6 @@ public class AsyncDbSyncService {
         } catch (Exception e) {
             log.error("[DB_SYNC][RESULT][DELETE_ALL][ERROR] signalId={} | error={}", signalId, e.getMessage(), e);
             storeFailedOperation("result:delete_all:" + signalId, signalId);
-            throw e;
-        }
-    }
-
-    @Async("asyncExecutor")
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    @CircuitBreaker(name = "database")
-    @Retry(name = "database")
-    public CompletableFuture<Void> asyncBatchSavePollResults(List<PollResult> results) {
-        if (!syncEnabled || results.isEmpty()) {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            long start = System.currentTimeMillis();
-            pollResultRepository.saveAll(results);
-            log.info("[DB_SYNC][RESULT][BATCH_SAVE] count={} | durationMs={}", results.size(), System.currentTimeMillis() - start);
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            log.error("[DB_SYNC][RESULT][BATCH_SAVE][ERROR] count={} | error={}", results.size(), e.getMessage(), e);
-            storeFailedOperation("result:batch_save:" + System.currentTimeMillis(), results);
             throw e;
         }
     }
