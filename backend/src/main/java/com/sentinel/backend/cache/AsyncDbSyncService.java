@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static com.sentinel.backend.constant.CacheKeys.FAILED_OPS;
@@ -207,8 +206,4 @@ public class AsyncDbSyncService {
         }
     }
 
-    // TODO: Implement failed_ops:* key scanning for admin recovery endpoint
-    public List<String> getFailedOperationKeys() {
-        return List.of();
-    }
 }

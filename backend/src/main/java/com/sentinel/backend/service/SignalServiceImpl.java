@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.sentinel.backend.constant.CacheKeys.LOCK_POLL_DELETE_PREFIX;
@@ -79,16 +80,9 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     public CreatePollResponse createPoll(PollCreateDTO dto) {
-        dto.normalizeCommon();
-        dto.normalizePoll();
-        dto.validateCommon();
-        dto.validatePoll();
+        normalizeAndValidatePollDto(dto);
 
-        RLock lock = redissonClient.getLock(LOCK_SIGNAL_CREATE);
-
-        try {
-            lock.lock(5, TimeUnit.SECONDS);
-
+        return executeWithLock(LOCK_SIGNAL_CREATE, 5, () -> {
             Long signalId = cache.incr(SIGNAL_ID_COUNTER);
             if (signalId == null) {
                 signalId = signalRepository.getNextSignalId();
@@ -114,27 +108,15 @@ public class SignalServiceImpl implements SignalService {
                     signalId, dto.getLocalId(), signal.getSharedWith().length);
 
             return new CreatePollResponse(signalId, dto.getLocalId());
-
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        });
     }
 
     @Override
     @Transactional
     public CreatePollResponse createScheduledPoll(PollCreateDTO dto) {
-        dto.normalizeCommon();
-        dto.normalizePoll();
-        dto.validateCommon();
-        dto.validatePoll();
+        normalizeAndValidatePollDto(dto);
 
-        RLock lock = redissonClient.getLock(LOCK_SIGNAL_CREATE);
-
-        try {
-            lock.lock(5, TimeUnit.SECONDS);
-
+        return executeWithLock(LOCK_SIGNAL_CREATE, 5, () -> {
             Long reservedId = cache.incr(SIGNAL_ID_COUNTER);
             if (reservedId == null) {
                 reservedId = signalRepository.getNextSignalId();
@@ -155,12 +137,7 @@ public class SignalServiceImpl implements SignalService {
                     reservedId, dto.getScheduledTime());
 
             return new CreatePollResponse(reservedId, dto.getLocalId());
-
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        });
     }
 
     @Override
@@ -169,13 +146,9 @@ public class SignalServiceImpl implements SignalService {
 
         Long signalId = dto.getSignalId();
         String userEmail = dto.getUserEmail();
-
         String lockKey = LOCK_VOTE_PREFIX + signalId + ":" + userEmail;
-        RLock lock = redissonClient.getLock(lockKey);
 
-        try {
-            lock.lock(2, TimeUnit.SECONDS);
-
+        executeWithLock(lockKey, 2, () -> {
             Signal signal = getActivePollSignalFromCache(signalId, userEmail);
 
             PollResultId id = new PollResultId(signalId, userEmail);
@@ -194,12 +167,7 @@ public class SignalServiceImpl implements SignalService {
 
             log.info("[POLL][VOTE] signalId={} | user={} | option={}",
                     signalId, userEmail, dto.getSelectedOption());
-
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        });
     }
 
     @Override
@@ -231,18 +199,12 @@ public class SignalServiceImpl implements SignalService {
 
     @Override
     public void editSignal(PollEditDTO dto) {
-        dto.normalizeCommon();
-        dto.normalizePoll();
-        dto.validateCommon();
-        dto.validatePoll();
+        normalizeAndValidatePollDto(dto);
 
         Long signalId = dto.getSignalId();
         String lockKey = LOCK_POLL_EDIT_PREFIX + signalId;
-        RLock lock = redissonClient.getLock(lockKey);
 
-        try {
-            lock.lock(5, TimeUnit.SECONDS);
-
+        executeWithLock(lockKey, 5, () -> {
             Signal signal = getEditablePollSignalFromCache(signalId);
             Poll poll = getPollFromCache(signalId);
 
@@ -271,21 +233,13 @@ public class SignalServiceImpl implements SignalService {
             publishPollEvent(signal, poll, POLL_EDITED, dto.getRepublish());
 
             log.info("[POLL][EDIT] signalId={} | republish={}", signalId, dto.getRepublish());
-
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        });
     }
 
     @Override
     @Transactional
     public void editScheduledSignal(PollEditDTO dto) {
-        dto.normalizeCommon();
-        dto.normalizePoll();
-        dto.validateCommon();
-        dto.validatePoll();
+        normalizeAndValidatePollDto(dto);
 
         ScheduledPoll scheduledPoll = scheduledPollRepository
                 .findByReservedSignalId(dto.getSignalId())
@@ -319,15 +273,13 @@ public class SignalServiceImpl implements SignalService {
     @Override
     public void deleteSignal(Long signalId) {
         String lockKey = LOCK_POLL_DELETE_PREFIX + signalId;
-        RLock lock = redissonClient.getLock(lockKey);
+        String signalIdStr = signalId.toString();
 
-        try {
-            lock.lock(5, TimeUnit.SECONDS);
-
+        executeWithLock(lockKey, 5, () -> {
             Signal signal = getPollSignalFromCache(signalId);
 
-            cache.delete(cache.buildKey(POLL, signalId.toString()));
-            cache.delete(cache.buildKey(POLL_RESULTS, signalId.toString()));
+            cache.delete(cache.buildKey(POLL, signalIdStr));
+            cache.delete(cache.buildKey(POLL_RESULTS, signalIdStr));
             invalidatePollResultsCache(signalId);
 
             asyncDbSync.asyncDeletePollResults(signalId);
@@ -337,12 +289,7 @@ public class SignalServiceImpl implements SignalService {
             pollSsePublisher.publish(signal.getSharedWith(), POLL_DELETED, signalId);
 
             log.info("[POLL][DELETE] signalId={}", signalId);
-
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        });
     }
 
     @Override
@@ -721,5 +668,36 @@ public class SignalServiceImpl implements SignalService {
         if (result.getSelectedOption() != null) return result.getSelectedOption();
         if (result.getDefaultResponse() != null) return result.getDefaultResponse();
         return result.getReason();
+    }
+
+    private <T> T executeWithLock(String lockKey, int timeoutSeconds, Supplier<T> operation) {
+        RLock lock = redissonClient.getLock(lockKey);
+        try {
+            lock.lock(timeoutSeconds, TimeUnit.SECONDS);
+            return operation.get();
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    private void executeWithLock(String lockKey, int timeoutSeconds, Runnable operation) {
+        RLock lock = redissonClient.getLock(lockKey);
+        try {
+            lock.lock(timeoutSeconds, TimeUnit.SECONDS);
+            operation.run();
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    private void normalizeAndValidatePollDto(PollCreateDTO dto) {
+        dto.normalizeCommon();
+        dto.normalizePoll();
+        dto.validateCommon();
+        dto.validatePoll();
     }
 }

@@ -9,6 +9,8 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
+import static com.sentinel.backend.constant.Constants.ACTIVE;
+
 @Entity
 @Table(name = "signal")
 @Data
@@ -47,7 +49,7 @@ public class Signal {
     private String[] sharedWith;
 
     @Column(nullable = false)
-    private String status = "ACTIVE";
+    private String status = ACTIVE;
 
     @Column(name = "last_edited_by")
     private String lastEditedBy;
