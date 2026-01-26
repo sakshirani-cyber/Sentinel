@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, X, Tag, Check, ChevronDown } from 'lucide-react';
+import { X, Tag, Check, ChevronDown } from 'lucide-react';
 import { stripLabelMarkers, parseLabelName } from '../../utils/labelUtils';
 
 interface Label {
@@ -21,7 +21,7 @@ interface SearchableLabelDropdownProps {
  * SearchableLabelDropdown Component
  * 
  * A searchable dropdown for selecting multiple labels.
- * - Search input with clear button
+ * - Search input
  * - Dropdown list with filtered results
  * - Multi-select with visual indicators (checkmarks)
  * - Keyboard navigation (arrow keys, enter, escape)
@@ -282,7 +282,6 @@ export default function SearchableLabelDropdown({
           {/* Search Input */}
           <div className="p-3 border-b border-border bg-muted/30">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 ref={inputRef}
                 type="text"
@@ -291,7 +290,7 @@ export default function SearchableLabelDropdown({
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 className="
-                  w-full pl-9 pr-8 py-2
+                  w-full px-3 py-2
                   bg-background border border-border rounded-lg
                   text-sm text-foreground
                   placeholder:text-muted-foreground
@@ -299,16 +298,6 @@ export default function SearchableLabelDropdown({
                   transition-all duration-200
                 "
               />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
-                  aria-label="Clear search"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
             </div>
           </div>
 
