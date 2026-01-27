@@ -1,6 +1,7 @@
 package com.sentinel.backend.service;
 
 import com.sentinel.backend.cache.AsyncDbSyncService;
+import com.sentinel.backend.cache.BatchPollResultService;
 import com.sentinel.backend.cache.RedisCacheService;
 import com.sentinel.backend.dto.helper.UserVoteDTO;
 import com.sentinel.backend.dto.request.PollCreateDTO;
@@ -73,6 +74,7 @@ public class SignalServiceImpl implements SignalService {
 
     private final RedisCacheService cache;
     private final AsyncDbSyncService asyncDbSync;
+    private final BatchPollResultService batchPollResultService;
     private final PollSsePublisher pollSsePublisher;
     private final PollSchedulerService pollSchedulerService;
     private final RedissonClient redissonClient;
@@ -149,6 +151,35 @@ public class SignalServiceImpl implements SignalService {
         String lockKey = LOCK_VOTE_PREFIX + signalId + ":" + userEmail;
 
         executeWithLock(lockKey, 2, () -> {
+            long start = System.currentTimeMillis();
+            Signal signal = getActivePollSignalFromCache(signalId, userEmail);
+
+            PollResultId id = new PollResultId(signalId, userEmail);
+            PollResult result = new PollResult();
+            result.setId(id);
+            result.setSignal(signal);
+            result.setSelectedOption(dto.getSelectedOption());
+            result.setDefaultResponse(dto.getDefaultResponse());
+            result.setReason(dto.getReason());
+            result.setTimeOfSubmission(Instant.now());
+
+            saveVoteToCachePipelined(result);
+
+            batchPollResultService.queueForBatchInsert(result);
+
+            log.info("[POLL][VOTE][OPTIMIZED] signalId={} | user={} | option={} | durationMs={}",
+                    signalId, userEmail, dto.getSelectedOption(), System.currentTimeMillis() - start);
+        });
+    }
+
+    public void submitOrUpdateVoteLegacy(PollSubmitDTO dto) {
+        dto.normalize();
+
+        Long signalId = dto.getSignalId();
+        String userEmail = dto.getUserEmail();
+        String lockKey = LOCK_VOTE_PREFIX + signalId + ":" + userEmail;
+
+        executeWithLock(lockKey, 2, () -> {
             Signal signal = getActivePollSignalFromCache(signalId, userEmail);
 
             PollResultId id = new PollResultId(signalId, userEmail);
@@ -165,7 +196,7 @@ public class SignalServiceImpl implements SignalService {
 
             asyncDbSync.asyncSavePollResult(result);
 
-            log.info("[POLL][VOTE] signalId={} | user={} | option={}",
+            log.info("[POLL][VOTE][LEGACY] signalId={} | user={} | option={}",
                     signalId, userEmail, dto.getSelectedOption());
         });
     }
@@ -276,11 +307,15 @@ public class SignalServiceImpl implements SignalService {
         String signalIdStr = signalId.toString();
 
         executeWithLock(lockKey, 5, () -> {
+            long start = System.currentTimeMillis();
             Signal signal = getPollSignalFromCache(signalId);
 
-            cache.delete(cache.buildKey(POLL, signalIdStr));
-            cache.delete(cache.buildKey(POLL_RESULTS, signalIdStr));
-            invalidatePollResultsCache(signalId);
+            List<String> keysToDelete = List.of(
+                    cache.buildKey(POLL, signalIdStr),
+                    cache.buildKey(POLL_RESULTS, signalIdStr),
+                    cache.buildKey(POLL_RESULTS_CACHED, signalIdStr)
+            );
+            cache.pipelinedDelete(keysToDelete);
 
             asyncDbSync.asyncDeletePollResults(signalId);
             asyncDbSync.asyncDeletePoll(signalId);
@@ -288,7 +323,7 @@ public class SignalServiceImpl implements SignalService {
 
             pollSsePublisher.publish(signal.getSharedWith(), POLL_DELETED, signalId);
 
-            log.info("[POLL][DELETE] signalId={}", signalId);
+            log.info("[POLL][DELETE] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
         });
     }
 
@@ -328,6 +363,24 @@ public class SignalServiceImpl implements SignalService {
         log.debug("[POLL][CACHE_INVALIDATE] signalId={}", signalId);
     }
 
+    private void saveVoteToCachePipelined(PollResult result) {
+        long start = System.currentTimeMillis();
+        String signalIdStr = result.getId().getSignalId().toString();
+        String voteKey = cache.buildKey(POLL_RESULTS, signalIdStr);
+        String invalidateKey = cache.buildKey(POLL_RESULTS_CACHED, signalIdStr);
+
+        Map<String, Object> voteData = new HashMap<>();
+        voteData.put("selectedOption", result.getSelectedOption());
+        voteData.put("defaultResponse", result.getDefaultResponse());
+        voteData.put("reason", result.getReason());
+        voteData.put("timeOfSubmission", result.getTimeOfSubmission());
+
+        cache.pipelinedVoteSubmit(voteKey, result.getId().getUserEmail(), voteData, invalidateKey);
+        
+        log.debug("[VOTE][CACHE_WRITE][PIPELINED] signalId={} | user={} | durationMs={}",
+                result.getId().getSignalId(), result.getId().getUserEmail(), System.currentTimeMillis() - start);
+    }
+
     private void saveVoteToCache(PollResult result) {
         long start = System.currentTimeMillis();
         String voteKey = cache.buildKey(POLL_RESULTS, result.getId().getSignalId().toString());
@@ -339,7 +392,7 @@ public class SignalServiceImpl implements SignalService {
         voteData.put("timeOfSubmission", result.getTimeOfSubmission());
 
         cache.hSet(voteKey, result.getId().getUserEmail(), voteData);
-        log.debug("[VOTE][CACHE_WRITE] signalId={} | user={} | durationMs={}",
+        log.debug("[VOTE][CACHE_WRITE][SEQUENTIAL] signalId={} | user={} | durationMs={}",
                 result.getId().getSignalId(), result.getId().getUserEmail(), System.currentTimeMillis() - start);
     }
 

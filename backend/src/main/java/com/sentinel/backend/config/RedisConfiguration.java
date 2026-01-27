@@ -79,8 +79,8 @@ public class RedisConfiguration {
                 .setAddress(address)
                 .setPassword(masterPassword)
                 .setDatabase(0)
-                .setConnectionPoolSize(64)
-                .setConnectionMinimumIdleSize(10)
+                .setConnectionPoolSize(24)
+                .setConnectionMinimumIdleSize(4)
                 .setConnectTimeout(10000)
                 .setTimeout(3000)
                 .setRetryAttempts(3)
@@ -90,12 +90,12 @@ public class RedisConfiguration {
                 .setKeepAlive(true)
                 .setTcpNoDelay(true);
 
-        config.setThreads(16);
-        config.setNettyThreads(32);
+        config.setThreads(8);
+        config.setNettyThreads(16);
         config.setLockWatchdogTimeout(30000);
         config.setKeepPubSubOrder(true);
 
-        log.info("[REDIS][REDISSON] Configured | host={}:{}", masterHost, masterPort);
+        log.info("[REDIS][REDISSON] Configured | host={}:{} | poolSize=24 | minIdle=4", masterHost, masterPort);
         
         return Redisson.create(config);
     }
