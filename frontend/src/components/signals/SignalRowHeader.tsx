@@ -116,7 +116,7 @@ export default function SignalRowHeader({
       {/* Main Content */}
       <div className="flex-1 min-w-0">
         {/* Top Row: Type Badge + Title + Time */}
-        <div className="flex items-start gap-3 mb-2">
+        <div className="flex items-start gap-4 mb-1.5">
           {/* Signal Type Badge */}
           <span className="
             flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium
@@ -141,7 +141,7 @@ export default function SignalRowHeader({
 
           {/* Deadline + Time Remaining */}
           <div className="flex-shrink-0 text-right">
-            <div className="flex items-center justify-end gap-1.5 text-xs text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 mb-0.5">
+            <div className="flex items-center justify-end gap-1.5 text-xs text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 mb-1">
               <Clock className="w-3 h-3" />
               <span>{formatDeadline(poll.deadline)}</span>
             </div>
@@ -160,7 +160,7 @@ export default function SignalRowHeader({
         </div>
 
         {/* Second Row: Publisher Details */}
-        <div className="flex items-center gap-2 mb-2 text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
+        <div className="flex items-center gap-2 mb-1.5 text-sm text-ribbit-pine-teal/70 dark:text-ribbit-dust-grey/70">
           <User className="w-3.5 h-3.5" />
           <span className="font-medium">{poll.publisherName}</span>
           <span className="text-ribbit-pine-teal/40 dark:text-ribbit-dust-grey/40">•</span>
@@ -201,7 +201,7 @@ export default function SignalRowHeader({
           </div>
 
           {/* Right Side: Action Buttons */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* More Details Button - Always visible */}
             <button
               onClick={handleMoreDetailsClick}
