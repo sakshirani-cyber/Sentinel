@@ -118,10 +118,16 @@ public class RedisConfiguration {
                 .build();
 
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
-        factory.setValidateConnection(true);
-        factory.setShareNativeConnection(false);
+        
+        // OPTIMIZATION: Disable per-connection validation overhead
+        // Lettuce handles connection health internally
+        factory.setValidateConnection(false);
+        
+        // OPTIMIZATION: Enable connection sharing for higher throughput
+        // Multiple operations can share the same physical connection
+        factory.setShareNativeConnection(true);
 
-        log.info("[REDIS][CONFIG] Connection factory configured (SSL enabled) | host={}:{}", masterHost, masterPort);
+        log.info("[REDIS][CONFIG] Connection factory configured (SSL enabled, shared connections) | host={}:{}", masterHost, masterPort);
         return factory;
     }
 

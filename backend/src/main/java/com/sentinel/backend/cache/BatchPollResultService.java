@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +31,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -218,10 +220,14 @@ public class BatchPollResultService {
                 return;
             }
             
-            log.debug("[BATCH][FLUSH_START] batchSize={}", keysToProcess.size());
+            if (log.isDebugEnabled()) {
+                log.debug("[BATCH][FLUSH_START] batchSize={}", keysToProcess.size());
+            }
             
-            List<PollResult> batch = new ArrayList<>(keysToProcess.size());
-            List<String> processedKeys = new ArrayList<>();
+            // OPTIMIZATION: Collect all vote data first
+            List<Map<String, Object>> allVoteData = new ArrayList<>(keysToProcess.size());
+            List<String> processedKeys = new ArrayList<>(keysToProcess.size());
+            Set<Long> signalIds = new HashSet<>();
             
             for (String itemKey : keysToProcess) {
                 try {
@@ -230,16 +236,40 @@ public class BatchPollResultService {
                     Map<String, Object> voteData = (Map<String, Object>) redisTemplate.opsForValue().get(dataKey);
                     
                     if (voteData != null) {
-                        PollResult result = reconstructPollResult(voteData);
-                        if (result != null) {
-                            batch.add(result);
-                            processedKeys.add(itemKey);
-                        }
+                        allVoteData.add(voteData);
+                        processedKeys.add(itemKey);
+                        signalIds.add(((Number) voteData.get("signalId")).longValue());
                     } else {
                         processedKeys.add(itemKey);
                     }
                 } catch (Exception e) {
                     log.warn("[BATCH][LOAD_ERROR] itemKey={} | error={}", itemKey, e.getMessage());
+                }
+            }
+            
+            if (allVoteData.isEmpty()) {
+                for (String key : processedKeys) {
+                    redisTemplate.opsForSet().remove(PENDING_BATCH_KEY, key);
+                }
+                return;
+            }
+            
+            // OPTIMIZATION: Batch load all signals in ONE DB call instead of N calls
+            Map<Long, Signal> signalMap = signalRepository.findAllById(signalIds)
+                    .stream()
+                    .collect(Collectors.toMap(Signal::getId, s -> s));
+            
+            if (log.isDebugEnabled()) {
+                log.debug("[BATCH][SIGNALS_LOADED] signalCount={} | uniqueSignalIds={}", 
+                        signalMap.size(), signalIds.size());
+            }
+            
+            // Reconstruct PollResults using the pre-loaded signal map
+            List<PollResult> batch = new ArrayList<>(allVoteData.size());
+            for (Map<String, Object> voteData : allVoteData) {
+                PollResult result = reconstructPollResultOptimized(voteData, signalMap);
+                if (result != null) {
+                    batch.add(result);
                 }
             }
             
@@ -266,14 +296,18 @@ public class BatchPollResultService {
         }
     }
 
-    private PollResult reconstructPollResult(Map<String, Object> voteData) {
+    /**
+     * OPTIMIZATION: Reconstructs PollResult using pre-loaded signal map.
+     * Eliminates N+1 query problem - signals are batch-loaded once.
+     */
+    private PollResult reconstructPollResultOptimized(Map<String, Object> voteData, Map<Long, Signal> signalMap) {
         try {
             Long signalId = ((Number) voteData.get("signalId")).longValue();
             String userEmail = (String) voteData.get("userEmail");
             
-            Signal signal = signalRepository.findById(signalId).orElse(null);
+            Signal signal = signalMap.get(signalId);
             if (signal == null) {
-                log.warn("[BATCH][RECONSTRUCT] Signal not found: {}", signalId);
+                log.warn("[BATCH][RECONSTRUCT] Signal not in batch: {}", signalId);
                 return null;
             }
             
@@ -299,6 +333,8 @@ public class BatchPollResultService {
             return null;
         }
     }
+
+    // REMOVED: reconstructPollResult - replaced by reconstructPollResultOptimized (no N+1 query)
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @CircuitBreaker(name = "database", fallbackMethod = "batchInsertFallback")
