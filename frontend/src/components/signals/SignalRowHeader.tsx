@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ChevronDown, Clock, User } from 'lucide-react';
+import { ChevronDown, Clock, User, BarChart3, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Poll, Response } from '../../types';
 import SignalIndicators from './SignalIndicators';
 import LabelPill from '../LabelPill';
@@ -10,6 +10,14 @@ interface SignalRowHeaderProps {
   hasDraft?: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  // Action button props
+  onAnalytics?: (poll: Poll) => void;
+  onEdit?: (poll: Poll) => void;
+  onDeleteClick?: () => void;
+  isCreator?: boolean;
+  isCompleted?: boolean;
+  viewMode?: 'inbox' | 'sent';
+  loadingAnalytics?: boolean;
 }
 
 /**
@@ -30,6 +38,13 @@ export default function SignalRowHeader({
   hasDraft,
   isExpanded,
   onToggleExpand,
+  onAnalytics,
+  onEdit,
+  onDeleteClick,
+  isCreator = false,
+  isCompleted = false,
+  viewMode = 'inbox',
+  loadingAnalytics = false,
 }: SignalRowHeaderProps) {
   // Calculate time remaining
   const timeInfo = useMemo(() => {
@@ -67,8 +82,27 @@ export default function SignalRowHeader({
     });
   };
 
-  const isCompleted = poll.status === 'completed' || timeInfo.isExpired;
+  const isCompletedStatus = poll.status === 'completed' || timeInfo.isExpired;
   const hasResponded = !!userResponse;
+  
+  // Only show publisher actions in 'sent' view mode for creator
+  const showPublisherActions = isCreator && viewMode === 'sent' && !isCompleted;
+
+  const handleAnalyticsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAnalytics?.(poll);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(poll);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('[SignalRowHeader] Delete button clicked for poll:', poll.id);
+    onDeleteClick?.();
+  };
 
   return (
     <div 
@@ -103,7 +137,7 @@ export default function SignalRowHeader({
 
           {/* Deadline + Time Remaining */}
           <div className="flex-shrink-0 text-right">
-            <div className="flex items-center gap-1.5 text-xs text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 mb-0.5">
+            <div className="flex items-center justify-end gap-1.5 text-xs text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60 mb-0.5">
               <Clock className="w-3 h-3" />
               <span>{formatDeadline(poll.deadline)}</span>
             </div>
@@ -129,34 +163,107 @@ export default function SignalRowHeader({
           <span className="truncate">{poll.publisherEmail}</span>
         </div>
 
-        {/* Third Row: Indicators + Labels */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Status Indicators */}
-          <SignalIndicators
-            isPersistent={poll.isPersistentFinalAlert && !isCompleted}
-            isAnonymous={poll.anonymityMode === 'anonymous'}
-            isEdited={poll.isEdited}
-            isScheduled={poll.status === 'scheduled'}
-            isUrgent={timeInfo.isUrgent && !isCompleted && !hasResponded}
-            showLabels={true}
-            size="sm"
-          />
+        {/* Third Row: Indicators + Labels + Action Buttons */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Left Side: Indicators + Labels */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Indicators */}
+            <SignalIndicators
+              isPersistent={poll.isPersistentFinalAlert && !isCompletedStatus}
+              isAnonymous={poll.anonymityMode === 'anonymous'}
+              isEdited={poll.isEdited}
+              isScheduled={poll.status === 'scheduled'}
+              isUrgent={timeInfo.isUrgent && !isCompletedStatus && !hasResponded}
+              showLabels={true}
+              size="sm"
+            />
 
-          {/* Draft Indicator */}
-          {hasDraft && !isCompleted && !hasResponded && (
-            <span className="
-              inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-              bg-amber-100 dark:bg-amber-900/30 
-              text-amber-700 dark:text-amber-400 
-              border border-amber-200 dark:border-amber-800
-            ">
-              Draft saved
-            </span>
-          )}
+            {/* Draft Indicator */}
+            {hasDraft && !isCompletedStatus && !hasResponded && (
+              <span className="
+                inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                bg-amber-100 dark:bg-amber-900/30 
+                text-amber-700 dark:text-amber-400 
+                border border-amber-200 dark:border-amber-800
+              ">
+                Draft saved
+              </span>
+            )}
 
-          {/* Labels */}
-          {poll.labels && poll.labels.length > 0 && (
-            <LabelPill labels={poll.labels} size="sm" />
+            {/* Labels */}
+            {poll.labels && poll.labels.length > 0 && (
+              <LabelPill labels={poll.labels} size="sm" />
+            )}
+          </div>
+
+          {/* Right Side: Action Buttons */}
+          {(onAnalytics || (showPublisherActions && (onEdit || onDeleteClick))) && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Analytics Button - Always visible */}
+              {onAnalytics && (
+                <button
+                  onClick={handleAnalyticsClick}
+                  disabled={loadingAnalytics}
+                  className={`
+                    p-2 rounded-lg
+                    transition-all duration-200
+                    ${loadingAnalytics 
+                      ? 'text-primary cursor-wait' 
+                      : 'text-foreground-muted hover:text-foreground hover:bg-muted active:scale-95 dark:text-foreground-muted dark:hover:text-foreground dark:hover:bg-muted'
+                    }
+                  `}
+                  title={loadingAnalytics ? "Loading Analytics..." : "View Analytics"}
+                >
+                  {loadingAnalytics ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <BarChart3 className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+
+              {/* Edit Button - Only for creator, non-completed */}
+              {showPublisherActions && onEdit && (
+                <button
+                  onClick={handleEditClick}
+                  className="
+                    p-2 rounded-lg
+                    text-foreground-muted
+                    hover:text-foreground
+                    hover:bg-muted
+                    transition-all duration-200
+                    active:scale-95
+                    dark:text-foreground-muted
+                    dark:hover:text-foreground
+                    dark:hover:bg-muted
+                  "
+                  title="Edit Signal"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Delete Button - Only for creator, non-completed */}
+              {showPublisherActions && onDeleteClick && (
+                <button
+                  onClick={handleDeleteClick}
+                  className="
+                    p-2 rounded-lg
+                    text-foreground-muted
+                    hover:text-destructive
+                    hover:bg-destructive/10
+                    transition-all duration-200
+                    active:scale-95
+                    dark:text-foreground-muted
+                    dark:hover:text-destructive
+                    dark:hover:bg-destructive/10
+                  "
+                  title="Delete Signal"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Poll, Response } from '../../types';
-import SignalRowActions from './SignalRowActions';
 import SignalRowHeader from './SignalRowHeader';
 import SignalRowExpanded from './SignalRowExpanded';
 
@@ -206,25 +205,8 @@ export default function SignalRow({
           </div>
         )}
 
-        {/* Main Row: Actions + Header */}
+        {/* Main Row: Header with Action Buttons */}
         <div className="flex items-start gap-3">
-          {/* Left Side: Action Buttons */}
-          <SignalRowActions
-            poll={poll}
-            isCreator={isCreator}
-            isCompleted={isCompleted}
-            viewMode={viewMode}
-            onAnalytics={onAnalytics}
-            onEdit={onEdit}
-            onDeleteClick={onDelete ? handleDeleteClick : undefined}
-            loadingAnalytics={loadingAnalytics}
-          />
-
-          {/* Separator */}
-          {(onAnalytics || (isCreator && viewMode === 'sent' && !isCompleted)) && (
-            <div className="w-px h-16 bg-border flex-shrink-0" />
-          )}
-
           {/* Main Content: Header */}
           <div className="flex-1 min-w-0">
             <SignalRowHeader
@@ -233,6 +215,13 @@ export default function SignalRow({
               hasDraft={hasDraft}
               isExpanded={isExpanded}
               onToggleExpand={toggleExpand}
+              onAnalytics={onAnalytics}
+              onEdit={onEdit}
+              onDeleteClick={onDelete ? handleDeleteClick : undefined}
+              isCreator={isCreator}
+              isCompleted={isCompleted}
+              viewMode={viewMode}
+              loadingAnalytics={loadingAnalytics}
             />
           </div>
         </div>
