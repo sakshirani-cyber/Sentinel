@@ -65,6 +65,9 @@ public class ScheduledPoll {
     @Column(nullable = false)
     private String title;
 
+    @Column(nullable = false)
+    private Boolean showIndividualResponses = true;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();

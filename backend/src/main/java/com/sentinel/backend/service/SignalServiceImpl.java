@@ -77,20 +77,14 @@ public class SignalServiceImpl implements SignalService {
     private final RedissonClient redissonClient;
     private final PollCacheHelper pollCacheHelper;
 
-    // Flag for one-time signal counter initialization
     private final AtomicBoolean counterInitialized = new AtomicBoolean(false);
 
-    /**
-     * Cached poll data record to avoid duplicate Redis calls.
-     * Combines Signal and Poll data from a single cache read.
-     */
     private record CachedPollData(Signal signal, Poll poll) {}
 
     @Override
     public CreatePollResponse createPoll(PollCreateDTO dto) {
         normalizeAndValidatePollDto(dto);
 
-        // OPTIMIZATION: Removed global lock - INCR is atomic, no lock needed
         Long signalId = getNextSignalId();
 
         Signal signal = buildSignal(dto);
@@ -114,22 +108,16 @@ public class SignalServiceImpl implements SignalService {
         return new CreatePollResponse(signalId, dto.getLocalId());
     }
 
-    /**
-     * Gets next signal ID using atomic Redis INCR.
-     * Falls back to DB only on first call or Redis failure.
-     */
     private Long getNextSignalId() {
         Long signalId = cache.incr(SIGNAL_ID_COUNTER);
         if (signalId != null) {
             return signalId;
         }
 
-        // Fallback: Initialize from DB (thread-safe, one-time)
         return initializeSignalCounter();
     }
 
     private synchronized Long initializeSignalCounter() {
-        // Double-check after acquiring lock
         if (counterInitialized.get()) {
             Long signalId = cache.incr(SIGNAL_ID_COUNTER);
             if (signalId != null) {
@@ -149,7 +137,6 @@ public class SignalServiceImpl implements SignalService {
     public CreatePollResponse createScheduledPoll(PollCreateDTO dto) {
         normalizeAndValidatePollDto(dto);
 
-        // OPTIMIZATION: Removed global lock - INCR is atomic
         Long reservedId = getNextSignalId();
 
         ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
@@ -176,8 +163,6 @@ public class SignalServiceImpl implements SignalService {
         Long signalId = dto.getSignalId();
         String userEmail = dto.getUserEmail();
 
-        // OPTIMIZATION: Lock-free vote submission
-        // Redis HSET is atomic, and batch insert handles duplicates via upsert
         Signal signal = getActivePollSignalFromCache(signalId, userEmail);
 
         PollResultId id = new PollResultId(signalId, userEmail);
@@ -189,10 +174,7 @@ public class SignalServiceImpl implements SignalService {
         result.setReason(dto.getReason());
         result.setTimeOfSubmission(Instant.now());
 
-        // Atomic Redis write (no lock needed - HSET is atomic)
         saveVoteToCachePipelined(result);
-
-        // Async batch insert (idempotent upsert)
         batchPollResultService.queueForBatchInsert(result);
 
         if (log.isInfoEnabled()) {
@@ -248,7 +230,6 @@ public class SignalServiceImpl implements SignalService {
             log.debug("[POLL][RESULTS][CACHE_MISS] signalId={} | fetching from source", signalId);
         }
 
-        // OPTIMIZATION: Single Redis call for both Signal and Poll data
         CachedPollData pollData = getCombinedPollDataFromCache(signalId);
         List<PollResult> results = getVotesFromCache(signalId);
 
@@ -263,10 +244,6 @@ public class SignalServiceImpl implements SignalService {
         return dto;
     }
 
-    /**
-     * OPTIMIZATION: Fetches both Signal and Poll data in a single Redis call.
-     * Previously this was 2 separate hGetAll calls on the same key.
-     */
     private CachedPollData getCombinedPollDataFromCache(Long signalId) {
         long start = System.currentTimeMillis();
         String key = cache.buildKey(POLL, signalId.toString());
@@ -325,7 +302,6 @@ public class SignalServiceImpl implements SignalService {
         String lockKey = LOCK_POLL_EDIT_PREFIX + signalId;
 
         executeWithLock(lockKey, 5, () -> {
-            // OPTIMIZATION: Single cache call for both Signal and Poll
             CachedPollData pollData = getCombinedPollDataFromCache(signalId);
             Signal signal = pollData.signal();
             Poll poll = pollData.poll();
@@ -349,6 +325,7 @@ public class SignalServiceImpl implements SignalService {
             signal.setPersistentAlert(dto.getPersistentAlert());
             signal.setLabels(dto.getLabels());
             signal.setTitle(dto.getTitle());
+            signal.setShowIndividualResponses(dto.getShowIndividualResponses());
 
             pollCacheHelper.savePollToCache(signal, poll);
             invalidatePollResultsCache(signalId);
@@ -385,6 +362,7 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
         scheduledPoll.setLabels(dto.getLabels());
         scheduledPoll.setTitle(dto.getTitle());
+        scheduledPoll.setShowIndividualResponses(dto.getShowIndividualResponses());
 
         scheduledPollRepository.save(scheduledPoll);
 
@@ -463,7 +441,6 @@ public class SignalServiceImpl implements SignalService {
         String voteKey = cache.buildKey(POLL_RESULTS, signalIdStr);
         String invalidateKey = cache.buildKey(POLL_RESULTS_CACHED, signalIdStr);
 
-        // OPTIMIZATION: Pre-sized HashMap (4 entries)
         Map<String, Object> voteData = new HashMap<>(4);
         voteData.put("selectedOption", result.getSelectedOption());
         voteData.put("defaultResponse", result.getDefaultResponse());
@@ -509,16 +486,12 @@ public class SignalServiceImpl implements SignalService {
             throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
         }
 
-        // OPTIMIZATION: O(1) HashSet lookup instead of O(n) array contains
         String[] sharedWith = signal.getSharedWith();
         if (sharedWith == null || !Set.of(sharedWith).contains(userEmail)) {
             throw new CustomException("User not assigned", HttpStatus.BAD_REQUEST);
         }
         return signal;
     }
-
-    // REMOVED: getEditablePollSignalFromCache - replaced with inline logic in editSignal
-    // REMOVED: getPollFromCache - replaced by getCombinedPollDataFromCache
 
     private List<PollResult> getVotesFromCache(Long signalId) {
         long start = System.currentTimeMillis();
@@ -532,7 +505,6 @@ public class SignalServiceImpl implements SignalService {
             return getVotesFromDB(signalId);
         }
 
-        // OPTIMIZATION: Pre-size ArrayList
         List<PollResult> results = new ArrayList<>(votes.size());
         for (Map.Entry<String, Object> entry : votes.entrySet()) {
             @SuppressWarnings("unchecked")
@@ -602,12 +574,12 @@ public class SignalServiceImpl implements SignalService {
         signal.setPersistentAlert(parseBoolean(data.get("persistentAlert")));
         signal.setLabels(parseStringArray(data.get("labels")));
         signal.setTitle((String) data.get("title"));
+        signal.setShowIndividualResponses(parseBoolean(data.get("showIndividualResponses")));
         return signal;
     }
 
-    // OPTIMIZATION: Order checks by probability - Instant is most common from cache
     private Instant parseInstant(Object value) {
-        if (value instanceof Instant i) return i;  // Most common from cache - pattern matching
+        if (value instanceof Instant i) return i;
         if (value == null) return null;
         if (value instanceof Number n) return Instant.ofEpochMilli(n.longValue());
         if (value instanceof String s) return Instant.parse(s);
@@ -656,6 +628,7 @@ public class SignalServiceImpl implements SignalService {
         signal.setLabels(dto.getLabels());
         signal.setCreatedOn(Instant.now());
         signal.setTitle(dto.getTitle());
+        signal.setShowIndividualResponses(dto.getShowIndividualResponses());
         return signal;
     }
 
@@ -673,6 +646,7 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
         scheduledPoll.setLabels(dto.getLabels());
         scheduledPoll.setTitle(dto.getTitle());
+        scheduledPoll.setShowIndividualResponses(dto.getShowIndividualResponses());
         return scheduledPoll;
     }
 
@@ -709,12 +683,10 @@ public class SignalServiceImpl implements SignalService {
         int optionCount = options.length;
         int resultCount = results.size();
 
-        // OPTIMIZATION: Pre-sized collections to reduce reallocations
         Set<String> activeOptionsSet = new HashSet<>(optionCount);
         Map<String, Integer> optionCounts = new LinkedHashMap<>(optionCount);
         Map<String, List<UserVoteDTO>> optionVotes = new LinkedHashMap<>(optionCount);
 
-        // Initialize with capacity hints
         for (String opt : options) {
             activeOptionsSet.add(opt);
             optionCounts.put(opt, 0);
@@ -739,7 +711,6 @@ public class SignalServiceImpl implements SignalService {
                         result.getTimeOfSubmission()
                 );
 
-                // OPTIMIZATION: O(1) HashSet lookup instead of LinkedHashSet
                 if (activeOptionsSet.contains(selectedOption)) {
                     optionCounts.merge(selectedOption, 1, Integer::sum);
                     optionVotes.get(selectedOption).add(vote);
@@ -770,13 +741,12 @@ public class SignalServiceImpl implements SignalService {
         dto.setDefaultCount(defaultResponses.size());
         dto.setReasonCount(reasonResponses.size());
 
-        if (Boolean.TRUE.equals(signal.getAnonymous())) {
+        if (Boolean.TRUE.equals(signal.getAnonymous()) || Boolean.FALSE.equals(signal.getShowIndividualResponses())) {
             dto.setAnonymousReasons(anonymousReasonTexts.isEmpty() ? null : anonymousReasonTexts);
             dto.setRemovedOptionCount(removedOptionCounts.isEmpty() ? null : removedOptionCounts);
             return dto;
         }
 
-        // OPTIMIZATION: Avoid stream for simple map transformation
         Map<String, UserVoteDTO[]> optionVotesArray = new LinkedHashMap<>(optionVotes.size());
         for (Map.Entry<String, List<UserVoteDTO>> entry : optionVotes.entrySet()) {
             optionVotesArray.put(entry.getKey(), entry.getValue().toArray(new UserVoteDTO[0]));
@@ -796,9 +766,6 @@ public class SignalServiceImpl implements SignalService {
 
         return dto;
     }
-
-    // REMOVED: resolveResponseText - inlined in buildPollResults
-    // REMOVED: executeWithLock(Supplier) - no longer needed after lock-free refactoring
 
     private void executeWithLock(String lockKey, int timeoutSeconds, Runnable operation) {
         RLock lock = redissonClient.getLock(lockKey);

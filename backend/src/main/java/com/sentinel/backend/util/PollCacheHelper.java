@@ -49,6 +49,7 @@ public class PollCacheHelper {
         pollData.put("labels", signal.getLabels());
         pollData.put("lastEditedBy", signal.getLastEditedBy());
         pollData.put("title", signal.getTitle());
+        pollData.put("showIndividualResponses", signal.getShowIndividualResponses());
 
         List<UserPollEntry> userPollEntries = new ArrayList<>(signal.getSharedWith().length);
         double score = signal.getCreatedOn().toEpochMilli();
@@ -85,6 +86,7 @@ public class PollCacheHelper {
         pollData.put("labels", signal.getLabels());
         pollData.put("lastEditedBy", signal.getLastEditedBy());
         pollData.put("title", signal.getTitle());
+        pollData.put("showIndividualResponses", signal.getShowIndividualResponses());
 
         cache.hSetAll(pollKey, pollData, cache.getPollTtl());
 
@@ -113,6 +115,7 @@ public class PollCacheHelper {
         signal.setLabels(scheduledPoll.getLabels());
         signal.setCreatedOn(Instant.now());
         signal.setTitle(scheduledPoll.getTitle());
+        signal.setShowIndividualResponses(scheduledPoll.getShowIndividualResponses());
         return signal;
     }
 
@@ -140,6 +143,7 @@ public class PollCacheHelper {
                 .labels(signal.getLabels())
                 .republish(republish)
                 .title(signal.getTitle())
+                .showIndividualResponses(signal.getShowIndividualResponses())
                 .build();
     }
 }

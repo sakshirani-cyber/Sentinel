@@ -29,6 +29,7 @@ public class DataSyncDTO {
 
     private Instant endTimestamp;
     private Instant lastEdited;
+    private Boolean showIndividualResponses;
 
     private String selectedOption;
     private String defaultResponse;

@@ -38,6 +38,7 @@ public class DataSyncRepository {
                         rs.getTimestamp("last_edited") != null
                                 ? rs.getTimestamp("last_edited").toInstant()
                                 : null,
+                        rs.getBoolean("show_individual_responses"),
                         rs.getString("selected_option"),
                         rs.getString("default_response"),
                         rs.getString("reason"),
