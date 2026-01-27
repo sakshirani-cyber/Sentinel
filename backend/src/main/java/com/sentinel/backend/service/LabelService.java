@@ -10,6 +10,8 @@ import java.util.List;
 public interface LabelService {
 
     CreateLabelResponse createLabel(LabelCreateDTO labelCreateDTO);
+
     List<LabelResponseDTO> getAllLabels();
+
     void editLabel(LabelEditDTO dto);
 }
