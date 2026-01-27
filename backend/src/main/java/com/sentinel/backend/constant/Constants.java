@@ -24,4 +24,6 @@ public final class Constants {
     public static final String PING = "ping";
 
     public static final String DATA_SYNC = "DATA_SYNC";
+
+    public static final String PENDING_EVENTS = "PENDING_EVENTS";
 }

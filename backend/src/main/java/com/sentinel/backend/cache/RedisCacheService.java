@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,15 +110,6 @@ public class RedisCacheService {
         log.debug("[CACHE][DELETE] key={} | durationMs={}", key, System.currentTimeMillis() - start);
     }
 
-    @CircuitBreaker(name = "redis", fallbackMethod = "deleteMultipleFallback")
-    public void deleteMultiple(Collection<String> keys) {
-        if (keys != null && !keys.isEmpty()) {
-            long start = System.currentTimeMillis();
-            masterTemplate.delete(keys);
-            log.debug("[CACHE][DELETE_MULTI] count={} | durationMs={}", keys.size(), System.currentTimeMillis() - start);
-        }
-    }
-
     @CircuitBreaker(name = "redis", fallbackMethod = "leftPushFallback")
     public void leftPush(String key, Object value, Duration ttl) {
         long start = System.currentTimeMillis();
@@ -171,25 +161,6 @@ public class RedisCacheService {
         return result;
     }
 
-    @CircuitBreaker(name = "redis", fallbackMethod = "getListFallback")
-    public <T> List<T> getList(String key, Class<T> clazz) {
-        long start = System.currentTimeMillis();
-        List<Object> rawList = slaveTemplate.opsForList().range(key, 0, -1);
-        if (rawList == null || rawList.isEmpty()) {
-            log.debug("[CACHE][READ] operation=LRANGE | key={} | result=MISS | durationMs={}", key, System.currentTimeMillis() - start);
-            return new ArrayList<>();
-        }
-
-        List<T> result = new ArrayList<>();
-        for (Object item : rawList) {
-            if (item != null) {
-                result.add(objectMapper.convertValue(item, clazz));
-            }
-        }
-        log.debug("[CACHE][READ] operation=LRANGE | key={} | result=HIT | count={} | durationMs={}", key, result.size(), System.currentTimeMillis() - start);
-        return result;
-    }
-
     @CircuitBreaker(name = "redis", fallbackMethod = "getListTypeRefFallback")
     public <T> List<T> getList(String key, TypeReference<List<T>> typeRef) {
         long start = System.currentTimeMillis();
@@ -228,11 +199,6 @@ public class RedisCacheService {
         log.warn("[REDIS][WRITE_FALLBACK] operation=DELETE | key={} | error={}", key, e.getMessage());
     }
 
-    private void deleteMultipleFallback(Collection<String> keys, Exception e) {
-        log.warn("[REDIS][WRITE_FALLBACK] operation=DELETE_MULTI | count={} | error={}",
-                keys != null ? keys.size() : 0, e.getMessage());
-    }
-
     private void leftPushFallback(String key, Object value, Duration ttl, Exception e) {
         log.warn("[REDIS][WRITE_FALLBACK] operation=LPUSH | key={} | error={}", key, e.getMessage());
     }
@@ -250,11 +216,6 @@ public class RedisCacheService {
     private Map<String, Object> hGetAllFallback(String key, Exception e) {
         log.warn("[REDIS][READ_FALLBACK] operation=HGETALL | key={} | error={}", key, e.getMessage());
         return tryReadHashFromMaster(key);
-    }
-
-    private <T> List<T> getListFallback(String key, Class<T> clazz, Exception e) {
-        log.warn("[REDIS][READ_FALLBACK] operation=LRANGE | key={} | error={}", key, e.getMessage());
-        return tryReadListFromMaster(key, clazz);
     }
 
     private <T> List<T> getListTypeRefFallback(String key, TypeReference<List<T>> typeRef, Exception e) {
@@ -303,26 +264,6 @@ public class RedisCacheService {
         } catch (Exception ex) {
             log.error("[REDIS][MASTER_FALLBACK_FAILED] operation=HGETALL | key={} | error={}", key, ex.getMessage());
             return Map.of();
-        }
-    }
-
-    private <T> List<T> tryReadListFromMaster(String key, Class<T> clazz) {
-        try {
-            List<Object> rawList = masterTemplate.opsForList().range(key, 0, -1);
-            if (rawList == null || rawList.isEmpty()) {
-                return new ArrayList<>();
-            }
-
-            List<T> result = new ArrayList<>();
-            for (Object item : rawList) {
-                if (item != null) {
-                    result.add(objectMapper.convertValue(item, clazz));
-                }
-            }
-            return result;
-        } catch (Exception ex) {
-            log.error("[REDIS][MASTER_FALLBACK_FAILED] operation=LRANGE | key={} | error={}", key, ex.getMessage());
-            return new ArrayList<>();
         }
     }
 

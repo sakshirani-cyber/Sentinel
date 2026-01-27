@@ -16,6 +16,7 @@ import java.util.List;
 
 import static com.sentinel.backend.constant.CacheKeys.SSE_EVENTS;
 import static com.sentinel.backend.constant.Constants.CONNECTED;
+import static com.sentinel.backend.constant.Constants.PENDING_EVENTS;
 
 @RestController
 @RequiredArgsConstructor
@@ -80,24 +81,17 @@ public class SseController {
         }
 
         long deliverStart = System.currentTimeMillis();
-        int deliveredCount = 0;
 
-        for (SseEvent<Object> event : events) {
-            try {
-                emitter.send(SseEmitter.event().name(event.getEventType()).data(event));
-                deliveredCount++;
-            } catch (Exception ex) {
-                log.error("[SSE][DELIVER][ERROR] Failed at event {}/{} | userEmail={} | error={}",
-                        deliveredCount + 1, events.size(), userEmail, ex.getMessage());
-                log.warn("[SSE][DELIVER] Keeping {} undelivered events | userEmail={}", events.size() - deliveredCount, userEmail);
-                return;
-            }
-        }
+        try {
+            emitter.send(SseEmitter.event().name(PENDING_EVENTS).data(events));
 
-        if (deliveredCount == events.size()) {
             cache.delete(eventsKey);
-            log.info("[SSE][DELIVER] userEmail={} | delivered={} | deliveryDurationMs={} | totalDurationMs={}",
-                    userEmail, deliveredCount, System.currentTimeMillis() - deliverStart, System.currentTimeMillis() - start);
+            
+            log.info("[SSE][DELIVER][BATCH] userEmail={} | eventCount={} | deliveryDurationMs={} | totalDurationMs={}",
+                    userEmail, events.size(), System.currentTimeMillis() - deliverStart, System.currentTimeMillis() - start);
+        } catch (Exception ex) {
+            log.error("[SSE][DELIVER][BATCH][ERROR] userEmail={} | eventCount={} | error={}",
+                    userEmail, events.size(), ex.getMessage());
         }
     }
 }
