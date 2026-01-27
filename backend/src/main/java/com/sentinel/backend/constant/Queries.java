@@ -26,6 +26,7 @@ public final class Queries {
             s.persistent_alert,
             s.end_timestamp,
             s.last_edited,
+            s.show_individual_responses,
             r.selected_option,
             r.default_response,
             r.reason,

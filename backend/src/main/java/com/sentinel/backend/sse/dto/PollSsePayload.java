@@ -29,4 +29,6 @@ public class PollSsePayload {
     private String[] labels;
 
     private String title;
+
+    private Boolean showIndividualResponses;
 }

@@ -1,6 +1,7 @@
 package com.sentinel.backend.service;
 
 import com.sentinel.backend.cache.AsyncDbSyncService;
+import com.sentinel.backend.cache.BatchPollResultService;
 import com.sentinel.backend.cache.RedisCacheService;
 import com.sentinel.backend.dto.helper.UserVoteDTO;
 import com.sentinel.backend.dto.request.PollCreateDTO;
@@ -36,17 +37,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.sentinel.backend.constant.CacheKeys.LOCK_POLL_DELETE_PREFIX;
 import static com.sentinel.backend.constant.CacheKeys.LOCK_POLL_EDIT_PREFIX;
-import static com.sentinel.backend.constant.CacheKeys.LOCK_SIGNAL_CREATE;
 import static com.sentinel.backend.constant.CacheKeys.LOCK_VOTE_PREFIX;
 import static com.sentinel.backend.constant.CacheKeys.POLL;
 import static com.sentinel.backend.constant.CacheKeys.POLL_RESULTS;
@@ -73,42 +71,65 @@ public class SignalServiceImpl implements SignalService {
 
     private final RedisCacheService cache;
     private final AsyncDbSyncService asyncDbSync;
+    private final BatchPollResultService batchPollResultService;
     private final PollSsePublisher pollSsePublisher;
     private final PollSchedulerService pollSchedulerService;
     private final RedissonClient redissonClient;
     private final PollCacheHelper pollCacheHelper;
 
+    private final AtomicBoolean counterInitialized = new AtomicBoolean(false);
+
+    private record CachedPollData(Signal signal, Poll poll) {}
+
     @Override
     public CreatePollResponse createPoll(PollCreateDTO dto) {
         normalizeAndValidatePollDto(dto);
 
-        return executeWithLock(LOCK_SIGNAL_CREATE, 5, () -> {
+        Long signalId = getNextSignalId();
+
+        Signal signal = buildSignal(dto);
+        signal.setId(signalId);
+
+        Poll poll = new Poll();
+        poll.setSignalId(signalId);
+        poll.setSignal(signal);
+        poll.setQuestion(dto.getQuestion());
+        poll.setOptions(dto.getOptions());
+
+        pollCacheHelper.savePollToCache(signal, poll);
+
+        asyncDbSync.asyncSaveSignalWithPoll(signal, poll);
+
+        publishPollEvent(signal, poll, POLL_CREATED, false);
+
+        log.info("[POLL][CREATE] signalId={} | localId={} | recipientCount={}",
+                signalId, dto.getLocalId(), signal.getSharedWith().length);
+
+        return new CreatePollResponse(signalId, dto.getLocalId());
+    }
+
+    private Long getNextSignalId() {
+        Long signalId = cache.incr(SIGNAL_ID_COUNTER);
+        if (signalId != null) {
+            return signalId;
+        }
+
+        return initializeSignalCounter();
+    }
+
+    private synchronized Long initializeSignalCounter() {
+        if (counterInitialized.get()) {
             Long signalId = cache.incr(SIGNAL_ID_COUNTER);
-            if (signalId == null) {
-                signalId = signalRepository.getNextSignalId();
-                cache.set(SIGNAL_ID_COUNTER, signalId.toString(), null);
+            if (signalId != null) {
+                return signalId;
             }
+        }
 
-            Signal signal = buildSignal(dto);
-            signal.setId(signalId);
-
-            Poll poll = new Poll();
-            poll.setSignalId(signalId);
-            poll.setSignal(signal);
-            poll.setQuestion(dto.getQuestion());
-            poll.setOptions(dto.getOptions());
-
-            pollCacheHelper.savePollToCache(signal, poll);
-
-            asyncDbSync.asyncSaveSignalWithPoll(signal, poll);
-
-            publishPollEvent(signal, poll, POLL_CREATED, false);
-
-            log.info("[POLL][CREATE] signalId={} | localId={} | recipientCount={}",
-                    signalId, dto.getLocalId(), signal.getSharedWith().length);
-
-            return new CreatePollResponse(signalId, dto.getLocalId());
-        });
+        Long dbId = signalRepository.getNextSignalId();
+        cache.set(SIGNAL_ID_COUNTER, dbId.toString(), null);
+        counterInitialized.set(true);
+        log.info("[SIGNAL][COUNTER_INIT] Initialized signal counter from DB: {}", dbId);
+        return dbId;
     }
 
     @Override
@@ -116,32 +137,53 @@ public class SignalServiceImpl implements SignalService {
     public CreatePollResponse createScheduledPoll(PollCreateDTO dto) {
         normalizeAndValidatePollDto(dto);
 
-        return executeWithLock(LOCK_SIGNAL_CREATE, 5, () -> {
-            Long reservedId = cache.incr(SIGNAL_ID_COUNTER);
-            if (reservedId == null) {
-                reservedId = signalRepository.getNextSignalId();
-                cache.set(SIGNAL_ID_COUNTER, reservedId.toString(), null);
-            }
+        Long reservedId = getNextSignalId();
 
-            ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
-            scheduledPoll.setReservedSignalId(reservedId);
+        ScheduledPoll scheduledPoll = buildScheduledPoll(dto);
+        scheduledPoll.setReservedSignalId(reservedId);
 
-            scheduledPollRepository.save(scheduledPoll);
+        scheduledPollRepository.save(scheduledPoll);
 
-            String key = cache.buildKey(SCHEDULED_POLL, reservedId.toString());
-            cache.set(key, scheduledPoll, cache.getPollTtl());
+        String key = cache.buildKey(SCHEDULED_POLL, reservedId.toString());
+        cache.set(key, scheduledPoll, cache.getPollTtl());
 
-            pollSchedulerService.scheduleTask(scheduledPoll);
+        pollSchedulerService.scheduleTask(scheduledPoll);
 
-            log.info("[POLL][SCHEDULE] reservedId={} | scheduledTime={}",
-                    reservedId, dto.getScheduledTime());
+        log.info("[POLL][SCHEDULE] reservedId={} | scheduledTime={}",
+                reservedId, dto.getScheduledTime());
 
-            return new CreatePollResponse(reservedId, dto.getLocalId());
-        });
+        return new CreatePollResponse(reservedId, dto.getLocalId());
     }
 
     @Override
     public void submitOrUpdateVote(PollSubmitDTO dto) {
+        dto.normalize();
+        long start = System.currentTimeMillis();
+
+        Long signalId = dto.getSignalId();
+        String userEmail = dto.getUserEmail();
+
+        Signal signal = getActivePollSignalFromCache(signalId, userEmail);
+
+        PollResultId id = new PollResultId(signalId, userEmail);
+        PollResult result = new PollResult();
+        result.setId(id);
+        result.setSignal(signal);
+        result.setSelectedOption(dto.getSelectedOption());
+        result.setDefaultResponse(dto.getDefaultResponse());
+        result.setReason(dto.getReason());
+        result.setTimeOfSubmission(Instant.now());
+
+        saveVoteToCachePipelined(result);
+        batchPollResultService.queueForBatchInsert(result);
+
+        if (log.isInfoEnabled()) {
+            log.info("[POLL][VOTE][LOCK_FREE] signalId={} | user={} | option={} | durationMs={}",
+                    signalId, userEmail, dto.getSelectedOption(), System.currentTimeMillis() - start);
+        }
+    }
+
+    public void submitOrUpdateVoteLegacy(PollSubmitDTO dto) {
         dto.normalize();
 
         Long signalId = dto.getSignalId();
@@ -165,7 +207,7 @@ public class SignalServiceImpl implements SignalService {
 
             asyncDbSync.asyncSavePollResult(result);
 
-            log.info("[POLL][VOTE] signalId={} | user={} | option={}",
+            log.info("[POLL][VOTE][LEGACY] signalId={} | user={} | option={}",
                     signalId, userEmail, dto.getSelectedOption());
         });
     }
@@ -177,24 +219,79 @@ public class SignalServiceImpl implements SignalService {
         PollResultDTO cached = cache.get(cacheKey, PollResultDTO.class);
 
         if (cached != null) {
-            log.info("[POLL][RESULTS][CACHE_HIT] signalId={} | responded={}/{} | durationMs={}",
-                    signalId, cached.getTotalResponded(), cached.getTotalAssigned(), System.currentTimeMillis() - start);
+            if (log.isInfoEnabled()) {
+                log.info("[POLL][RESULTS][CACHE_HIT] signalId={} | responded={}/{} | durationMs={}",
+                        signalId, cached.getTotalResponded(), cached.getTotalAssigned(), System.currentTimeMillis() - start);
+            }
             return cached;
         }
 
-        log.debug("[POLL][RESULTS][CACHE_MISS] signalId={} | fetching from source", signalId);
+        if (log.isDebugEnabled()) {
+            log.debug("[POLL][RESULTS][CACHE_MISS] signalId={} | fetching from source", signalId);
+        }
 
-        Signal signal = getPollSignalFromCache(signalId);
-        Poll poll = getPollFromCache(signalId);
+        CachedPollData pollData = getCombinedPollDataFromCache(signalId);
         List<PollResult> results = getVotesFromCache(signalId);
 
-        PollResultDTO dto = buildPollResults(signal, poll, results);
+        PollResultDTO dto = buildPollResults(pollData.signal(), pollData.poll(), results);
         cache.set(cacheKey, dto, cache.getPollResultsTtl());
 
-        log.info("[POLL][RESULTS][BUILT] signalId={} | responded={}/{} | durationMs={}",
-                signalId, dto.getTotalResponded(), dto.getTotalAssigned(), System.currentTimeMillis() - start);
+        if (log.isInfoEnabled()) {
+            log.info("[POLL][RESULTS][BUILT] signalId={} | responded={}/{} | durationMs={}",
+                    signalId, dto.getTotalResponded(), dto.getTotalAssigned(), System.currentTimeMillis() - start);
+        }
 
         return dto;
+    }
+
+    private CachedPollData getCombinedPollDataFromCache(Long signalId) {
+        long start = System.currentTimeMillis();
+        String key = cache.buildKey(POLL, signalId.toString());
+        Map<String, Object> data = cache.hGetAll(key);
+
+        if (data.isEmpty()) {
+            if (log.isInfoEnabled()) {
+                log.info("[POLL][CACHE_MISS] signalId={} | durationMs={} | fallback=DB", signalId, System.currentTimeMillis() - start);
+            }
+            return loadAndCachePollFromDB(signalId);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("[POLL][CACHE_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
+        }
+
+        Signal signal = mapToSignal(data);
+        Poll poll = mapToPoll(data, signalId);
+        return new CachedPollData(signal, poll);
+    }
+
+    private CachedPollData loadAndCachePollFromDB(Long signalId) {
+        long start = System.currentTimeMillis();
+        Signal signal = signalRepository.findById(signalId)
+                .orElseThrow(() -> new CustomException("Signal not found", HttpStatus.NOT_FOUND));
+
+        if (!com.sentinel.backend.constant.Constants.POLL.equalsIgnoreCase(signal.getTypeOfSignal())) {
+            throw new CustomException("Not a poll", HttpStatus.BAD_REQUEST);
+        }
+
+        Poll poll = pollRepository.findById(signalId)
+                .orElseThrow(() -> new CustomException("Poll not found", HttpStatus.NOT_FOUND));
+
+        pollCacheHelper.savePollToCache(signal, poll);
+
+        if (log.isInfoEnabled()) {
+            log.info("[POLL][DB_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
+        }
+
+        return new CachedPollData(signal, poll);
+    }
+
+    private Poll mapToPoll(Map<String, Object> data, Long signalId) {
+        Poll poll = new Poll();
+        poll.setSignalId(signalId);
+        poll.setQuestion((String) data.get("question"));
+        poll.setOptions(parseStringArray(data.get("options")));
+        return poll;
     }
 
     @Override
@@ -205,8 +302,13 @@ public class SignalServiceImpl implements SignalService {
         String lockKey = LOCK_POLL_EDIT_PREFIX + signalId;
 
         executeWithLock(lockKey, 5, () -> {
-            Signal signal = getEditablePollSignalFromCache(signalId);
-            Poll poll = getPollFromCache(signalId);
+            CachedPollData pollData = getCombinedPollDataFromCache(signalId);
+            Signal signal = pollData.signal();
+            Poll poll = pollData.poll();
+
+            if (!ACTIVE.equals(signal.getStatus())) {
+                throw new CustomException("Poll completed", HttpStatus.BAD_REQUEST);
+            }
 
             handleRepublishOrUnshare(dto, signal);
 
@@ -223,6 +325,7 @@ public class SignalServiceImpl implements SignalService {
             signal.setPersistentAlert(dto.getPersistentAlert());
             signal.setLabels(dto.getLabels());
             signal.setTitle(dto.getTitle());
+            signal.setShowIndividualResponses(dto.getShowIndividualResponses());
 
             pollCacheHelper.savePollToCache(signal, poll);
             invalidatePollResultsCache(signalId);
@@ -259,6 +362,7 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
         scheduledPoll.setLabels(dto.getLabels());
         scheduledPoll.setTitle(dto.getTitle());
+        scheduledPoll.setShowIndividualResponses(dto.getShowIndividualResponses());
 
         scheduledPollRepository.save(scheduledPoll);
 
@@ -276,11 +380,15 @@ public class SignalServiceImpl implements SignalService {
         String signalIdStr = signalId.toString();
 
         executeWithLock(lockKey, 5, () -> {
+            long start = System.currentTimeMillis();
             Signal signal = getPollSignalFromCache(signalId);
 
-            cache.delete(cache.buildKey(POLL, signalIdStr));
-            cache.delete(cache.buildKey(POLL_RESULTS, signalIdStr));
-            invalidatePollResultsCache(signalId);
+            List<String> keysToDelete = List.of(
+                    cache.buildKey(POLL, signalIdStr),
+                    cache.buildKey(POLL_RESULTS, signalIdStr),
+                    cache.buildKey(POLL_RESULTS_CACHED, signalIdStr)
+            );
+            cache.pipelinedDelete(keysToDelete);
 
             asyncDbSync.asyncDeletePollResults(signalId);
             asyncDbSync.asyncDeletePoll(signalId);
@@ -288,7 +396,7 @@ public class SignalServiceImpl implements SignalService {
 
             pollSsePublisher.publish(signal.getSharedWith(), POLL_DELETED, signalId);
 
-            log.info("[POLL][DELETE] signalId={}", signalId);
+            log.info("[POLL][DELETE] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
         });
     }
 
@@ -328,6 +436,20 @@ public class SignalServiceImpl implements SignalService {
         log.debug("[POLL][CACHE_INVALIDATE] signalId={}", signalId);
     }
 
+    private void saveVoteToCachePipelined(PollResult result) {
+        String signalIdStr = result.getId().getSignalId().toString();
+        String voteKey = cache.buildKey(POLL_RESULTS, signalIdStr);
+        String invalidateKey = cache.buildKey(POLL_RESULTS_CACHED, signalIdStr);
+
+        Map<String, Object> voteData = new HashMap<>(4);
+        voteData.put("selectedOption", result.getSelectedOption());
+        voteData.put("defaultResponse", result.getDefaultResponse());
+        voteData.put("reason", result.getReason());
+        voteData.put("timeOfSubmission", result.getTimeOfSubmission());
+
+        cache.pipelinedVoteSubmit(voteKey, result.getId().getUserEmail(), voteData, invalidateKey);
+    }
+
     private void saveVoteToCache(PollResult result) {
         long start = System.currentTimeMillis();
         String voteKey = cache.buildKey(POLL_RESULTS, result.getId().getSignalId().toString());
@@ -339,7 +461,7 @@ public class SignalServiceImpl implements SignalService {
         voteData.put("timeOfSubmission", result.getTimeOfSubmission());
 
         cache.hSet(voteKey, result.getId().getUserEmail(), voteData);
-        log.debug("[VOTE][CACHE_WRITE] signalId={} | user={} | durationMs={}",
+        log.debug("[VOTE][CACHE_WRITE][SEQUENTIAL] signalId={} | user={} | durationMs={}",
                 result.getId().getSignalId(), result.getId().getUserEmail(), System.currentTimeMillis() - start);
     }
 
@@ -363,37 +485,12 @@ public class SignalServiceImpl implements SignalService {
         if (!ACTIVE.equals(signal.getStatus())) {
             throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
         }
-        if (!Arrays.asList(signal.getSharedWith()).contains(userEmail)) {
+
+        String[] sharedWith = signal.getSharedWith();
+        if (sharedWith == null || !Set.of(sharedWith).contains(userEmail)) {
             throw new CustomException("User not assigned", HttpStatus.BAD_REQUEST);
         }
         return signal;
-    }
-
-    private Signal getEditablePollSignalFromCache(Long signalId) {
-        Signal signal = getPollSignalFromCache(signalId);
-
-        if (!ACTIVE.equals(signal.getStatus())) {
-            throw new CustomException("Poll completed", HttpStatus.BAD_REQUEST);
-        }
-        return signal;
-    }
-
-    private Poll getPollFromCache(Long signalId) {
-        long start = System.currentTimeMillis();
-        String key = cache.buildKey(POLL, signalId.toString());
-        Map<String, Object> data = cache.hGetAll(key);
-
-        if (data.isEmpty()) {
-            log.info("[POLL][CACHE_MISS] signalId={} | durationMs={} | fallback=DB", signalId, System.currentTimeMillis() - start);
-            return getPollFromDB(signalId);
-        }
-
-        Poll poll = new Poll();
-        poll.setSignalId(signalId);
-        poll.setQuestion((String) data.get("question"));
-        poll.setOptions(parseStringArray(data.get("options")));
-        log.info("[POLL][CACHE_HIT] signalId={} | durationMs={}", signalId, System.currentTimeMillis() - start);
-        return poll;
     }
 
     private List<PollResult> getVotesFromCache(Long signalId) {
@@ -402,11 +499,13 @@ public class SignalServiceImpl implements SignalService {
         Map<String, Object> votes = cache.hGetAll(key);
 
         if (votes.isEmpty()) {
-            log.info("[VOTES][CACHE_MISS] signalId={} | durationMs={} | fallback=DB", signalId, System.currentTimeMillis() - start);
+            if (log.isInfoEnabled()) {
+                log.info("[VOTES][CACHE_MISS] signalId={} | durationMs={} | fallback=DB", signalId, System.currentTimeMillis() - start);
+            }
             return getVotesFromDB(signalId);
         }
 
-        List<PollResult> results = new ArrayList<>();
+        List<PollResult> results = new ArrayList<>(votes.size());
         for (Map.Entry<String, Object> entry : votes.entrySet()) {
             @SuppressWarnings("unchecked")
             Map<String, Object> voteData = (Map<String, Object>) entry.getValue();
@@ -420,7 +519,9 @@ public class SignalServiceImpl implements SignalService {
             results.add(result);
         }
 
-        log.info("[VOTES][CACHE_HIT] signalId={} | voteCount={} | durationMs={}", signalId, results.size(), System.currentTimeMillis() - start);
+        if (log.isDebugEnabled()) {
+            log.debug("[VOTES][CACHE_HIT] signalId={} | voteCount={} | durationMs={}", signalId, results.size(), System.currentTimeMillis() - start);
+        }
         return results;
     }
 
@@ -473,22 +574,15 @@ public class SignalServiceImpl implements SignalService {
         signal.setPersistentAlert(parseBoolean(data.get("persistentAlert")));
         signal.setLabels(parseStringArray(data.get("labels")));
         signal.setTitle((String) data.get("title"));
+        signal.setShowIndividualResponses(parseBoolean(data.get("showIndividualResponses")));
         return signal;
     }
 
     private Instant parseInstant(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Instant) {
-            return (Instant) value;
-        }
-        if (value instanceof String) {
-            return Instant.parse((String) value);
-        }
-        if (value instanceof Number) {
-            return Instant.ofEpochMilli(((Number) value).longValue());
-        }
+        if (value instanceof Instant i) return i;
+        if (value == null) return null;
+        if (value instanceof Number n) return Instant.ofEpochMilli(n.longValue());
+        if (value instanceof String s) return Instant.parse(s);
         throw new IllegalArgumentException("Cannot parse Instant from: " + value.getClass());
     }
 
@@ -534,6 +628,7 @@ public class SignalServiceImpl implements SignalService {
         signal.setLabels(dto.getLabels());
         signal.setCreatedOn(Instant.now());
         signal.setTitle(dto.getTitle());
+        signal.setShowIndividualResponses(dto.getShowIndividualResponses());
         return signal;
     }
 
@@ -551,6 +646,7 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setPersistentAlert(dto.getPersistentAlert());
         scheduledPoll.setLabels(dto.getLabels());
         scheduledPoll.setTitle(dto.getTitle());
+        scheduledPoll.setShowIndividualResponses(dto.getShowIndividualResponses());
         return scheduledPoll;
     }
 
@@ -583,42 +679,56 @@ public class SignalServiceImpl implements SignalService {
     }
 
     private PollResultDTO buildPollResults(Signal signal, Poll poll, List<PollResult> results) {
-        Set<String> activeOptions = new LinkedHashSet<>(Arrays.asList(poll.getOptions()));
+        String[] options = poll.getOptions();
+        int optionCount = options.length;
+        int resultCount = results.size();
 
-        Map<String, Integer> optionCounts = new LinkedHashMap<>();
-        Map<String, List<UserVoteDTO>> optionVotes = new LinkedHashMap<>();
-        Map<String, List<UserVoteDTO>> removedOptions = new LinkedHashMap<>();
-        Map<String, Integer> removedOptionCounts = new LinkedHashMap<>();
-        List<UserVoteDTO> defaultResponses = new ArrayList<>();
-        Map<String, String> reasonResponses = new LinkedHashMap<>();
-        List<String> anonymousReasonTexts = new ArrayList<>();
+        Set<String> activeOptionsSet = new HashSet<>(optionCount);
+        Map<String, Integer> optionCounts = new LinkedHashMap<>(optionCount);
+        Map<String, List<UserVoteDTO>> optionVotes = new LinkedHashMap<>(optionCount);
 
-        activeOptions.forEach(opt -> {
+        for (String opt : options) {
+            activeOptionsSet.add(opt);
             optionCounts.put(opt, 0);
-            optionVotes.put(opt, new ArrayList<>());
-        });
+            optionVotes.put(opt, new ArrayList<>(resultCount / optionCount + 1));
+        }
+
+        Map<String, List<UserVoteDTO>> removedOptions = new LinkedHashMap<>(4);
+        Map<String, Integer> removedOptionCounts = new LinkedHashMap<>(4);
+        List<UserVoteDTO> defaultResponses = new ArrayList<>(resultCount / 10 + 1);
+        Map<String, String> reasonResponses = new LinkedHashMap<>(resultCount / 10 + 1);
+        List<String> anonymousReasonTexts = new ArrayList<>(resultCount / 10 + 1);
+
+        int totalVotes = 0;
 
         for (PollResult result : results) {
-            UserVoteDTO vote = new UserVoteDTO(
-                    result.getId().getUserEmail(),
-                    resolveResponseText(result),
-                    result.getTimeOfSubmission()
-            );
+            String selectedOption = result.getSelectedOption();
 
-            if (result.getSelectedOption() != null) {
-                if (!activeOptions.contains(result.getSelectedOption())) {
-                    removedOptions
-                            .computeIfAbsent(result.getSelectedOption(), k -> new ArrayList<>())
-                            .add(vote);
-                    removedOptionCounts.compute(result.getSelectedOption(), (k, v) -> v == null ? 1 : v + 1);
+            if (selectedOption != null) {
+                UserVoteDTO vote = new UserVoteDTO(
+                        result.getId().getUserEmail(),
+                        selectedOption,
+                        result.getTimeOfSubmission()
+                );
+
+                if (activeOptionsSet.contains(selectedOption)) {
+                    optionCounts.merge(selectedOption, 1, Integer::sum);
+                    optionVotes.get(selectedOption).add(vote);
+                    totalVotes++;
                 } else {
-                    optionCounts.compute(result.getSelectedOption(), (k, v) -> v + 1);
-                    optionVotes.get(result.getSelectedOption()).add(vote);
+                    removedOptions.computeIfAbsent(selectedOption, k -> new ArrayList<>()).add(vote);
+                    removedOptionCounts.merge(selectedOption, 1, Integer::sum);
+                    totalVotes++;
                 }
             } else if (hasText(result.getReason())) {
                 reasonResponses.put(result.getId().getUserEmail(), result.getReason());
                 anonymousReasonTexts.add(result.getReason());
             } else {
+                UserVoteDTO vote = new UserVoteDTO(
+                        result.getId().getUserEmail(),
+                        result.getDefaultResponse(),
+                        result.getTimeOfSubmission()
+                );
                 defaultResponses.add(vote);
             }
         }
@@ -626,60 +736,35 @@ public class SignalServiceImpl implements SignalService {
         PollResultDTO dto = new PollResultDTO();
         dto.setSignalId(signal.getId());
         dto.setTotalAssigned(signal.getSharedWith().length);
-        dto.setTotalResponded(
-                optionVotes.values().stream().mapToInt(List::size).sum()
-                        + defaultResponses.size()
-                        + reasonResponses.size()
-        );
+        dto.setTotalResponded(totalVotes + defaultResponses.size() + reasonResponses.size());
         dto.setOptionCounts(optionCounts);
         dto.setDefaultCount(defaultResponses.size());
         dto.setReasonCount(reasonResponses.size());
 
-        if (Boolean.TRUE.equals(signal.getAnonymous())) {
+        if (Boolean.TRUE.equals(signal.getAnonymous()) || Boolean.FALSE.equals(signal.getShowIndividualResponses())) {
             dto.setAnonymousReasons(anonymousReasonTexts.isEmpty() ? null : anonymousReasonTexts);
             dto.setRemovedOptionCount(removedOptionCounts.isEmpty() ? null : removedOptionCounts);
             return dto;
         }
 
-        dto.setOptionVotes(optionVotes.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        e -> e.getValue().toArray(new UserVoteDTO[0])
-                )));
+        Map<String, UserVoteDTO[]> optionVotesArray = new LinkedHashMap<>(optionVotes.size());
+        for (Map.Entry<String, List<UserVoteDTO>> entry : optionVotes.entrySet()) {
+            optionVotesArray.put(entry.getKey(), entry.getValue().toArray(new UserVoteDTO[0]));
+        }
+        dto.setOptionVotes(optionVotesArray);
 
-        dto.setRemovedOptions(
-                removedOptions.isEmpty() ? null :
-                        removedOptions.entrySet().stream()
-                                .collect(Collectors.toMap(
-                                        Map.Entry::getKey,
-                                        e -> e.getValue().toArray(new UserVoteDTO[0])
-                                ))
-        );
+        if (!removedOptions.isEmpty()) {
+            Map<String, UserVoteDTO[]> removedOptionsArray = new LinkedHashMap<>(removedOptions.size());
+            for (Map.Entry<String, List<UserVoteDTO>> entry : removedOptions.entrySet()) {
+                removedOptionsArray.put(entry.getKey(), entry.getValue().toArray(new UserVoteDTO[0]));
+            }
+            dto.setRemovedOptions(removedOptionsArray);
+        }
 
-        dto.setDefaultResponses(defaultResponses.isEmpty() ? null :
-                defaultResponses.toArray(new UserVoteDTO[0]));
-
+        dto.setDefaultResponses(defaultResponses.isEmpty() ? null : defaultResponses.toArray(new UserVoteDTO[0]));
         dto.setReasonResponses(reasonResponses.isEmpty() ? null : reasonResponses);
 
         return dto;
-    }
-
-    private String resolveResponseText(PollResult result) {
-        if (result.getSelectedOption() != null) return result.getSelectedOption();
-        if (result.getDefaultResponse() != null) return result.getDefaultResponse();
-        return result.getReason();
-    }
-
-    private <T> T executeWithLock(String lockKey, int timeoutSeconds, Supplier<T> operation) {
-        RLock lock = redissonClient.getLock(lockKey);
-        try {
-            lock.lock(timeoutSeconds, TimeUnit.SECONDS);
-            return operation.get();
-        } finally {
-            if (lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
     }
 
     private void executeWithLock(String lockKey, int timeoutSeconds, Runnable operation) {

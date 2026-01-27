@@ -55,6 +55,9 @@ public abstract class SignalDTO {
 
     private String[] labels;
 
+    @NotNull(message = "Show Individual Responses flag is required")
+    private Boolean showIndividualResponses;
+
     private Instant scheduledTime;
 
     private Instant parsedEndUtc;

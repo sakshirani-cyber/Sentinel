@@ -62,4 +62,7 @@ public class Signal {
 
     @Column(name = "title", nullable = false)
     private String title;
+
+    @Column(name = "show_individual_responses", nullable = false)
+    private Boolean showIndividualResponses = true;
 }
