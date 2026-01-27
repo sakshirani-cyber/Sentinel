@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ChevronDown, Clock, User, BarChart3, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Info, Clock, User, BarChart3, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Poll, Response } from '../../types';
 import SignalIndicators from './SignalIndicators';
 import LabelPill from '../LabelPill';
@@ -30,7 +30,7 @@ interface SignalRowHeaderProps {
  * - Publisher Details (name, email)
  * - Status indicators (persistent, anonymous, edited)
  * - Labels
- * - Expand button
+ * - Action buttons (More Details, Analytics, Edit, Delete)
  */
 export default function SignalRowHeader({
   poll,
@@ -104,10 +104,14 @@ export default function SignalRowHeader({
     onDeleteClick?.();
   };
 
+  const handleMoreDetailsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleExpand();
+  };
+
   return (
     <div 
-      className="flex items-start gap-3 cursor-pointer select-none"
-      onClick={onToggleExpand}
+      className="flex items-start gap-3"
     >
       {/* Main Content */}
       <div className="flex-1 min-w-0">
@@ -197,95 +201,93 @@ export default function SignalRowHeader({
           </div>
 
           {/* Right Side: Action Buttons */}
-          {(onAnalytics || (showPublisherActions && (onEdit || onDeleteClick))) && (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {/* Analytics Button - Always visible */}
-              {onAnalytics && (
-                <button
-                  onClick={handleAnalyticsClick}
-                  disabled={loadingAnalytics}
-                  className={`
-                    p-2 rounded-lg
-                    transition-all duration-200
-                    ${loadingAnalytics 
-                      ? 'text-primary cursor-wait' 
-                      : 'text-foreground-muted hover:text-foreground hover:bg-muted active:scale-95 dark:text-foreground-muted dark:hover:text-foreground dark:hover:bg-muted'
-                    }
-                  `}
-                  title={loadingAnalytics ? "Loading Analytics..." : "View Analytics"}
-                >
-                  {loadingAnalytics ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <BarChart3 className="w-4 h-4" />
-                  )}
-                </button>
-              )}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* More Details Button - Always visible */}
+            <button
+              onClick={handleMoreDetailsClick}
+              className="
+                p-2 rounded-lg
+                text-foreground-muted
+                hover:text-foreground
+                hover:bg-muted
+                transition-all duration-200
+                active:scale-95
+                dark:text-foreground-muted
+                dark:hover:text-foreground
+                dark:hover:bg-muted
+              "
+              title={isExpanded ? "Hide Details" : "More Details"}
+            >
+              <Info className="w-4 h-4" />
+            </button>
 
-              {/* Edit Button - Only for creator, non-completed */}
-              {showPublisherActions && onEdit && (
-                <button
-                  onClick={handleEditClick}
-                  className="
-                    p-2 rounded-lg
-                    text-foreground-muted
-                    hover:text-foreground
-                    hover:bg-muted
-                    transition-all duration-200
-                    active:scale-95
-                    dark:text-foreground-muted
-                    dark:hover:text-foreground
-                    dark:hover:bg-muted
-                  "
-                  title="Edit Signal"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              )}
+            {/* Analytics Button - Always visible */}
+            {onAnalytics && (
+              <button
+                onClick={handleAnalyticsClick}
+                disabled={loadingAnalytics}
+                className={`
+                  p-2 rounded-lg
+                  transition-all duration-200
+                  ${loadingAnalytics 
+                    ? 'text-primary cursor-wait' 
+                    : 'text-foreground-muted hover:text-foreground hover:bg-muted active:scale-95 dark:text-foreground-muted dark:hover:text-foreground dark:hover:bg-muted'
+                  }
+                `}
+                title={loadingAnalytics ? "Loading Analytics..." : "View Analytics"}
+              >
+                {loadingAnalytics ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <BarChart3 className="w-4 h-4" />
+                )}
+              </button>
+            )}
 
-              {/* Delete Button - Only for creator, non-completed */}
-              {showPublisherActions && onDeleteClick && (
-                <button
-                  onClick={handleDeleteClick}
-                  className="
-                    p-2 rounded-lg
-                    text-foreground-muted
-                    hover:text-destructive
-                    hover:bg-destructive/10
-                    transition-all duration-200
-                    active:scale-95
-                    dark:text-foreground-muted
-                    dark:hover:text-destructive
-                    dark:hover:bg-destructive/10
-                  "
-                  title="Delete Signal"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
+            {/* Edit Button - Only for creator, non-completed */}
+            {showPublisherActions && onEdit && (
+              <button
+                onClick={handleEditClick}
+                className="
+                  p-2 rounded-lg
+                  text-foreground-muted
+                  hover:text-foreground
+                  hover:bg-muted
+                  transition-all duration-200
+                  active:scale-95
+                  dark:text-foreground-muted
+                  dark:hover:text-foreground
+                  dark:hover:bg-muted
+                "
+                title="Edit Signal"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Delete Button - Only for creator, non-completed */}
+            {showPublisherActions && onDeleteClick && (
+              <button
+                onClick={handleDeleteClick}
+                className="
+                  p-2 rounded-lg
+                  text-foreground-muted
+                  hover:text-destructive
+                  hover:bg-destructive/10
+                  transition-all duration-200
+                  active:scale-95
+                  dark:text-foreground-muted
+                  dark:hover:text-destructive
+                  dark:hover:bg-destructive/10
+                "
+                title="Delete Signal"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Expand Button */}
-      <button
-        className={`
-          flex-shrink-0 p-2 rounded-lg
-          text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50
-          hover:text-ribbit-hunter-green dark:hover:text-ribbit-dry-sage
-          hover:bg-ribbit-dry-sage/30 dark:hover:bg-ribbit-hunter-green/30
-          transition-all duration-300
-          ${isExpanded ? 'rotate-180' : 'rotate-0'}
-        `}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleExpand();
-        }}
-        title={isExpanded ? 'Collapse' : 'Expand'}
-      >
-        <ChevronDown className="w-5 h-5" />
-      </button>
     </div>
   );
 }
