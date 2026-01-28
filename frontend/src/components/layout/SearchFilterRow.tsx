@@ -225,7 +225,7 @@ export default function SearchFilterRow({
               <div className="flex-1 min-w-[140px]">
                 <div className="flex items-center gap-2 mb-3">
                   <Tag className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Labels</span>
+                  <span className="font-semibold text-base text-foreground uppercase tracking-wide">Labels</span>
                 </div>
                 {loadingLabels ? (
                   <div className="flex items-center justify-center py-4">
@@ -248,7 +248,7 @@ export default function SearchFilterRow({
               <div className="flex-1 min-w-[140px]">
                 <div className="flex items-center gap-2 mb-3">
                   <Users className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Publishers</span>
+                  <span className="font-semibold text-base text-foreground uppercase tracking-wide">Publishers</span>
                 </div>
                 <SearchablePublisherDropdown
                   publishers={availablePublishers}
@@ -265,7 +265,7 @@ export default function SearchFilterRow({
                 <div className="flex-shrink-0">
                   <div className="flex items-center gap-2 mb-3">
                     <CalendarDays className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Options</span>
+                    <span className="font-semibold text-base text-foreground uppercase tracking-wide">Options</span>
                   </div>
                   <div className="flex flex-wrap gap-3">
                     {/* Scheduled Toggle - Only for publishers */}
@@ -343,7 +343,7 @@ export default function SearchFilterRow({
           <div className="flex-shrink-0 w-[280px] border-l border-border pl-5">
             <div className="flex items-center gap-2 mb-3">
               <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="font-semibold text-sm text-foreground uppercase tracking-wide">Date Range</span>
+              <span className="font-semibold text-base text-foreground uppercase tracking-wide">Date Range</span>
             </div>
             <DateRangePicker
               value={localFilters.dateRange}
@@ -401,7 +401,7 @@ export default function SearchFilterRow({
             className={`
               flex items-center gap-2 px-3 py-2.5
               border rounded-xl
-              text-sm font-medium
+              text-base font-medium
               focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary
               transition-all duration-200
               hover:scale-[1.02] active:scale-[0.98]
@@ -416,7 +416,7 @@ export default function SearchFilterRow({
             <Filter className="w-4 h-4" />
             <span>Filters</span>
             {activeCount > 0 && (
-              <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold dark:shadow-[0_0_8px_rgba(0,255,194,0.4)]">
+              <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold dark:shadow-[0_0_8px_rgba(0,255,194,0.4)]">
                 {activeCount}
               </span>
             )}

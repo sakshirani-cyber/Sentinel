@@ -72,7 +72,7 @@ export default function SortDropdown({ value, onChange }: SortDropdownProps) {
         className="
           flex items-center gap-2 px-3 py-2.5
           bg-secondary border border-border rounded-xl
-          text-sm font-medium text-foreground
+          text-base font-medium text-foreground
           hover:bg-primary/5 hover:border-primary/30
           hover:scale-[1.02]
           active:scale-[0.98]
@@ -98,7 +98,7 @@ export default function SortDropdown({ value, onChange }: SortDropdownProps) {
                 <button
                   onClick={() => handleSelect(option.value)}
                   className={`
-                    w-full flex items-center justify-between px-4 py-2.5 text-sm
+                    w-full flex items-center justify-between px-4 py-2.5 text-base
                     transition-all duration-200
                     ${value === option.value
                       ? 'bg-primary/20 text-primary font-medium dark:bg-primary/25'

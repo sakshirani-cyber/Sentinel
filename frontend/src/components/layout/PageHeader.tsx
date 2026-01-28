@@ -39,7 +39,7 @@ export default function PageHeader({
         <div>
           <h1 className="ribbit-page-title">{title}</h1>
           {subtitle && (
-            <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+            <p className="text-base text-muted-foreground mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
@@ -55,7 +55,7 @@ export default function PageHeader({
             className="
               flex items-center gap-2 px-4 py-2.5
               bg-primary text-primary-foreground rounded-lg
-              font-medium text-sm
+              font-medium text-base
               shadow-md hover:shadow-lg
               hover:opacity-90
               active:scale-[0.98]

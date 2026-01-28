@@ -113,7 +113,7 @@ export default function CreateSignalPanel({
           <div className="flex items-center gap-3">
             <h2 className="ribbit-panel-title">{title}</h2>
             {totalSteps > 1 && (
-              <span className="text-sm text-muted-foreground">
+              <span className="text-base text-muted-foreground">
                 Step {currentStep} of {totalSteps}
               </span>
             )}
@@ -137,7 +137,7 @@ export default function CreateSignalPanel({
                   <div
                     className={`
                       w-8 h-8 rounded-full flex items-center justify-center
-                      text-sm font-medium transition-colors
+                      text-base font-medium transition-colors
                       ${index + 1 < currentStep 
                         ? 'bg-ribbit-fern text-white' 
                         : index + 1 === currentStep
@@ -186,7 +186,7 @@ export default function CreateSignalPanel({
               className="
                 flex items-center gap-2 px-4 py-2.5
                 text-foreground rounded-lg
-                font-medium text-sm
+                font-medium text-base
                 hover:bg-muted
                 transition-colors
                 disabled:opacity-50 disabled:cursor-not-allowed
@@ -207,7 +207,7 @@ export default function CreateSignalPanel({
             className="
               px-4 py-2.5
               text-muted-foreground rounded-lg
-              font-medium text-sm
+              font-medium text-base
               hover:text-foreground hover:bg-muted
               transition-colors
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -223,7 +223,7 @@ export default function CreateSignalPanel({
             className="
               flex items-center gap-2 px-5 py-2.5
               bg-ribbit-hunter-green text-ribbit-dust-grey rounded-lg
-              font-medium text-sm
+              font-medium text-base
               shadow-md
               hover:bg-[#2f4a35] hover:shadow-lg hover:scale-[1.02]
               active:scale-[0.98]

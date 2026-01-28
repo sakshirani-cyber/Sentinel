@@ -155,7 +155,7 @@ export default function SignalDetail({
         
         {/* Status Bar */}
         <div className={`
-          px-4 py-2.5 text-center text-sm font-medium
+          px-4 py-2.5 text-center text-base font-medium
           ${status.color === 'green' ? 'bg-success text-white' : ''}
           ${status.color === 'red' ? 'bg-destructive text-white' : ''}
           ${status.color === 'amber' ? 'bg-warning text-warning-foreground' : ''}
@@ -184,7 +184,7 @@ export default function SignalDetail({
                 <User className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-foreground-secondary">From</p>
+                <p className="text-base text-foreground-secondary">From</p>
                 <p className="font-medium text-foreground">{poll.publisherName}</p>
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function SignalDetail({
               <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wider text-foreground-muted">Deadline</p>
-                <p className="text-xs font-medium text-foreground truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {new Date(poll.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </p>
               </div>
@@ -260,7 +260,7 @@ export default function SignalDetail({
               <Users className="w-4 h-4 text-primary flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wider text-foreground-muted">Recipients</p>
-                <p className="text-xs font-medium text-foreground truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {poll.consumers.length} people
                 </p>
               </div>
@@ -288,10 +288,10 @@ export default function SignalDetail({
               <div className="flex items-start gap-3">
                 <XCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-destructive">
+                  <p className="text-base font-semibold text-destructive">
                     This signal has expired
                   </p>
-                  <p className="text-sm text-destructive/80 mt-1">
+                  <p className="text-base text-destructive/80 mt-1">
                     The deadline has passed and responses are no longer accepted.
                     {poll.defaultResponse && (
                       <span> Your response was recorded as: <strong>"{poll.defaultResponse}"</strong></span>
@@ -304,7 +304,7 @@ export default function SignalDetail({
 
           {/* Response Options */}
           <div className="mb-6">
-            <p className="text-sm font-medium text-foreground-secondary mb-3 flex items-center gap-2">
+            <p className="text-base font-medium text-foreground-secondary mb-3 flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               {canRespond ? 'Select your response' : 'Response options'}
             </p>
@@ -393,7 +393,7 @@ export default function SignalDetail({
                   <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                 )}
                 <div className="flex-1">
-                  <p className={`text-sm font-semibold ${
+                  <p className={`text-base font-semibold ${
                     userResponse.isDefault || userResponse.skipReason
                       ? 'text-amber-700 dark:text-amber-300'
                       : 'text-emerald-700 dark:text-emerald-300'
@@ -405,7 +405,7 @@ export default function SignalDetail({
                         : 'Your response was recorded'
                     }
                   </p>
-                  <div className="mt-2 space-y-1 text-sm">
+                  <div className="mt-2 space-y-1 text-base">
                     <p className="text-ribbit-charcoal dark:text-ribbit-ash-grey">
                       <span className="opacity-60">Response:</span>{' '}
                       <span className="font-medium"><LabelText text={userResponse.response} labels={labels} /></span>
@@ -433,7 +433,7 @@ export default function SignalDetail({
                   <p className="text-sm font-medium text-ribbit-slate-grey dark:text-ribbit-muted-teal">
                     Default response if you don't respond:
                   </p>
-                  <p className="text-sm text-ribbit-charcoal dark:text-ribbit-ash-grey mt-1 font-medium">
+                  <p className="text-base text-ribbit-charcoal dark:text-ribbit-ash-grey mt-1 font-medium">
                     "{poll.defaultResponse}"
                   </p>
                 </div>
@@ -447,10 +447,10 @@ export default function SignalDetail({
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                  <p className="text-base font-medium text-amber-700 dark:text-amber-300">
                     Mandatory final alert enabled
                   </p>
-                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                  <p className="text-base text-amber-600 dark:text-amber-400 mt-1">
                     You'll receive a persistent alert 15 minutes before deadline.
                   </p>
                 </div>
@@ -514,7 +514,7 @@ export default function SignalDetail({
               <h3 className="text-xl font-semibold text-ribbit-slate-grey dark:text-ribbit-muted-teal mb-2">
                 Confirm Response
               </h3>
-              <p className="text-ribbit-charcoal/60 dark:text-ribbit-ash-grey/60 text-sm">
+              <p className="text-ribbit-charcoal/60 dark:text-ribbit-ash-grey/60 text-base">
                 Please review your selection before submitting
               </p>
             </div>

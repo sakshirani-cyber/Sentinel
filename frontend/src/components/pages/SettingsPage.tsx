@@ -72,7 +72,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
                   }
                 }}
                 className={`
-                  px-4 py-2.5 rounded-xl font-medium text-sm
+                  px-4 py-2.5 rounded-xl font-medium text-base
                   transition-all duration-200
                   ${theme === t
                     ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_15px_rgba(0,255,194,0.3)]'
@@ -117,7 +117,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
           title="Privacy"
           description="Privacy and data settings"
         >
-          <p className="text-sm text-foreground-secondary">
+          <p className="text-base text-foreground-secondary">
             Your data is stored locally on this device. No personal information is shared with external services.
           </p>
         </SettingsSection>
@@ -160,7 +160,7 @@ function SettingsSection({ icon: Icon, title, description, children }: SettingsS
           <h3 className="font-semibold text-foreground text-lg">
             {title}
           </h3>
-          <p className="text-sm text-foreground-secondary">
+          <p className="text-base text-foreground-secondary">
             {description}
           </p>
         </div>
@@ -196,7 +196,7 @@ function ToggleRow({
     <div className="flex items-center justify-between py-3">
       <div>
         <p className="font-medium text-foreground">{label}</p>
-        <p className="text-sm text-foreground-muted">{description}</p>
+        <p className="text-base text-foreground-muted">{description}</p>
       </div>
       <button
         onClick={() => setEnabled(!enabled)}

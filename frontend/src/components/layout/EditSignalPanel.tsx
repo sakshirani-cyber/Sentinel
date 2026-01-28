@@ -77,7 +77,7 @@ export default function EditSignalPanel({ poll, onUpdate, onClose }: EditSignalP
                     <div className="flex items-center gap-3">
                         <h2 className="ribbit-panel-title">Edit Signal</h2>
                         {poll.status === 'scheduled' && (
-                            <span className="text-xs bg-warning/20 text-warning px-2 py-1 rounded-full font-medium">
+                            <span className="text-sm bg-warning/20 text-warning px-2 py-1 rounded-full font-medium">
                                 Scheduled
                             </span>
                         )}

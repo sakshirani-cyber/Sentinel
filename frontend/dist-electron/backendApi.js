@@ -64,9 +64,12 @@ apiClient.interceptors.response.use(response => {
 function mapPollToDTO(poll) {
     const localId = parseInt(poll.id.split('-')[1]) || Date.now();
     const endTimestamp = new Date(poll.deadline).toISOString();
+    // Enforce business rule: if anonymous is true, showIndividualResponses must be false
+    const isAnonymous = poll.anonymityMode === 'anonymous';
+    const showIndividualResponses = isAnonymous ? false : (poll.showIndividualResponses ?? true);
     const dto = {
         createdBy: poll.publisherEmail,
-        anonymous: poll.anonymityMode === 'anonymous',
+        anonymous: isAnonymous,
         endTimestamp,
         sharedWith: poll.consumers,
         type: 'POLL',
@@ -79,7 +82,7 @@ function mapPollToDTO(poll) {
         options: poll.options.map((o) => o.text),
         labels: poll.labels || [],
         scheduledTime: poll.scheduledFor,
-        showIndividualResponses: poll.showIndividualResponses ?? true
+        showIndividualResponses: showIndividualResponses
     };
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);
     console.log('  title:', poll.title || poll.question, '→ title:', dto.title);
@@ -195,15 +198,13 @@ async function createLabel(label) {
     const time = new Date().toLocaleTimeString();
     console.log(`[Backend API] [${time}] 📤 createLabel request | name="${label.name}"`);
     // Transform to Backend DTO
-    // Note: Label is already formatted as ~#name~ by LabelManager before reaching here
+    // Note: Label name is stored as plain text (no formatting)
+    // Description is required
     const payload = {
         label: label.name,
-        description: label.description && label.description.trim() !== '' ? label.description : label.name,
+        description: label.description.trim(),
         localId: Number(label.localId) // Sent as a number (Long) to match backend expectation
     };
-    if (!payload.description.trim()) {
-        payload.description = "No Description"; // Fallback to avoid 400/500 if name is somehow empty/trim
-    }
     console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
     try {
         // We use 'any' for the API response because the backend has swapped fields:
@@ -263,7 +264,7 @@ async function getAllLabels() {
         }
         console.log(`[🌐 API] ✅ Received ${response.data.data.length} labels from backend`);
         // Map backend 'label' -> frontend 'name'
-        // Keep raw format (~#name~) for sync consistency. UI will handle unwrapping.
+        // Labels are stored as plain text (no formatting)
         const labels = response.data.data.map((l) => ({
             id: l.id,
             name: l.label,

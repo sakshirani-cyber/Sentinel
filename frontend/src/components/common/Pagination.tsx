@@ -70,16 +70,16 @@ export default function Pagination({
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-4 py-4 bg-card-solid rounded-xl border border-border transition-colors duration-200 ${className}`}>
       {/* Left side: Info and items per page */}
       <div className="flex items-center gap-4">
-        <span className="text-sm text-foreground-secondary transition-colors duration-200">
+        <span className="text-base text-foreground-secondary transition-colors duration-200">
           Showing {startItem} to {endItem} of {totalItems}
         </span>
         
         {hasItemsPerPageSelector && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-foreground-secondary transition-colors duration-200">Per page:</span>
+            <span className="text-base text-foreground-secondary transition-colors duration-200">Per page:</span>
             <Popover>
               <PopoverTrigger asChild>
-                <button className="flex items-center justify-between gap-2 px-3 py-1.5 bg-input-background border border-border rounded-lg text-sm hover:border-primary/40 transition-colors duration-200 min-w-[60px] text-foreground">
+                <button className="flex items-center justify-between gap-2 px-3 py-1.5 bg-input-background border border-border rounded-lg text-base hover:border-primary/40 transition-colors duration-200 min-w-[60px] text-foreground">
                   <span>{itemsPerPage}</span>
                   <ChevronDown className="w-3.5 h-3.5 text-foreground-muted transition-colors duration-200" />
                 </button>
@@ -90,7 +90,7 @@ export default function Pagination({
                     <button
                       key={size}
                       onClick={() => onItemsPerPageChange(size)}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors duration-200 ${
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-base transition-colors duration-200 ${
                         itemsPerPage === size
                           ? 'bg-primary text-primary-foreground font-medium'
                           : 'text-foreground-secondary hover:bg-muted'
@@ -133,9 +133,9 @@ export default function Pagination({
 
           {/* Current page indicator */}
           <div className="flex items-center gap-1 px-3 py-1 bg-primary/20 rounded-lg mx-2 transition-colors duration-200">
-            <span className="text-sm font-medium text-primary">{currentPage}</span>
-            <span className="text-sm text-foreground-muted">/</span>
-            <span className="text-sm text-foreground-secondary">{totalPages || 1}</span>
+            <span className="text-base font-medium text-primary">{currentPage}</span>
+            <span className="text-base text-foreground-muted">/</span>
+            <span className="text-base text-foreground-secondary">{totalPages || 1}</span>
           </div>
 
           {/* Next page button */}

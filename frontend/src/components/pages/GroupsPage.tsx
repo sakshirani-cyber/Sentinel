@@ -64,7 +64,7 @@ function FeatureCard({ title, description }: { title: string; description: strin
       <h4 className="font-medium text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-1">
         {title}
       </h4>
-      <p className="text-sm text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">
+      <p className="text-base text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">
         {description}
       </p>
     </div>

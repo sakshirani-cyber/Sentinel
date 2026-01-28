@@ -17,7 +17,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-size: 16px;
+  --font-size: 18px;
 
   /* ============================================
    * SIGNAL WILDLIFE COLOR PALETTE (CSS Fallbacks)
@@ -92,9 +92,9 @@
   --topbar-height: 56px;
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 64px;
-  --sidebar-margin: 8px;
-  --content-max-width: 1200px;
-  --content-padding: 24px;
+  --sidebar-margin: 0px;
+  --content-max-width: 1400px;
+  --content-padding: 20px;
   --content-padding-mobile: 16px;
   
   /* Spacing Scale (8px base) */
@@ -756,7 +756,7 @@
     }
 
     label {
-      font-size: 0.875rem;
+      font-size: 1rem;
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
       color: var(--foreground);
@@ -764,7 +764,7 @@
 
     button {
       @apply cursor-pointer;
-      font-size: 0.875rem;
+      font-size: 1rem;
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
     }
@@ -1325,7 +1325,7 @@ html {
   border-radius: var(--radius-xl);
   color: var(--sidebar-foreground);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   transition: 
     all var(--transition),
@@ -1380,7 +1380,7 @@ html {
   border-radius: var(--radius-full);
   background-color: var(--muted);
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -1394,11 +1394,11 @@ html {
 
 /* Main Content Area - Adjusted for floating sidebar */
 .ribbit-content {
-  margin-left: calc(var(--sidebar-width) + var(--sidebar-margin));
+  margin-left: var(--sidebar-width);
   margin-top: var(--topbar-height);
   min-height: calc(100vh - var(--topbar-height));
   padding: var(--content-padding);
-  padding-top: calc(var(--content-padding) + var(--sidebar-margin));
+  padding-top: var(--content-padding);
 }
 
 .ribbit-content-inner {
@@ -1416,7 +1416,7 @@ html {
 }
 
 .ribbit-page-title {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 700;
   color: var(--foreground);
   letter-spacing: -0.03em;
@@ -1427,7 +1427,7 @@ html {
 .ribbit-panel-backdrop {
   position: fixed;
   top: var(--topbar-height);
-  left: calc(var(--sidebar-width) + var(--sidebar-margin));
+  left: var(--sidebar-width);
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.3);
@@ -1507,7 +1507,7 @@ html {
 .analytics-panel-backdrop {
   position: fixed;
   top: var(--topbar-height);
-  left: calc(var(--sidebar-width) + var(--sidebar-margin));
+  left: var(--sidebar-width);
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.4);
@@ -1659,7 +1659,7 @@ html {
 }
 
 .ribbit-status-card-label {
-  font-size: 13px;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--foreground-secondary);
   text-transform: uppercase;
@@ -1668,7 +1668,7 @@ html {
 }
 
 .ribbit-status-card-count {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 700;
   color: var(--foreground);
   letter-spacing: -0.02em;
@@ -1732,7 +1732,7 @@ html {
   border: 1px solid var(--input-border);
   border-radius: var(--radius-lg);
   color: var(--foreground);
-  font-size: 14px;
+  font-size: 16px;
   transition: 
     border-color var(--transition),
     box-shadow var(--transition);

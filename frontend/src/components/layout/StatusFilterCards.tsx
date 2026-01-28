@@ -90,7 +90,7 @@ export default function StatusFilterCards({
           )}
           
           {/* Label */}
-          <p className={`text-sm font-medium mb-1 transition-colors ${
+          <p className={`text-base font-medium mb-1 transition-colors ${
             activeFilter === card.id 
               ? 'text-primary' 
               : 'text-muted-foreground'

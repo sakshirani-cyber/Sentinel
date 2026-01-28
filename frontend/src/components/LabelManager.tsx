@@ -212,12 +212,12 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                 </div>
                                 <div>
                                     <h1 className="text-foreground font-semibold text-lg">Ribbit</h1>
-                                    <p className="text-sm text-foreground-secondary">Label Management</p>
+                                    <p className="text-base text-foreground-secondary">Label Management</p>
                                 </div>
                             </div>
                             <button
                                 onClick={onBack}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary-hover text-secondary-foreground rounded-xl transition-all shadow-md text-sm font-medium"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary-hover text-secondary-foreground rounded-xl transition-all shadow-md text-base font-medium"
                             >
                                 <ChevronLeft className="w-4 h-4" />
                                 Back
@@ -235,7 +235,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-10 pl-4 pr-10 bg-muted/50 border border-border rounded-xl text-foreground text-sm placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-background hover:border-primary/40 hover:bg-muted/70 transition-all duration-200 dark:bg-muted/30 dark:border-border dark:hover:border-primary/40 dark:hover:bg-muted/50 dark:focus:bg-background dark:focus:border-primary dark:focus:ring-primary/40"
+                            className="w-full h-10 pl-4 pr-10 bg-muted/50 border border-border rounded-xl text-foreground text-base placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-background hover:border-primary/40 hover:bg-muted/70 transition-all duration-200 dark:bg-muted/30 dark:border-border dark:hover:border-primary/40 dark:hover:bg-muted/50 dark:focus:bg-background dark:focus:border-primary dark:focus:ring-primary/40"
                             placeholder="Search labels..."
                         />
                         {/* Clear Button - positioned on the right inside the input */}
@@ -271,7 +271,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-foreground">Create New Label</h3>
-                                    <p className="text-sm text-foreground-secondary">Add a label to organize your signals</p>
+                                    <p className="text-base text-foreground-secondary">Add a label to organize your signals</p>
                                 </div>
                             </div>
 
@@ -279,7 +279,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                 {/* Left Column - Name & Preview */}
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                        <label className="block text-base font-medium text-foreground mb-2">
                                             Label Name <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
@@ -301,18 +301,18 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                 className="w-full pl-9 pr-4 py-3 bg-input-background border border-border rounded-xl text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                                             />
                                         </div>
-                                        <p className="text-xs text-foreground-muted mt-1.5">
+                                        <p className="text-base text-foreground-muted mt-1.5">
                                             No spaces or special characters
                                         </p>
                                     </div>
 
                                     {/* Preview */}
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                        <label className="block text-base font-medium text-foreground mb-2">
                                             Preview
                                         </label>
                                         <div className="p-4 bg-muted rounded-lg border border-border">
-                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary/20 border border-primary/30 text-primary">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-base font-medium bg-primary/20 border border-primary/30 text-primary">
                                                 <Tag className="w-3.5 h-3.5" />
                                                 {newLabelName || 'label-name'}
                                             </span>
@@ -322,7 +322,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
 
                                 {/* Right Column - Description */}
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                    <label className="block text-base font-medium text-foreground mb-2">
                                         <FileText className="w-4 h-4 inline mr-1" />
                                         Description <span className="text-red-500">*</span>
                                     </label>
@@ -333,7 +333,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                         rows={5}
                                         className="w-full px-4 py-3 bg-input-background border border-border rounded-xl text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                                     />
-                                    <p className="text-xs text-foreground-muted mt-1">
+                                    <p className="text-base text-foreground-muted mt-1">
                                         {newLabelDesc.length}/500 characters
                                     </p>
                                 </div>
@@ -341,7 +341,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
 
                             {/* Error */}
                             {createError && (
-                                <div className="mt-4 flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-4 py-3 rounded-lg">
+                                <div className="mt-4 flex items-center gap-2 text-base text-destructive bg-destructive/10 px-4 py-3 rounded-lg">
                                     <AlertCircle className="w-4 h-4" />
                                     <span>{createError}</span>
                                 </div>
@@ -411,13 +411,13 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                 /* Edit Mode */
                                                 <div className="space-y-4">
                                                     <div className="flex items-center gap-3">
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary/20 border border-primary/30 text-primary">
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-base font-medium bg-primary/20 border border-primary/30 text-primary">
                                                             <Tag className="w-3.5 h-3.5" />
                                                             {stripLabelMarkers(label.name)}
                                                         </span>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-medium text-foreground-secondary mb-1.5">
+                                                        <label className="block text-base font-medium text-foreground-secondary mb-1.5">
                                                             Description
                                                         </label>
                                                         <textarea
@@ -425,7 +425,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                             onChange={e => setEditDesc(e.target.value)}
                                                             rows={3}
                                                             autoFocus
-                                                            className="w-full px-3 py-2 bg-input-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-foreground"
+                                                            className="w-full px-3 py-2 bg-input-background border border-border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-foreground"
                                                             placeholder="Add a description..."
                                                         />
                                                     </div>
@@ -450,7 +450,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                 /* View Mode */
                                                 <>
                                                     <div className="flex items-start justify-between mb-3">
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary/20 border border-primary/30 text-primary">
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-base font-medium bg-primary/20 border border-primary/30 text-primary">
                                                             <Tag className="w-3.5 h-3.5" />
                                                             {stripLabelMarkers(label.name)}
                                                         </span>
@@ -466,15 +466,15 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                         </button>
                                                     </div>
                                                     
-                                                    <p className="text-sm text-foreground-secondary line-clamp-2 min-h-[2.5rem]">
+                                                    <p className="text-base text-foreground-secondary line-clamp-2 min-h-[2.5rem]">
                                                         {label.description || <span className="italic opacity-50">No description</span>}
                                                     </p>
                                                     
                                                     <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                                                        <span className="text-xs text-foreground-muted">
+                                                        <span className="text-base text-foreground-muted">
                                                             Used in {usageCount} signal{usageCount !== 1 ? 's' : ''}
                                                         </span>
-                                                        <span className="text-xs text-foreground-muted">
+                                                        <span className="text-base text-foreground-muted">
                                                             {new Date(label.createdAt).toLocaleDateString()}
                                                         </span>
                                                     </div>

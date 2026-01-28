@@ -143,7 +143,7 @@ export default function FiltersButton({
         className={`
           flex items-center gap-2 px-3 py-2.5
           border rounded-xl
-          text-sm font-medium
+          text-base font-medium
           focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary
           transition-all duration-200
           hover:scale-[1.02] active:scale-[0.98]
@@ -158,7 +158,7 @@ export default function FiltersButton({
         <Filter className="w-4 h-4" />
         <span>Filters</span>
         {activeCount > 0 && (
-          <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold dark:shadow-[0_0_8px_rgba(0,255,194,0.4)]">
+          <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold dark:shadow-[0_0_8px_rgba(0,255,194,0.4)]">
             {activeCount}
           </span>
         )}
@@ -190,7 +190,7 @@ export default function FiltersButton({
               </div>
               <div>
                 <h3 className="font-semibold text-foreground text-lg">Filters</h3>
-                <p className="text-sm text-foreground-secondary">Refine your signals</p>
+                <p className="text-base text-foreground-secondary">Refine your signals</p>
               </div>
             </div>
             <button
@@ -213,7 +213,7 @@ export default function FiltersButton({
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-foreground">
                       <Tag className="w-4 h-4 text-primary" />
-                      <span className="font-semibold text-sm uppercase tracking-wide">Labels</span>
+                      <span className="font-semibold text-base uppercase tracking-wide">Labels</span>
                     </div>
                     {loadingLabels ? (
                       <div className="flex items-center justify-center py-4">
@@ -233,7 +233,7 @@ export default function FiltersButton({
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-foreground">
                       <Users className="w-4 h-4 text-primary" />
-                      <span className="font-semibold text-sm uppercase tracking-wide">Publishers</span>
+                      <span className="font-semibold text-base uppercase tracking-wide">Publishers</span>
                     </div>
                     <SearchablePublisherDropdown
                       publishers={availablePublishers}
@@ -251,7 +251,7 @@ export default function FiltersButton({
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-foreground">
                         <CalendarDays className="w-4 h-4 text-primary" />
-                        <span className="font-semibold text-sm uppercase tracking-wide">Options</span>
+                        <span className="font-semibold text-base uppercase tracking-wide">Options</span>
                       </div>
                       <button
                         onClick={() => setLocalFilters(prev => ({ 
@@ -259,7 +259,7 @@ export default function FiltersButton({
                           scheduledOnly: !prev.scheduledOnly 
                         }))}
                         className={`
-                          flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
+                          flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
                           transition-all duration-200 hover:scale-105
                           ${localFilters.scheduledOnly 
                             ? 'bg-primary text-primary-foreground shadow-md dark:shadow-[0_0_12px_rgba(0,255,194,0.4)]' 
@@ -285,7 +285,7 @@ export default function FiltersButton({
               <div className="w-[280px] flex-shrink-0 border-l border-border pl-6">
                 <div className="flex items-center gap-2 text-foreground mb-3">
                   <Calendar className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm uppercase tracking-wide">Date Range</span>
+                  <span className="font-semibold text-base uppercase tracking-wide">Date Range</span>
                 </div>
                 <DateRangePicker
                   value={localFilters.dateRange}
@@ -299,20 +299,20 @@ export default function FiltersButton({
           <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted dark:bg-secondary">
             <button
               onClick={handleClear}
-              className="px-4 py-2 text-sm text-foreground-secondary hover:text-destructive transition-colors font-medium"
+              className="px-4 py-2 text-base text-foreground-secondary hover:text-destructive transition-colors font-medium"
             >
               Clear All
             </button>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-foreground bg-muted dark:bg-muted rounded-xl hover:bg-secondary-hover transition-all"
+                className="px-4 py-2.5 text-base font-medium text-foreground bg-muted dark:bg-muted rounded-xl hover:bg-secondary-hover transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleApply}
-                className="px-6 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl shadow-lg hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] transition-all duration-200 dark:shadow-[0_4px_20px_rgba(0,255,194,0.3)] dark:hover:shadow-[0_8px_30px_rgba(0,255,194,0.4)]"
+                className="px-6 py-2.5 bg-primary text-primary-foreground text-base font-semibold rounded-xl shadow-lg hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] transition-all duration-200 dark:shadow-[0_4px_20px_rgba(0,255,194,0.3)] dark:hover:shadow-[0_8px_30px_rgba(0,255,194,0.4)]"
               >
                 Apply Filters
               </button>

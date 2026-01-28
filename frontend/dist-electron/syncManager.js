@@ -242,7 +242,8 @@ class SyncManager {
                                 persistentAlert: pollData.persistentAlert,
                                 sharedWith: Array.isArray(pollData.sharedWith) ? pollData.sharedWith : [],
                                 labels: pollData.labels || [], // May not be in DataSyncDTO, but handle if present
-                                showIndividualResponses: pollData.showIndividualResponses ?? true
+                                // Enforce: if anonymous is true, showIndividualResponses must be false
+                                showIndividualResponses: pollData.anonymous ? false : (pollData.showIndividualResponses ?? true)
                             };
                             await this.handleIncomingPoll(payload);
                         }
@@ -306,7 +307,8 @@ class SyncManager {
             status: 'active',
             defaultResponse: dto.defaultOption,
             showDefaultToConsumers: dto.defaultFlag,
-            showIndividualResponses: dto.showIndividualResponses ?? true,
+            // Enforce: if anonymous is true, showIndividualResponses must be false
+            showIndividualResponses: dto.anonymous ? false : (dto.showIndividualResponses ?? true),
             anonymityMode: dto.anonymous ? 'anonymous' : 'record',
             isPersistentFinalAlert: dto.persistentAlert,
             publishedAt: new Date().toISOString(),
@@ -506,7 +508,8 @@ class SyncManager {
             status: 'active', // Default to active, or map from dto.status
             defaultResponse: dto.defaultOption,
             showDefaultToConsumers: dto.defaultFlag,
-            showIndividualResponses: dto.showIndividualResponses ?? true,
+            // Enforce: if anonymous is true, showIndividualResponses must be false
+            showIndividualResponses: dto.anonymous ? false : (dto.showIndividualResponses ?? true),
             anonymityMode: dto.anonymous ? 'anonymous' : 'record',
             isPersistentFinalAlert: dto.persistentAlert,
             publishedAt: dto.lastEdited?.toString() || new Date().toISOString(),

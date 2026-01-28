@@ -118,10 +118,10 @@ export default function SignalListItem({
                 <User className="w-4 h-4 text-ribbit-hunter-green dark:text-ribbit-dry-sage" />
               </div>
               <div>
-                <p className="text-sm font-medium text-ribbit-pine-teal dark:text-ribbit-dust-grey">
+                <p className="text-base font-medium text-ribbit-pine-teal dark:text-ribbit-dust-grey">
                   {poll.publisherName}
                 </p>
-                <div className="flex items-center gap-1.5 text-xs text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">
+                <div className="flex items-center gap-1.5 text-sm text-ribbit-pine-teal/60 dark:text-ribbit-dust-grey/60">
                   <Clock className="w-3 h-3" />
                   <span>{formatDateTime(poll.deadline)}</span>
                 </div>
@@ -134,7 +134,7 @@ export default function SignalListItem({
             {showTimeRemaining && !isCompleted && (
               <span
                 className={`
-                  px-3 py-1 rounded-full text-xs font-medium
+                  px-3 py-1 rounded-full text-sm font-medium
                   transition-colors duration-200
                   ${timeRemaining.isUrgent
                     ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
@@ -157,7 +157,7 @@ export default function SignalListItem({
         {/* Indicators Row */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {/* Signal Type Badge */}
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-ribbit-hunter-green/10 dark:bg-ribbit-fern/20 text-ribbit-hunter-green dark:text-ribbit-dry-sage border border-ribbit-hunter-green/20 dark:border-ribbit-fern/30">
+          <span className="px-2 py-0.5 rounded text-sm font-medium bg-ribbit-hunter-green/10 dark:bg-ribbit-fern/20 text-ribbit-hunter-green dark:text-ribbit-dry-sage border border-ribbit-hunter-green/20 dark:border-ribbit-fern/30">
             Poll
           </span>
 
@@ -173,14 +173,14 @@ export default function SignalListItem({
 
           {/* Draft Indicator */}
           {hasDraft && !isCompleted && (
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+            <span className="px-2 py-0.5 rounded text-sm font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
               Draft saved
             </span>
           )}
 
           {/* Default Response Indicator */}
           {poll.showDefaultToConsumers && !isCompleted && poll.defaultResponse && (
-            <span className="px-2 py-0.5 rounded text-xs bg-ribbit-dust-grey/60 dark:bg-ribbit-pine-teal/40 text-ribbit-pine-teal dark:text-ribbit-dust-grey border border-ribbit-fern/20">
+            <span className="px-2 py-0.5 rounded text-sm bg-ribbit-dust-grey/60 dark:bg-ribbit-pine-teal/40 text-ribbit-pine-teal dark:text-ribbit-dust-grey border border-ribbit-fern/20">
               Default: {poll.defaultResponse.slice(0, 20)}
               {poll.defaultResponse.length > 20 ? '...' : ''}
             </span>
@@ -217,7 +217,7 @@ export default function SignalListItem({
               )}
               <div className="flex-1 min-w-0">
                 <p
-                  className={`text-sm font-medium mb-0.5 ${
+                  className={`text-base font-medium mb-0.5 ${
                     userResponse.isDefault
                       ? 'text-red-700 dark:text-red-300'
                       : userResponse.skipReason
@@ -232,7 +232,7 @@ export default function SignalListItem({
                       : 'Your Response'}
                 </p>
                 <p
-                  className={`text-sm truncate ${
+                  className={`text-base truncate ${
                     userResponse.isDefault
                       ? 'text-red-600 dark:text-red-400'
                       : userResponse.skipReason
@@ -243,11 +243,11 @@ export default function SignalListItem({
                   {userResponse.response}
                 </p>
                 {userResponse.skipReason && (
-                  <p className="text-xs text-amber-500 dark:text-amber-400 mt-1 italic">
+                  <p className="text-sm text-amber-500 dark:text-amber-400 mt-1 italic">
                     Reason: "{userResponse.skipReason}"
                   </p>
                 )}
-                <p className="text-xs text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50 mt-1">
+                <p className="text-sm text-ribbit-pine-teal/50 dark:text-ribbit-dust-grey/50 mt-1">
                   {formatDateTime(userResponse.submittedAt)}
                 </p>
               </div>
@@ -257,7 +257,7 @@ export default function SignalListItem({
 
         {/* Click Indicator */}
         {isClickable && !isCompleted && (
-          <div className="flex items-center justify-end mt-3 text-sm text-ribbit-fern dark:text-ribbit-dry-sage group-hover:translate-x-1 transition-transform duration-200">
+          <div className="flex items-center justify-end mt-3 text-base text-ribbit-fern dark:text-ribbit-dry-sage group-hover:translate-x-1 transition-transform duration-200">
             <span className="mr-1">Respond</span>
             <ChevronRight className="w-4 h-4" />
           </div>

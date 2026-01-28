@@ -54,7 +54,7 @@ function RibbitLayoutInner({
       <main 
         id="main-content" 
         className={`ribbit-content transition-all duration-300 ease-out ${
-          isSidebarCollapsed ? 'md:ml-[calc(72px+var(--sidebar-margin))]' : ''
+          isSidebarCollapsed ? 'md:ml-[72px]' : ''
         }`}
         role="main"
       >
