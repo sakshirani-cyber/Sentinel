@@ -39,6 +39,7 @@ public class LabelServiceImpl implements LabelService {
         Label entity = new Label();
         entity.setLabel(normalizedLabel);
         entity.setDescription(NormalizationUtils.trimToNull(dto.getDescription()));
+        entity.setCreatedAt(Instant.now());
 
         long saveStart = System.currentTimeMillis();
         labelRepository.save(entity);

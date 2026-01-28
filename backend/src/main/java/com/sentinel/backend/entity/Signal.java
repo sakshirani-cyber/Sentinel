@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
@@ -23,7 +22,6 @@ public class Signal {
     @Column(name = "created_by", nullable = false)
     private String createdBy;
 
-    @CreationTimestamp
     @Column(name = "created_on", nullable = false, updatable = false)
     private Instant createdOn;
 

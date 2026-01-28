@@ -37,8 +37,7 @@ public class PollResult {
     @Column(
             name = "time_of_submission",
             nullable = false,
-            updatable = false,
-            insertable = false
+            updatable = false
     )
     private Instant timeOfSubmission;
 

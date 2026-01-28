@@ -34,8 +34,7 @@ public class Label {
     @Column(
             name = "created_at",
             nullable = false,
-            updatable = false,
-            insertable = false
+            updatable = false
     )
     private Instant createdAt;
 
