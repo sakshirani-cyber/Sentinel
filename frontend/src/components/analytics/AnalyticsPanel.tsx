@@ -144,7 +144,12 @@ export default function AnalyticsPanel() {
     const defaultsCount = fetchedAnalyticsData?.defaultCount ?? defaultResponses.length;
 
     const effectiveAnonymousReasons = fetchedAnalyticsData?.anonymousReasons || poll.anonymousReasons;
-    const anonymousSkipped = (poll.anonymityMode === 'anonymous' && effectiveAnonymousReasons)
+    
+    // Determine if individual responses should be hidden
+    const shouldShowIndividualResponses = poll.anonymityMode === 'record' && 
+      poll.showIndividualResponses !== false;
+    
+    const anonymousSkipped = ((poll.anonymityMode === 'anonymous' || !shouldShowIndividualResponses) && effectiveAnonymousReasons)
       ? effectiveAnonymousReasons.map((reason: string) => ({
           consumerEmail: 'Anonymous User',
           response: '',
@@ -206,6 +211,7 @@ export default function AnalyticsPanel() {
       donutData,
       distributionData,
       currentOptionTexts,
+      shouldShowIndividualResponses,
     };
   }, [poll, responses, fetchedAnalyticsData]);
 
@@ -423,18 +429,22 @@ export default function AnalyticsPanel() {
               </div>
 
               {/* Anonymous Mode Message */}
-              {poll.anonymityMode === 'anonymous' && (
+              {(poll.anonymityMode === 'anonymous' || !analyticsData?.shouldShowIndividualResponses) && (
                 <div className="bg-info/10 dark:bg-info/15 border border-info/30 rounded-xl p-6 text-center">
                   <Shield className="w-12 h-12 text-info mx-auto mb-3" />
-                  <h4 className="text-info font-semibold mb-2">Anonymous Poll</h4>
+                  <h4 className="text-info font-semibold mb-2">
+                    {poll.anonymityMode === 'anonymous' ? 'Anonymous Poll' : 'Individual Responses Hidden'}
+                  </h4>
                   <p className="text-sm text-info/80">
-                    Individual responses are anonymous. Only aggregate data and masked skip reasons are shown.
+                    {poll.anonymityMode === 'anonymous' 
+                      ? 'Individual responses are anonymous. Only aggregate data and masked skip reasons are shown.'
+                      : 'Individual responses are hidden. Only aggregate data is shown.'}
                   </p>
                 </div>
               )}
 
-              {/* Individual Responses Table (non-anonymous only) */}
-              {poll.anonymityMode === 'record' && responses.length > 0 && (
+              {/* Individual Responses Table (non-anonymous and showIndividualResponses enabled) */}
+              {analyticsData?.shouldShowIndividualResponses && responses.length > 0 && (
                 <div className="bg-card dark:bg-secondary rounded-xl border border-border overflow-hidden">
                   <div className="px-4 py-3 border-b border-border flex items-center gap-2">
                     <UsersIcon className="w-5 h-5 text-primary" />

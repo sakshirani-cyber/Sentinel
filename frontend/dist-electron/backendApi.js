@@ -78,7 +78,8 @@ function mapPollToDTO(poll) {
         question: poll.question,
         options: poll.options.map((o) => o.text),
         labels: poll.labels || [],
-        scheduledTime: poll.scheduledFor
+        scheduledTime: poll.scheduledFor,
+        showIndividualResponses: poll.showIndividualResponses ?? true
     };
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);
     console.log('  title:', poll.title || poll.question, '→ title:', dto.title);

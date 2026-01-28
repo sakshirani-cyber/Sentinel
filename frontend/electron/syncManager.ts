@@ -229,7 +229,9 @@ export class SyncManager {
                                 anonymous: pollData.anonymous,
                                 persistentAlert: pollData.persistentAlert,
                                 sharedWith: Array.isArray(pollData.sharedWith) ? pollData.sharedWith : [],
-                                labels: pollData.labels || [] // May not be in DataSyncDTO, but handle if present
+                                labels: pollData.labels || [], // May not be in DataSyncDTO, but handle if present
+                                // Enforce: if anonymous is true, showIndividualResponses must be false
+                                showIndividualResponses: pollData.anonymous ? false : (pollData.showIndividualResponses ?? true)
                             };
                             await this.handleIncomingPoll(payload);
                         } catch (e) {
@@ -296,6 +298,8 @@ export class SyncManager {
             status: 'active' as const,
             defaultResponse: dto.defaultOption,
             showDefaultToConsumers: dto.defaultFlag,
+            // Enforce: if anonymous is true, showIndividualResponses must be false
+            showIndividualResponses: dto.anonymous ? false : (dto.showIndividualResponses ?? true),
             anonymityMode: dto.anonymous ? 'anonymous' : 'record',
             isPersistentFinalAlert: dto.persistentAlert,
             publishedAt: new Date().toISOString(),
@@ -512,6 +516,8 @@ export class SyncManager {
             status: 'active' as const, // Default to active, or map from dto.status
             defaultResponse: dto.defaultOption,
             showDefaultToConsumers: dto.defaultFlag,
+            // Enforce: if anonymous is true, showIndividualResponses must be false
+            showIndividualResponses: dto.anonymous ? false : (dto.showIndividualResponses ?? true),
             anonymityMode: dto.anonymous ? 'anonymous' : 'record',
             isPersistentFinalAlert: dto.persistentAlert,
             publishedAt: dto.lastEdited?.toString() || new Date().toISOString(),

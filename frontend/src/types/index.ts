@@ -24,6 +24,7 @@ export interface Poll {
     defaultResponse?: string;
     showDefaultToConsumers: boolean;
     anonymityMode: 'anonymous' | 'record';
+    showIndividualResponses?: boolean;
     isPersistentAlert: boolean;
     alertBeforeMinutes: number;
     publishedAt: string;

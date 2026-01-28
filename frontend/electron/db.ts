@@ -44,6 +44,7 @@ export function initDB() {
                     consumers TEXT, -- JSON array
                     defaultResponse TEXT,
                     showDefaultToConsumers INTEGER, -- boolean 0/1
+                    showIndividualResponses INTEGER DEFAULT 1, -- boolean 0/1
                     publishedAt TEXT,
                     cloudSignalId INTEGER, -- Backend signal ID
                     syncStatus TEXT DEFAULT 'pending', -- 'synced', 'pending', 'error'
@@ -123,6 +124,14 @@ export function initDB() {
             if (!columns.includes('anonymousReasons')) {
                 console.log('[SQLite DB] Migrating: Adding anonymousReasons to polls table');
                 db.exec("ALTER TABLE polls ADD COLUMN anonymousReasons TEXT");
+            }
+
+            if (!columns.includes('showIndividualResponses')) {
+                console.log('[SQLite DB] Migrating: Adding showIndividualResponses to polls table');
+                db.exec("ALTER TABLE polls ADD COLUMN showIndividualResponses INTEGER DEFAULT 1");
+                // Set default to true (1) for existing polls
+                db.exec("UPDATE polls SET showIndividualResponses = 1 WHERE showIndividualResponses IS NULL");
+                console.log('[SQLite DB] Set default showIndividualResponses = true for existing polls');
             }
 
             // Migration: Add title column to polls table
@@ -258,6 +267,7 @@ interface Poll {
     options: { id: string; text: string }[];
     defaultResponse: string;
     showDefaultToConsumers: boolean;
+    showIndividualResponses?: boolean;
     anonymityMode: 'anonymous' | 'record';
     deadline: string;
     isPersistentFinalAlert: boolean;
@@ -343,12 +353,12 @@ export function createPoll(poll: Poll) {
             INSERT INTO polls (
                 localId, title, question, options, publisherEmail, publisherName, 
                 status, deadline, anonymityMode, isPersistentFinalAlert, 
-                consumers, defaultResponse, showDefaultToConsumers, publishedAt,
+                consumers, defaultResponse, showDefaultToConsumers, showIndividualResponses, publishedAt,
                 cloudSignalId, syncStatus, isEdited, updatedAt, scheduledFor, labels, anonymousReasons
             ) VALUES (
                 @localId, @title, @question, @options, @publisherEmail, @publisherName, 
                 @status, @deadline, @anonymityMode, @isPersistentFinalAlert, 
-                @consumers, @defaultResponse, @showDefaultToConsumers, @publishedAt,
+                @consumers, @defaultResponse, @showDefaultToConsumers, @showIndividualResponses, @publishedAt,
                 @cloudSignalId, @syncStatus, @isEdited, @updatedAt, @scheduledFor, @labels, @anonymousReasons
             )
             ON CONFLICT(localId) DO UPDATE SET
@@ -364,6 +374,7 @@ export function createPoll(poll: Poll) {
                 consumers = excluded.consumers,
                 defaultResponse = excluded.defaultResponse,
                 showDefaultToConsumers = excluded.showDefaultToConsumers,
+                showIndividualResponses = excluded.showIndividualResponses,
                 publishedAt = excluded.publishedAt,
                 cloudSignalId = excluded.cloudSignalId,
                 syncStatus = excluded.syncStatus,
@@ -387,6 +398,7 @@ export function createPoll(poll: Poll) {
             consumers: JSON.stringify(poll.consumers),
             defaultResponse: poll.defaultResponse,
             showDefaultToConsumers: poll.showDefaultToConsumers ? 1 : 0,
+            showIndividualResponses: (poll.showIndividualResponses ?? true) ? 1 : 0,
             publishedAt: poll.publishedAt,
             cloudSignalId: poll.cloudSignalId || null,
             syncStatus: poll.syncStatus || 'pending',
@@ -425,6 +437,7 @@ export function getPolls(): Poll[] {
             consumers: JSON.parse(row.consumers),
             defaultResponse: row.defaultResponse,
             showDefaultToConsumers: !!row.showDefaultToConsumers,
+            showIndividualResponses: row.showIndividualResponses === 1 || row.showIndividualResponses === null || row.showIndividualResponses === undefined,
             publishedAt: row.publishedAt,
             cloudSignalId: row.cloudSignalId,
             syncStatus: (row.syncStatus as 'synced' | 'pending' | 'error') || 'pending',
@@ -453,7 +466,7 @@ export function updatePoll(pollId: string, updates: Partial<Poll>, republish: bo
         const fields = [
             'question', 'options', 'publisherEmail', 'publisherName', 'status',
             'deadline', 'anonymityMode', 'isPersistentFinalAlert', 'consumers',
-            'defaultResponse', 'showDefaultToConsumers', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor', 'labels', 'anonymousReasons'
+            'defaultResponse', 'showDefaultToConsumers', 'showIndividualResponses', 'publishedAt', 'cloudSignalId', 'syncStatus', 'isEdited', 'updatedAt', 'scheduledFor', 'labels', 'anonymousReasons'
         ];
 
         fields.forEach(field => {
@@ -461,7 +474,7 @@ export function updatePoll(pollId: string, updates: Partial<Poll>, republish: bo
                 sets.push(`${field} = @${field}`);
                 if (field === 'options' || field === 'consumers' || field === 'labels' || field === 'anonymousReasons') {
                     values[field] = JSON.stringify(updates[field as keyof Poll]);
-                } else if (field === 'isPersistentFinalAlert' || field === 'showDefaultToConsumers' || field === 'isEdited') {
+                } else if (field === 'isPersistentFinalAlert' || field === 'showDefaultToConsumers' || field === 'showIndividualResponses' || field === 'isEdited') {
                     values[field] = updates[field as keyof Poll] ? 1 : 0;
                 } else {
                     values[field] = updates[field as keyof Poll];

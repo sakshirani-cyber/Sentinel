@@ -176,7 +176,13 @@ export default function EditSettingsStep({ formData, updateFormData, onValidatio
             title="Anonymous"
             description="Responses are not linked to names"
             selected={formData.anonymityMode === 'anonymous'}
-            onClick={() => updateFormData({ anonymityMode: 'anonymous' })}
+            onClick={() => {
+              // When anonymous is selected, showIndividualResponses must be false
+              updateFormData({ 
+                anonymityMode: 'anonymous',
+                showIndividualResponses: false 
+              });
+            }}
           />
         </div>
 
@@ -207,6 +213,19 @@ export default function EditSettingsStep({ formData, updateFormData, onValidatio
                 All existing responses will be deleted when you save with Republish enabled.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Show Individual Responses Toggle - Only visible when record mode is selected */}
+        {formData.anonymityMode === 'record' && (
+          <div className="space-y-3">
+            <ToggleCard
+              icon={Eye}
+              title="Show individual responses"
+              description="Allow recipients to see who responded with what in results"
+              checked={formData.showIndividualResponses ?? true}
+              onChange={(checked) => updateFormData({ showIndividualResponses: checked })}
+            />
           </div>
         )}
       </div>

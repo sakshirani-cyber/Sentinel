@@ -63,6 +63,7 @@ interface PollCreateDTO {
     options: string[];
     labels?: string[];
     scheduledTime?: string;
+    showIndividualResponses?: boolean;
 }
 
 export interface LabelCreateDTO {
@@ -148,6 +149,7 @@ export interface PollSyncDTO {
     persistentAlert: boolean;
     endTimestamp: string;
     lastEdited: string;
+    showIndividualResponses?: boolean;
     selectedOption: string;
     defaultResponse: string;
     reason: string;
@@ -163,9 +165,13 @@ function mapPollToDTO(poll: any): PollCreateDTO {
     const localId = parseInt(poll.id.split('-')[1]) || Date.now();
     const endTimestamp = new Date(poll.deadline).toISOString();
 
+    // Enforce business rule: if anonymous is true, showIndividualResponses must be false
+    const isAnonymous = poll.anonymityMode === 'anonymous';
+    const showIndividualResponses = isAnonymous ? false : (poll.showIndividualResponses ?? true);
+
     const dto: PollCreateDTO = {
         createdBy: poll.publisherEmail,
-        anonymous: poll.anonymityMode === 'anonymous',
+        anonymous: isAnonymous,
         endTimestamp,
         sharedWith: poll.consumers,
         type: 'POLL',
@@ -177,7 +183,8 @@ function mapPollToDTO(poll: any): PollCreateDTO {
         question: poll.question,
         options: poll.options.map((o: any) => o.text),
         labels: poll.labels || [],
-        scheduledTime: poll.scheduledFor
+        scheduledTime: poll.scheduledFor,
+        showIndividualResponses: showIndividualResponses
     };
 
     console.log(`[Backend API] [${new Date().toLocaleTimeString()}] 🔍 DTO Field Mapping:`);

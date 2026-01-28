@@ -94,7 +94,11 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
 
   const effectiveAnonymousReasons = fetchedAnalyticsData?.anonymousReasons || poll.anonymousReasons;
 
-  const anonymousSkipped = (poll.anonymityMode === 'anonymous' && effectiveAnonymousReasons)
+  // Determine if individual responses should be hidden
+  const hideIndividualResponses = poll.anonymityMode === 'anonymous' || 
+    poll.showIndividualResponses === false;
+
+  const anonymousSkipped = (hideIndividualResponses && effectiveAnonymousReasons)
     ? effectiveAnonymousReasons.map((reason: string) => ({
       consumerEmail: 'Anonymous User',
       response: '',
@@ -371,8 +375,8 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
             </div>
           </div>
 
-          {/* Individual Responses (only if not anonymous) */}
-          {poll.anonymityMode === 'record' && (
+          {/* Individual Responses (only if not anonymous and showIndividualResponses enabled) */}
+          {poll.anonymityMode === 'record' && poll.showIndividualResponses !== false && (
             <div className="mb-8">
               <h3 className="text-lg font-semibold text-ribbit-hunter-green dark:text-ribbit-dry-sage mb-4">Individual Responses</h3>
               <div className="bg-white dark:bg-ribbit-hunter-green/40 rounded-xl border border-ribbit-fern/20 dark:border-ribbit-dry-sage/20 overflow-hidden">
@@ -465,12 +469,16 @@ export default function AnalyticsView({ poll, responses, onClose, canExport = fa
           )}
 
           {/* Anonymous Mode Message */}
-          {poll.anonymityMode === 'anonymous' && (
+          {(poll.anonymityMode === 'anonymous' || poll.showIndividualResponses === false) && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 text-center mb-8">
               <Shield className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-3" />
-              <h4 className="text-blue-900 dark:text-blue-300 font-semibold mb-2">Anonymous Poll</h4>
+              <h4 className="text-blue-900 dark:text-blue-300 font-semibold mb-2">
+                {poll.anonymityMode === 'anonymous' ? 'Anonymous Poll' : 'Individual Responses Hidden'}
+              </h4>
               <p className="text-sm text-blue-700 dark:text-blue-400">
-                Individual responses are anonymous. Only aggregate data and masked skip reasons are shown.
+                {poll.anonymityMode === 'anonymous' 
+                  ? 'Individual responses are anonymous. Only aggregate data and masked skip reasons are shown.'
+                  : 'Individual responses are hidden. Only aggregate data is shown.'}
               </p>
             </div>
           )}

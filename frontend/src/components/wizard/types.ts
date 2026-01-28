@@ -17,6 +17,7 @@ export interface SignalFormData {
   useCustomDefault: boolean;
   showDefaultToConsumers: boolean;
   anonymityMode: 'anonymous' | 'record';
+  showIndividualResponses: boolean;
   isPersistentFinalAlert: boolean;
   
   // Step 4: Recipients
@@ -45,6 +46,7 @@ export interface EditSignalFormData extends SignalFormData {
   originalDeadline: string;
   originalPersistentAlert: boolean;
   originalShowDefaultToConsumers: boolean;
+  originalShowIndividualResponses: boolean;
   originalDefaultResponse: string;
   originalConsumers: string[];
   originalLabels: string[];
@@ -87,6 +89,7 @@ export const initialFormData: SignalFormData = {
   useCustomDefault: false,
   showDefaultToConsumers: false,
   anonymityMode: 'record',
+  showIndividualResponses: true,
   isPersistentFinalAlert: false,
   consumers: [],
   deadline: '',
@@ -132,6 +135,7 @@ export function initializeEditFormData(poll: Poll): EditSignalFormData {
     useCustomDefault: !isOptionDefault,
     showDefaultToConsumers: poll.showDefaultToConsumers,
     anonymityMode: poll.anonymityMode,
+    showIndividualResponses: poll.showIndividualResponses ?? true,
     isPersistentFinalAlert: poll.isPersistentFinalAlert,
     
     // Recipients
@@ -155,6 +159,7 @@ export function initializeEditFormData(poll: Poll): EditSignalFormData {
     originalDeadline: formattedDeadline,
     originalPersistentAlert: poll.isPersistentFinalAlert,
     originalShowDefaultToConsumers: poll.showDefaultToConsumers,
+    originalShowIndividualResponses: poll.showIndividualResponses ?? true,
     originalDefaultResponse: poll.defaultResponse,
     originalConsumers: [...poll.consumers],
     originalLabels: labelNames,
@@ -178,6 +183,7 @@ export function hasFormChanges(formData: EditSignalFormData): boolean {
     JSON.stringify(formData.options) !== JSON.stringify(formData.originalOptions) ||
     currentDefault !== formData.originalDefaultResponse ||
     formData.showDefaultToConsumers !== formData.originalShowDefaultToConsumers ||
+    formData.showIndividualResponses !== formData.originalShowIndividualResponses ||
     formData.anonymityMode !== formData.originalAnonymityMode ||
     formData.deadline !== formData.originalDeadline ||
     formData.isPersistentFinalAlert !== formData.originalPersistentAlert ||
