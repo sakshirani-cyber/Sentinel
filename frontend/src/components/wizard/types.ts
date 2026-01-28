@@ -6,7 +6,7 @@ export interface SignalFormData {
   // Step 1: Basic Info
   title?: string; // Optional title for the signal
   question: string;
-  description?: string;
+  description: string;
   
   // Step 2: Options
   options: string[];

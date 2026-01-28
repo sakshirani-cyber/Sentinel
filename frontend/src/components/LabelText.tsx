@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 interface Label {
     id: string;
     name: string;
-    description?: string;
+    description: string;
 }
 
 interface LabelTextProps {
@@ -49,7 +49,7 @@ export default function LabelText({ text, labels: propLabels, className = '' }: 
                             }}
                             title={segment.label.description || segment.label.name}
                         >
-                            #{segment.content}
+                            {segment.content}
                         </span>
                     );
                 }

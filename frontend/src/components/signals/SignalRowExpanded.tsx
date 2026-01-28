@@ -8,7 +8,7 @@ import { Poll, Response } from '../../types';
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface SignalRowExpandedProps {

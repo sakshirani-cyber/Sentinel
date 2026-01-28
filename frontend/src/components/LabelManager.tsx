@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Tag, AlertCircle, Pencil, Check, X, ChevronLeft, FileText } from 'lucide-react';
 import { User } from '../types';
-import { formatLabelName, parseLabelName } from '../utils/labelUtils';
+import { stripLabelMarkers } from '../utils/labelUtils';
 import { Pagination } from './common';
 
 interface Label {
@@ -86,6 +86,11 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
             return;
         }
 
+        if (!newLabelDesc.trim()) {
+            setCreateError('Description is required');
+            return;
+        }
+
         if (newLabelDesc.length > 500) {
             setCreateError('Description cannot exceed 500 characters');
             return;
@@ -93,7 +98,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
 
         // Check for duplicate
         const exists = labels.some(l => 
-            parseLabelName(l.name).toLowerCase() === newLabelName.toLowerCase()
+            stripLabelMarkers(l.name).toLowerCase() === newLabelName.toLowerCase()
         );
         if (exists) {
             setCreateError('A label with this name already exists');
@@ -137,6 +142,10 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
     };
 
     const saveEdit = async (labelId: string) => {
+        if (!editDesc.trim()) {
+            alert('Description is required');
+            return;
+        }
         if (editDesc.length > 500) {
             alert('Description cannot exceed 500 characters');
             return;
@@ -315,12 +324,12 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                 <div>
                                     <label className="block text-sm font-medium text-foreground mb-2">
                                         <FileText className="w-4 h-4 inline mr-1" />
-                                        Description
+                                        Description <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
                                         value={newLabelDesc}
                                         onChange={e => setNewLabelDesc(e.target.value)}
-                                        placeholder="Optional description for this label..."
+                                        placeholder="Enter description for this label..."
                                         rows={5}
                                         className="w-full px-4 py-3 bg-input-background border border-border rounded-xl text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                                     />
@@ -348,7 +357,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                 </button>
                                 <button
                                     onClick={handleCreateLabel}
-                                    disabled={!newLabelName.trim()}
+                                    disabled={!newLabelName.trim() || !newLabelDesc.trim()}
                                     className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                                 >
                                     <Check className="w-4 h-4" />
@@ -404,7 +413,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                     <div className="flex items-center gap-3">
                                                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary/20 border border-primary/30 text-primary">
                                                             <Tag className="w-3.5 h-3.5" />
-                                                            {parseLabelName(label.name)}
+                                                            {stripLabelMarkers(label.name)}
                                                         </span>
                                                     </div>
                                                     <div>
@@ -443,7 +452,7 @@ export default function LabelManager({ onBack, polls, user, hideHeader = false }
                                                     <div className="flex items-start justify-between mb-3">
                                                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary/20 border border-primary/30 text-primary">
                                                             <Tag className="w-3.5 h-3.5" />
-                                                            {parseLabelName(label.name)}
+                                                            {stripLabelMarkers(label.name)}
                                                         </span>
                                                         <button
                                                             onClick={() => {

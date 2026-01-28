@@ -11,7 +11,7 @@ import LabelPill from './LabelPill';
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface SignalDetailProps {

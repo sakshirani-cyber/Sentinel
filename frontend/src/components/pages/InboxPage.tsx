@@ -7,6 +7,7 @@ import CompletedPolls from '../dashboard/CompletedPolls';
 import { EmptyState } from '../signals';
 import { AnalyticsPanel } from '../analytics';
 import { Pagination } from '../common';
+import { stripLabelMarkers } from '../../utils/labelUtils';
 
 interface InboxPageProps {
   user: User;
@@ -119,7 +120,7 @@ export default function InboxPage({
     // Label filter
     if (filters.labels.length > 0) {
       result = result.filter(p =>
-        p.labels?.some((l: string) => filters.labels.includes(l))
+        p.labels?.some((l: string) => filters.labels.includes(stripLabelMarkers(l)))
       );
     }
 

@@ -14,7 +14,7 @@ import {
   Shield,
   CalendarClock
 } from 'lucide-react';
-import { parseLabelName } from '../../../utils/labelUtils';
+import { stripLabelMarkers } from '../../../utils/labelUtils';
 
 /**
  * Step 7: Review
@@ -168,7 +168,7 @@ export default function ReviewStep({ formData, updateFormData, onValidationChang
                     key={label}
                     className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 dark:bg-primary/15 text-primary"
                   >
-                    {parseLabelName(label)}
+                    {stripLabelMarkers(label)}
                   </span>
                 ))}
               </div>

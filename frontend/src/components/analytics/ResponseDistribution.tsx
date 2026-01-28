@@ -22,7 +22,7 @@ interface ResponseOption {
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface ResponseDistributionProps {

@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Tag, Check, ChevronDown } from 'lucide-react';
-import { stripLabelMarkers, parseLabelName } from '../../utils/labelUtils';
+import { stripLabelMarkers } from '../../utils/labelUtils';
 
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface SearchableLabelDropdownProps {
@@ -195,7 +195,7 @@ export default function SearchableLabelDropdown({
     }
     if (selectedLabels.length === 1) {
       const label = labels.find(l => stripLabelMarkers(l.name) === selectedLabels[0]);
-      return label ? parseLabelName(label.name) : selectedLabels[0];
+      return label ? stripLabelMarkers(label.name) : selectedLabels[0];
     }
     return `${selectedLabels.length} labels selected`;
   };
@@ -209,7 +209,7 @@ export default function SearchableLabelDropdown({
           <div className="flex flex-wrap gap-1.5">
             {selectedLabels.map(labelName => {
               const label = labels.find(l => stripLabelMarkers(l.name) === labelName);
-              const displayName = label ? parseLabelName(label.name) : labelName;
+              const displayName = label ? stripLabelMarkers(label.name) : labelName;
               
               return (
                 <button
@@ -322,7 +322,7 @@ export default function SearchableLabelDropdown({
               >
                 {filteredLabels.map((label, index) => {
                   const rawName = stripLabelMarkers(label.name);
-                  const displayName = parseLabelName(label.name);
+                  const displayName = stripLabelMarkers(label.name);
                   const isSelected = isLabelSelected(label);
                   const isHighlighted = index === selectedIndex;
 

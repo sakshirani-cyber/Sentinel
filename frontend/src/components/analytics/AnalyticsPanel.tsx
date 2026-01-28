@@ -30,7 +30,7 @@ import ResponseDistribution from './ResponseDistribution';
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 /**

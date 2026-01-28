@@ -45,7 +45,7 @@ export default function FiltersButton({
 }: FiltersButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
-  const [allLabels, setAllLabels] = useState<Array<{ id: string; name: string; description?: string }>>([]);
+  const [allLabels, setAllLabels] = useState<Array<{ id: string; name: string; description: string }>>([]);
   const [loadingLabels, setLoadingLabels] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 

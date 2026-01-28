@@ -18,7 +18,7 @@ import {
   EditSchedulingStep,
   EditReviewStep,
 } from './steps';
-import { parseLabelsFromText, formatLabelName } from '../../utils/labelUtils';
+import { parseLabelsFromText } from '../../utils/labelUtils';
 
 // Step definitions for Edit wizard
 const EDIT_STEPS = [
@@ -138,7 +138,7 @@ export default function EditSignalWizard({
         deadline: new Date(formData.deadline).toISOString(),
         isPersistentFinalAlert: formData.isPersistentFinalAlert,
         consumers: formData.consumers,
-        labels: allLabels.map(formatLabelName),
+        labels: allLabels,
         isEdited: true,
       };
 

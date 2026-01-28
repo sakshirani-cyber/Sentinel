@@ -68,13 +68,13 @@ interface PollCreateDTO {
 
 export interface LabelCreateDTO {
     name: string;
-    description?: string;
+    description: string;
     localId?: string | number; // Numeric ID from frontend (timestamp)
 }
 
 export interface LabelEditDTO {
     id: number; // Backend ID
-    description?: string;
+    description: string;
 }
 
 export interface LabelResponseDTO {
@@ -338,16 +338,13 @@ export async function createLabel(label: LabelCreateDTO): Promise<CreateLabelRes
     console.log(`[Backend API] [${time}] 📤 createLabel request | name="${label.name}"`);
 
     // Transform to Backend DTO
-    // Note: Label is already formatted as ~#name~ by LabelManager before reaching here
+    // Note: Label name is stored as plain text (no formatting)
+    // Description is required
     const payload = {
         label: label.name,
-        description: label.description && label.description.trim() !== '' ? label.description : label.name,
+        description: label.description.trim(),
         localId: Number(label.localId) // Sent as a number (Long) to match backend expectation
     };
-
-    if (!payload.description.trim()) {
-        payload.description = "No Description"; // Fallback to avoid 400/500 if name is somehow empty/trim
-    }
 
     console.log(`[Backend API] [${time}] 📤 Payload:`, payload);
 
@@ -417,7 +414,7 @@ export async function getAllLabels(): Promise<LabelResponseDTO[]> {
         console.log(`[🌐 API] ✅ Received ${response.data.data.length} labels from backend`);
 
         // Map backend 'label' -> frontend 'name'
-        // Keep raw format (~#name~) for sync consistency. UI will handle unwrapping.
+        // Labels are stored as plain text (no formatting)
         const labels: LabelResponseDTO[] = response.data.data.map((l: any) => ({
             id: l.id,
             name: l.label,

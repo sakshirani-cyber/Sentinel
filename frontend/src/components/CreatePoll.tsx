@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { parseLabelsFromText, stripLabelMarkers, parseLabelName, formatLabelName } from '../utils/labelUtils';
+import { parseLabelsFromText, stripLabelMarkers } from '../utils/labelUtils';
 import LabelInput from './LabelInput';
 import LabelText from './LabelText';
 import {
@@ -25,7 +25,7 @@ import {
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface CreatePollProps {
@@ -235,7 +235,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
         isPersistentAlert: false,
         alertBeforeMinutes: 15,
         scheduledFor: isScheduled ? new Date(scheduleTime).toISOString() : undefined,
-        labels: combinedLabels.map(formatLabelName)
+        labels: combinedLabels
       };
 
       console.log(`[CreatePoll] [${new Date().toLocaleTimeString()}] 📋 Poll data prepared:`, {
@@ -734,7 +734,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                               color: defaultColor
                             }}
                           >
-                            {parseLabelName(name)}
+                            {stripLabelMarkers(name)}
                             {isDerived ? (
                               <span
                                 className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
@@ -793,7 +793,7 @@ export default function CreatePoll({ user, onCreatePoll }: CreatePollProps) {
                                 }}
                                 onClick={() => setExplicitLabels(prev => [...prev, stripLabelMarkers(label.name)])}
                               >
-                                {parseLabelName(label.name)}
+                                {stripLabelMarkers(label.name)}
                               </div>
                             </TooltipTrigger>
                             {label.description && (

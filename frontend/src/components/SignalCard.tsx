@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface SignalCardProps {

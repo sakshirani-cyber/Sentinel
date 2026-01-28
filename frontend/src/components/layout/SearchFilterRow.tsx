@@ -65,7 +65,7 @@ export default function SearchFilterRow({
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<FilterState>(filters || defaultFilters);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, right: 0 });
-  const [allLabels, setAllLabels] = useState<Array<{ id: string; name: string; description?: string }>>([]);
+  const [allLabels, setAllLabels] = useState<Array<{ id: string; name: string; description: string }>>([]);
   const [loadingLabels, setLoadingLabels] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);

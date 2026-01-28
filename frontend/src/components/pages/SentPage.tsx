@@ -8,6 +8,7 @@ import { EmptyState } from '../signals';
 import { AnalyticsPanel } from '../analytics';
 import { Pagination } from '../common';
 import EditSignalPanel from '../layout/EditSignalPanel';
+import { stripLabelMarkers } from '../../utils/labelUtils';
 
 interface SentPageProps {
   user: User;
@@ -92,9 +93,9 @@ export default function SentPage({
     return Array.from(consumers).slice(0, 10); // Limit to first 10 for performance
   }, [userPolls]);
 
-  // Apply search, sort, and filters
-  const applyFilters = useCallback((pollList: Poll[]) => {
-    let result = [...pollList];
+  // Apply search, sort, and filters to the ENTIRE dataset first
+  const filteredAllPolls = useMemo(() => {
+    let result = [...userPolls];
 
     // Search
     if (searchQuery.trim()) {
@@ -109,7 +110,7 @@ export default function SentPage({
     // Label filter
     if (filters.labels.length > 0) {
       result = result.filter(p =>
-        p.labels?.some((l: string) => filters.labels.includes(l))
+        p.labels?.some((l: string) => filters.labels.includes(stripLabelMarkers(l)))
       );
     }
 
@@ -164,36 +165,38 @@ export default function SentPage({
     });
 
     return result;
-  }, [searchQuery, sortOption, filters]);
+  }, [userPolls, searchQuery, sortOption, filters]);
 
-  // Get filtered polls based on status
+  // Now split the filtered data by status
   const { filteredPublished, filteredScheduled } = useMemo(() => {
-    let published: Poll[];
-    let scheduled: Poll[];
+    const now = new Date();
+    let published: Poll[] = [];
+    let scheduled: Poll[] = [];
 
     switch (statusFilter) {
       case 'incomplete': // Active (deadline not expired)
-        published = activePolls;
+        published = filteredAllPolls.filter(p => 
+          p.status !== 'scheduled' && new Date(p.deadline) >= now
+        );
         scheduled = [];
         break;
       case 'completed': // Scheduled
         published = [];
-        scheduled = scheduledPolls;
+        scheduled = filteredAllPolls.filter(p => p.status === 'scheduled');
         break;
       case 'all':
       default:
         // Show ALL polls: all published (including expired) and all scheduled
-        published = allPublishedPolls;
-        scheduled = scheduledPolls;
+        published = filteredAllPolls.filter(p => p.status !== 'scheduled');
+        scheduled = filteredAllPolls.filter(p => p.status === 'scheduled');
         break;
     }
 
-    // Apply search, sort, and filters
     return {
-      filteredPublished: applyFilters(published),
-      filteredScheduled: applyFilters(scheduled),
+      filteredPublished: published,
+      filteredScheduled: scheduled,
     };
-  }, [statusFilter, activePolls, scheduledPolls, allPublishedPolls, applyFilters]);
+  }, [filteredAllPolls, statusFilter]);
 
   const hasNoSignals = filteredPublished.length === 0 && filteredScheduled.length === 0;
 

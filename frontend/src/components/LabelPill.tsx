@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { parseLabelName } from '../utils/labelUtils';
+import { stripLabelMarkers } from '../utils/labelUtils';
 import { Tag } from 'lucide-react';
 
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface LabelPillProps {
@@ -79,7 +79,7 @@ export default function LabelPill({
             title={labelObj?.description || labelName}
           >
             {showIcon && <Tag className={iconSizes[size]} />}
-            {parseLabelName(labelName)}
+            {stripLabelMarkers(labelName)}
           </span>
         );
       })}

@@ -12,7 +12,7 @@ import {
   LabelsStep,
   ReviewStep,
 } from './steps';
-import { parseLabelsFromText, formatLabelName } from '../../utils/labelUtils';
+import { parseLabelsFromText } from '../../utils/labelUtils';
 
 // Step definitions
 const STEPS = [
@@ -126,7 +126,7 @@ export default function CreateSignalWizard({
         isPersistentAlert: false,
         alertBeforeMinutes: 15,
         scheduledFor: formData.isScheduled ? new Date(formData.scheduleTime).toISOString() : undefined,
-        labels: allLabels.map(formatLabelName),
+        labels: allLabels,
       };
 
       await onCreatePoll(poll);

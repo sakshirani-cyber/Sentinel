@@ -26,7 +26,7 @@ import saveAs from 'file-saver';
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 interface AnalyticsViewProps {

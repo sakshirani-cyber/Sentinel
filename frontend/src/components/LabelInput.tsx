@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { cn } from './ui/utils';
-import { parseLabelName, stripLabelMarkers } from '../utils/labelUtils';
+import { stripLabelMarkers } from '../utils/labelUtils';
 
 interface Label {
     id: string;
     name: string;
-    description?: string;
+    description: string;
 }
 
 interface LabelInputProps {
@@ -94,8 +94,9 @@ export default function LabelInput({
         const beforeHash = value.substring(0, hashPosition);
         const afterCursor = value.substring(inputRef.current?.selectionStart || 0);
 
-        // Store label with ~#labelname~ format
-        const labelTag = label.name;
+        // Store label with #labelname format
+        const labelName = stripLabelMarkers(label.name);
+        const labelTag = `#${labelName}`;
         const newValue = beforeHash + labelTag + afterCursor;
 
         onChange(newValue);
@@ -120,11 +121,14 @@ export default function LabelInput({
             // Only if no selection and cursor is after a tag
             if (inputRef.current?.selectionEnd === cursor) {
                 const textBefore = value.substring(0, cursor);
-                const match = textBefore.match(/~#([^~]+)~$/);
+                // Match both old format (~#label~) and new format (#label)
+                const match = textBefore.match(/(~#([^~]+)~|#([a-zA-Z0-9_]+))$/);
 
                 if (match) {
                     e.preventDefault();
                     const tagLength = match[0].length;
+                    // Extract label name: match[2] for old format, match[3] for new format
+                    const labelName = match[2] || match[3];
                     const newValue = value.substring(0, cursor - tagLength) + value.substring(cursor);
                     onChange(newValue);
 
@@ -253,7 +257,8 @@ export default function LabelInput({
         if (!value) return null;
 
         const segments = [];
-        const regex = /~#([^~]+)~/g;
+        // Match both old format (~#labelname~) and new format (#labelname)
+        const regex = /(~#([^~]+)~|#([a-zA-Z0-9_]+))/g;
         let lastIndex = 0;
         let match;
 
@@ -264,8 +269,8 @@ export default function LabelInput({
                 segments.push(<span key={`text-${lastIndex}`} style={{ color: '#1a1a1a' }}>{textBefore}</span>);
             }
 
-            // The Label
-            const labelName = match[1];
+            // The Label - extract name: match[2] for old format, match[3] for new format
+            const labelName = match[2] || match[3];
             const label = (Array.isArray(labels) ? labels : []).find(l => stripLabelMarkers(l.name).toLowerCase() === labelName.toLowerCase());
 
             if (label) {
@@ -285,9 +290,7 @@ export default function LabelInput({
                             WebkitBoxDecorationBreak: 'clone'
                         }}
                     >
-                        <span className="opacity-0 select-none">~</span>
-                        {parseLabelName(label.name)}
-                        <span className="opacity-0 select-none">~</span>
+                        {stripLabelMarkers(label.name)}
                     </span>
                 );
             } else {
@@ -403,7 +406,7 @@ export default function LabelInput({
                                         color: '#3b82f6'
                                     }}
                                 >
-                                    {parseLabelName(label.name)}
+                                    {stripLabelMarkers(label.name)}
                                 </span>
                                 {label.description && (
                                     <div className="text-xs text-slate-500 truncate flex-1 ml-2">

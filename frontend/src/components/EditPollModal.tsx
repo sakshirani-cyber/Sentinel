@@ -9,7 +9,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "./ui/tooltip";
-import { parseLabelsFromText, stripLabelMarkers, parseLabelName, formatLabelName } from '../utils/labelUtils';
+import { parseLabelsFromText, stripLabelMarkers } from '../utils/labelUtils';
 import LabelInput from './LabelInput';
 import LabelText from './LabelText';
 import { cn } from './ui/utils';
@@ -24,7 +24,7 @@ import {
 interface Label {
     id: string;
     name: string;
-    description?: string;
+    description: string;
 }
 
 interface EditPollModalProps {
@@ -241,7 +241,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                     ...parseLabelsFromText(question),
                     ...options.flatMap(o => parseLabelsFromText(o)),
                     ...explicitLabels.map(stripLabelMarkers)
-                ])).map(formatLabelName),
+                ])),
                 isEdited: true
             };
 
@@ -649,7 +649,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                                             color: color
                                                         }}
                                                     >
-                                                        {parseLabelName(name)}
+                                                        {stripLabelMarkers(name)}
                                                         {isDerived ? (
                                                             <span
                                                                 className="absolute -top-1 -right-1 translate-x-[30%] -translate-y-[30%] flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white shadow-sm ring-1 ring-white"
@@ -708,7 +708,7 @@ export default function EditPollModal({ poll, onUpdate, onClose }: EditPollModal
                                                                 }}
                                                                 onClick={() => setExplicitLabels(prev => [...prev, stripLabelMarkers(label.name)])}
                                                             >
-                                                                {parseLabelName(label.name)}
+                                                                {stripLabelMarkers(label.name)}
                                                             </div>
                                                         </TooltipTrigger>
                                                         {label.description && (

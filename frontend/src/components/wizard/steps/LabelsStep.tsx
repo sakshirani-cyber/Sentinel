@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { StepProps } from '../types';
 import { Tag, Plus, X, Check } from 'lucide-react';
-import { parseLabelsFromText, stripLabelMarkers, parseLabelName } from '../../../utils/labelUtils';
+import { parseLabelsFromText, stripLabelMarkers } from '../../../utils/labelUtils';
 
 interface Label {
   id: string;
   name: string;
-  description?: string;
+  description: string;
 }
 
 /**
@@ -100,7 +100,7 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary/10 dark:bg-primary/15 text-primary border border-primary/30"
                 >
                   <Tag className="w-3.5 h-3.5" />
-                  {parseLabelName(labelName)}
+                  {stripLabelMarkers(labelName)}
                   <span className="ml-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-semibold">
                     {detectedLabels.filter(l => l === labelName).length}
                   </span>
@@ -124,7 +124,7 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary dark:bg-muted text-foreground border border-border"
               >
                 <Tag className="w-3.5 h-3.5 text-primary" />
-                {parseLabelName(labelName)}
+                {stripLabelMarkers(labelName)}
                 <button
                   onClick={() => handleRemoveLabel(labelName)}
                   className="ml-1 p-0.5 rounded-full hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-colors"
@@ -162,7 +162,7 @@ export default function LabelsStep({ formData, updateFormData, onValidationChang
                 title={label.description}
               >
                 <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-primary" />
-                {parseLabelName(label.name)}
+                {stripLabelMarkers(label.name)}
               </button>
             ))}
           </div>
