@@ -214,6 +214,7 @@ export default function InboxPage({
             ? `${incompletePolls.length} signal${incompletePolls.length !== 1 ? 's' : ''} waiting`
             : 'All caught up!'
         }
+        showCreateButton={user.isPublisher}
       />
 
       {/* Status Filter Cards */}
