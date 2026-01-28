@@ -18,6 +18,9 @@ import java.time.Instant;
 @Data
 public class ScheduledPoll {
 
+    public static final String SELECTION_TYPE_SINGLE = "SINGLE";
+    public static final String SELECTION_TYPE_MULTI = "MULTI";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -67,6 +70,12 @@ public class ScheduledPoll {
 
     @Column(nullable = false)
     private Boolean showIndividualResponses = true;
+
+    @Column(name = "selection_type", nullable = false)
+    private String selectionType = SELECTION_TYPE_SINGLE;
+
+    @Column(name = "max_selections")
+    private Integer maxSelections;
 
     @PrePersist
     protected void onCreate() {

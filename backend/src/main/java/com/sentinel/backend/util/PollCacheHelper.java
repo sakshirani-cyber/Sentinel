@@ -50,6 +50,8 @@ public class PollCacheHelper {
         pollData.put("lastEditedBy", signal.getLastEditedBy());
         pollData.put("title", signal.getTitle());
         pollData.put("showIndividualResponses", signal.getShowIndividualResponses());
+        pollData.put("selectionType", poll.getSelectionType());
+        pollData.put("maxSelections", poll.getMaxSelections());
 
         List<UserPollEntry> userPollEntries = new ArrayList<>(signal.getSharedWith().length);
         double score = signal.getCreatedOn().toEpochMilli();
@@ -87,6 +89,8 @@ public class PollCacheHelper {
         pollData.put("lastEditedBy", signal.getLastEditedBy());
         pollData.put("title", signal.getTitle());
         pollData.put("showIndividualResponses", signal.getShowIndividualResponses());
+        pollData.put("selectionType", poll.getSelectionType());
+        pollData.put("maxSelections", poll.getMaxSelections());
 
         cache.hSetAll(pollKey, pollData, cache.getPollTtl());
 
@@ -125,6 +129,8 @@ public class PollCacheHelper {
         poll.setSignal(signal);
         poll.setQuestion(scheduledPoll.getQuestion());
         poll.setOptions(scheduledPoll.getOptions());
+        poll.setSelectionType(scheduledPoll.getSelectionType());
+        poll.setMaxSelections(scheduledPoll.getMaxSelections());
         return poll;
     }
 
@@ -144,6 +150,8 @@ public class PollCacheHelper {
                 .republish(republish)
                 .title(signal.getTitle())
                 .showIndividualResponses(signal.getShowIndividualResponses())
+                .selectionType(poll.getSelectionType())
+                .maxSelections(poll.getMaxSelections())
                 .build();
     }
 }

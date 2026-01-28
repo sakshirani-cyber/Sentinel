@@ -25,8 +25,8 @@ public class PollResult {
     @JoinColumn(name = "signal_id")
     private Signal signal;
 
-    @Column(name = "selected_option")
-    private String selectedOption;
+    @Column(name = "selected_options", columnDefinition = "text[]")
+    private String[] selectedOptions;
 
     @Column(name = "default_response")
     private String defaultResponse;

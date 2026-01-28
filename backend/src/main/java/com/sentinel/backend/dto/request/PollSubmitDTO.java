@@ -1,7 +1,6 @@
 package com.sentinel.backend.dto.request;
 
 import com.sentinel.backend.util.NormalizationUtils;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -24,7 +23,7 @@ public class PollSubmitDTO {
     @Email(message = "Invalid email format")
     private String userEmail;
 
-    private String selectedOption;
+    private String[] selectedOptions;
     private String defaultResponse;
 
     @Size(max = 500, message = "Reason cannot exceed 500 characters.")
@@ -32,7 +31,7 @@ public class PollSubmitDTO {
 
     public void normalize() {
         userEmail = NormalizationUtils.trimToNull(userEmail);
-        selectedOption = NormalizationUtils.trimToNull(selectedOption);
+        selectedOptions = NormalizationUtils.trimArray(selectedOptions);
         defaultResponse = NormalizationUtils.trimToNull(defaultResponse);
         reason = NormalizationUtils.trimToNull(reason);
     }

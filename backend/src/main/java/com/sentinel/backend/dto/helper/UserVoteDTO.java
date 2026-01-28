@@ -13,6 +13,6 @@ import java.time.Instant;
 @NoArgsConstructor
 public class UserVoteDTO {
     private String userEmail;
-    private String selectedOption;
+    private String[] selectedOptions;
     private Instant submittedAt;
 }

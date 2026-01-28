@@ -95,6 +95,8 @@ public class SignalServiceImpl implements SignalService {
         poll.setSignal(signal);
         poll.setQuestion(dto.getQuestion());
         poll.setOptions(dto.getOptions());
+        poll.setSelectionType(dto.getSelectionType());
+        poll.setMaxSelections(dto.getMaxSelections());
 
         pollCacheHelper.savePollToCache(signal, poll);
 
@@ -102,8 +104,8 @@ public class SignalServiceImpl implements SignalService {
 
         publishPollEvent(signal, poll, POLL_CREATED, false);
 
-        log.info("[POLL][CREATE] signalId={} | localId={} | recipientCount={}",
-                signalId, dto.getLocalId(), signal.getSharedWith().length);
+        log.info("[POLL][CREATE] signalId={} | localId={} | recipientCount={} | selectionType={}",
+                signalId, dto.getLocalId(), signal.getSharedWith().length, dto.getSelectionType());
 
         return new CreatePollResponse(signalId, dto.getLocalId());
     }
@@ -163,13 +165,18 @@ public class SignalServiceImpl implements SignalService {
         Long signalId = dto.getSignalId();
         String userEmail = dto.getUserEmail();
 
-        Signal signal = getActivePollSignalFromCache(signalId, userEmail);
+        CachedPollData pollData = getCombinedPollDataFromCache(signalId);
+        Signal signal = pollData.signal();
+        Poll poll = pollData.poll();
+
+        validateUserCanVote(signal, userEmail);
+        validateVoteSelections(dto, poll);
 
         PollResultId id = new PollResultId(signalId, userEmail);
         PollResult result = new PollResult();
         result.setId(id);
         result.setSignal(signal);
-        result.setSelectedOption(dto.getSelectedOption());
+        result.setSelectedOptions(dto.getSelectedOptions());
         result.setDefaultResponse(dto.getDefaultResponse());
         result.setReason(dto.getReason());
         result.setTimeOfSubmission(Instant.now());
@@ -178,8 +185,61 @@ public class SignalServiceImpl implements SignalService {
         batchPollResultService.queueForBatchInsert(result);
 
         if (log.isInfoEnabled()) {
-            log.info("[POLL][VOTE][LOCK_FREE] signalId={} | user={} | option={} | durationMs={}",
-                    signalId, userEmail, dto.getSelectedOption(), System.currentTimeMillis() - start);
+            log.info("[POLL][VOTE][LOCK_FREE] signalId={} | user={} | options={} | selectionType={} | durationMs={}",
+                    signalId, userEmail, Arrays.toString(dto.getSelectedOptions()), 
+                    poll.getSelectionType(), System.currentTimeMillis() - start);
+        }
+    }
+
+    private void validateUserCanVote(Signal signal, String userEmail) {
+        if (!ACTIVE.equals(signal.getStatus())) {
+            throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
+        }
+
+        String[] sharedWith = signal.getSharedWith();
+        if (sharedWith == null || !Set.of(sharedWith).contains(userEmail)) {
+            throw new CustomException("User not assigned", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private void validateVoteSelections(PollSubmitDTO dto, Poll poll) {
+        String[] selectedOptions = dto.getSelectedOptions();
+        
+        // If user is submitting a default response or reason, no option validation needed
+        if ((selectedOptions == null || selectedOptions.length == 0) && 
+            (hasText(dto.getDefaultResponse()) || hasText(dto.getReason()))) {
+            return;
+        }
+
+        if (selectedOptions == null || selectedOptions.length == 0) {
+            throw new CustomException("At least one option must be selected", HttpStatus.BAD_REQUEST);
+        }
+
+        String selectionType = poll.getSelectionType();
+        Set<String> validOptions = Set.of(poll.getOptions());
+
+        // Validate all selected options exist
+        for (String option : selectedOptions) {
+            if (!validOptions.contains(option)) {
+                throw new CustomException("Invalid option: " + option, HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        // Check for duplicates
+        if (selectedOptions.length != Set.of(selectedOptions).size()) {
+            throw new CustomException("Duplicate options not allowed", HttpStatus.BAD_REQUEST);
+        }
+
+        // Validate based on selection type
+        if (Poll.SELECTION_TYPE_SINGLE.equals(selectionType)) {
+            if (selectedOptions.length > 1) {
+                throw new CustomException("Only one option can be selected for single-select polls", HttpStatus.BAD_REQUEST);
+            }
+        } else if (Poll.SELECTION_TYPE_MULTI.equals(selectionType)) {
+            Integer maxSelections = poll.getMaxSelections();
+            if (maxSelections != null && selectedOptions.length > maxSelections) {
+                throw new CustomException("Maximum " + maxSelections + " options can be selected", HttpStatus.BAD_REQUEST);
+            }
         }
     }
 
@@ -191,13 +251,18 @@ public class SignalServiceImpl implements SignalService {
         String lockKey = LOCK_VOTE_PREFIX + signalId + ":" + userEmail;
 
         executeWithLock(lockKey, 2, () -> {
-            Signal signal = getActivePollSignalFromCache(signalId, userEmail);
+            CachedPollData pollData = getCombinedPollDataFromCache(signalId);
+            Signal signal = pollData.signal();
+            Poll poll = pollData.poll();
+
+            validateUserCanVote(signal, userEmail);
+            validateVoteSelections(dto, poll);
 
             PollResultId id = new PollResultId(signalId, userEmail);
             PollResult result = new PollResult();
             result.setId(id);
             result.setSignal(signal);
-            result.setSelectedOption(dto.getSelectedOption());
+            result.setSelectedOptions(dto.getSelectedOptions());
             result.setDefaultResponse(dto.getDefaultResponse());
             result.setReason(dto.getReason());
             result.setTimeOfSubmission(Instant.now());
@@ -207,8 +272,8 @@ public class SignalServiceImpl implements SignalService {
 
             asyncDbSync.asyncSavePollResult(result);
 
-            log.info("[POLL][VOTE][LEGACY] signalId={} | user={} | option={}",
-                    signalId, userEmail, dto.getSelectedOption());
+            log.info("[POLL][VOTE][LEGACY] signalId={} | user={} | options={}",
+                    signalId, userEmail, Arrays.toString(dto.getSelectedOptions()));
         });
     }
 
@@ -291,7 +356,25 @@ public class SignalServiceImpl implements SignalService {
         poll.setSignalId(signalId);
         poll.setQuestion((String) data.get("question"));
         poll.setOptions(parseStringArray(data.get("options")));
+        poll.setSelectionType((String) data.get("selectionType"));
+        poll.setMaxSelections(parseInteger(data.get("maxSelections")));
         return poll;
+    }
+
+    private Integer parseInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        if (value instanceof String) {
+            return Integer.parseInt((String) value);
+        }
+        throw new IllegalArgumentException("Cannot parse Integer from: " + value.getClass());
     }
 
     @Override
@@ -314,6 +397,8 @@ public class SignalServiceImpl implements SignalService {
 
             poll.setQuestion(dto.getQuestion());
             poll.setOptions(dto.getOptions());
+            poll.setSelectionType(dto.getSelectionType());
+            poll.setMaxSelections(dto.getMaxSelections());
 
             signal.setAnonymous(dto.getAnonymous());
             signal.setDefaultFlag(dto.getDefaultFlag());
@@ -335,7 +420,7 @@ public class SignalServiceImpl implements SignalService {
 
             publishPollEvent(signal, poll, POLL_EDITED, dto.getRepublish());
 
-            log.info("[POLL][EDIT] signalId={} | republish={}", signalId, dto.getRepublish());
+            log.info("[POLL][EDIT] signalId={} | republish={} | selectionType={}", signalId, dto.getRepublish(), dto.getSelectionType());
         });
     }
 
@@ -363,6 +448,8 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setLabels(dto.getLabels());
         scheduledPoll.setTitle(dto.getTitle());
         scheduledPoll.setShowIndividualResponses(dto.getShowIndividualResponses());
+        scheduledPoll.setSelectionType(dto.getSelectionType());
+        scheduledPoll.setMaxSelections(dto.getMaxSelections());
 
         scheduledPollRepository.save(scheduledPoll);
 
@@ -442,7 +529,7 @@ public class SignalServiceImpl implements SignalService {
         String invalidateKey = cache.buildKey(POLL_RESULTS_CACHED, signalIdStr);
 
         Map<String, Object> voteData = new HashMap<>(4);
-        voteData.put("selectedOption", result.getSelectedOption());
+        voteData.put("selectedOptions", result.getSelectedOptions());
         voteData.put("defaultResponse", result.getDefaultResponse());
         voteData.put("reason", result.getReason());
         voteData.put("timeOfSubmission", result.getTimeOfSubmission());
@@ -455,7 +542,7 @@ public class SignalServiceImpl implements SignalService {
         String voteKey = cache.buildKey(POLL_RESULTS, result.getId().getSignalId().toString());
 
         Map<String, Object> voteData = new HashMap<>();
-        voteData.put("selectedOption", result.getSelectedOption());
+        voteData.put("selectedOptions", result.getSelectedOptions());
         voteData.put("defaultResponse", result.getDefaultResponse());
         voteData.put("reason", result.getReason());
         voteData.put("timeOfSubmission", result.getTimeOfSubmission());
@@ -479,20 +566,6 @@ public class SignalServiceImpl implements SignalService {
         return mapToSignal(data);
     }
 
-    private Signal getActivePollSignalFromCache(Long signalId, String userEmail) {
-        Signal signal = getPollSignalFromCache(signalId);
-
-        if (!ACTIVE.equals(signal.getStatus())) {
-            throw new CustomException("Poll closed", HttpStatus.BAD_REQUEST);
-        }
-
-        String[] sharedWith = signal.getSharedWith();
-        if (sharedWith == null || !Set.of(sharedWith).contains(userEmail)) {
-            throw new CustomException("User not assigned", HttpStatus.BAD_REQUEST);
-        }
-        return signal;
-    }
-
     private List<PollResult> getVotesFromCache(Long signalId) {
         long start = System.currentTimeMillis();
         String key = cache.buildKey(POLL_RESULTS, signalId.toString());
@@ -512,7 +585,7 @@ public class SignalServiceImpl implements SignalService {
 
             PollResult result = new PollResult();
             result.setId(new PollResultId(signalId, entry.getKey()));
-            result.setSelectedOption((String) voteData.get("selectedOption"));
+            result.setSelectedOptions(parseStringArray(voteData.get("selectedOptions")));
             result.setDefaultResponse((String) voteData.get("defaultResponse"));
             result.setReason((String) voteData.get("reason"));
             result.setTimeOfSubmission(parseInstant(voteData.get("timeOfSubmission")));
@@ -647,6 +720,8 @@ public class SignalServiceImpl implements SignalService {
         scheduledPoll.setLabels(dto.getLabels());
         scheduledPoll.setTitle(dto.getTitle());
         scheduledPoll.setShowIndividualResponses(dto.getShowIndividualResponses());
+        scheduledPoll.setSelectionType(dto.getSelectionType());
+        scheduledPoll.setMaxSelections(dto.getMaxSelections());
         return scheduledPoll;
     }
 
@@ -702,31 +777,42 @@ public class SignalServiceImpl implements SignalService {
         int totalVotes = 0;
 
         for (PollResult result : results) {
-            String selectedOption = result.getSelectedOption();
+            String[] selectedOptions = result.getSelectedOptions();
 
-            if (selectedOption != null) {
+            if (selectedOptions != null && selectedOptions.length > 0) {
                 UserVoteDTO vote = new UserVoteDTO(
                         result.getId().getUserEmail(),
-                        selectedOption,
+                        selectedOptions,
                         result.getTimeOfSubmission()
                 );
 
-                if (activeOptionsSet.contains(selectedOption)) {
-                    optionCounts.merge(selectedOption, 1, Integer::sum);
-                    optionVotes.get(selectedOption).add(vote);
-                    totalVotes++;
-                } else {
-                    removedOptions.computeIfAbsent(selectedOption, k -> new ArrayList<>()).add(vote);
-                    removedOptionCounts.merge(selectedOption, 1, Integer::sum);
+                boolean hasActiveOption = false;
+                boolean hasRemovedOption = false;
+
+                // Count each selected option
+                for (String selectedOption : selectedOptions) {
+                    if (activeOptionsSet.contains(selectedOption)) {
+                        optionCounts.merge(selectedOption, 1, Integer::sum);
+                        optionVotes.get(selectedOption).add(vote);
+                        hasActiveOption = true;
+                    } else {
+                        removedOptions.computeIfAbsent(selectedOption, k -> new ArrayList<>()).add(vote);
+                        removedOptionCounts.merge(selectedOption, 1, Integer::sum);
+                        hasRemovedOption = true;
+                    }
+                }
+
+                // Count as one response (not per option)
+                if (hasActiveOption || hasRemovedOption) {
                     totalVotes++;
                 }
             } else if (hasText(result.getReason())) {
                 reasonResponses.put(result.getId().getUserEmail(), result.getReason());
                 anonymousReasonTexts.add(result.getReason());
-            } else {
+            } else if (hasText(result.getDefaultResponse())) {
                 UserVoteDTO vote = new UserVoteDTO(
                         result.getId().getUserEmail(),
-                        result.getDefaultResponse(),
+                        new String[]{result.getDefaultResponse()},
                         result.getTimeOfSubmission()
                 );
                 defaultResponses.add(vote);

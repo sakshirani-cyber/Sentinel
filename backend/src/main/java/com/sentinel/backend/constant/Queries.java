@@ -27,7 +27,7 @@ public final class Queries {
             s.end_timestamp,
             s.last_edited,
             s.show_individual_responses,
-            r.selected_option,
+            r.selected_options,
             r.default_response,
             r.reason,
             r.time_of_submission

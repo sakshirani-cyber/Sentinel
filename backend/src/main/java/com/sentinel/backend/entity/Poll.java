@@ -16,6 +16,9 @@ import lombok.Data;
 @Data
 public class Poll {
 
+    public static final String SELECTION_TYPE_SINGLE = "SINGLE";
+    public static final String SELECTION_TYPE_MULTI = "MULTI";
+
     @Id
     @Column(name = "signal_id", nullable = false)
     private Long signalId;
@@ -30,4 +33,10 @@ public class Poll {
 
     @Column(name = "options", columnDefinition = "text[]", nullable = false)
     private String[] options;
+
+    @Column(name = "selection_type", nullable = false)
+    private String selectionType = SELECTION_TYPE_SINGLE;
+
+    @Column(name = "max_selections")
+    private Integer maxSelections;
 }

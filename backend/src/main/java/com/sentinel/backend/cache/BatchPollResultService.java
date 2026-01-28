@@ -151,7 +151,7 @@ public class BatchPollResultService {
             Map<String, Object> voteData = Map.of(
                     "signalId", result.getId().getSignalId(),
                     "userEmail", result.getId().getUserEmail(),
-                    "selectedOption", result.getSelectedOption() != null ? result.getSelectedOption() : "",
+                    "selectedOptions", result.getSelectedOptions() != null ? List.of(result.getSelectedOptions()) : List.of(),
                     "defaultResponse", result.getDefaultResponse() != null ? result.getDefaultResponse() : "",
                     "reason", result.getReason() != null ? result.getReason() : "",
                     "timeOfSubmission", result.getTimeOfSubmission().toString()
@@ -315,8 +315,10 @@ public class BatchPollResultService {
             result.setId(new PollResultId(signalId, userEmail));
             result.setSignal(signal);
             
-            String selectedOption = (String) voteData.get("selectedOption");
-            result.setSelectedOption(selectedOption.isEmpty() ? null : selectedOption);
+            @SuppressWarnings("unchecked")
+            List<String> selectedOptionsList = (List<String>) voteData.get("selectedOptions");
+            result.setSelectedOptions(selectedOptionsList != null && !selectedOptionsList.isEmpty() 
+                    ? selectedOptionsList.toArray(new String[0]) : null);
             
             String defaultResponse = (String) voteData.get("defaultResponse");
             result.setDefaultResponse(defaultResponse.isEmpty() ? null : defaultResponse);

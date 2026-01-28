@@ -31,7 +31,7 @@ public class DataSyncDTO {
     private Instant lastEdited;
     private Boolean showIndividualResponses;
 
-    private String selectedOption;
+    private String selectedOptions;
     private String defaultResponse;
     private String reason;
     private Instant timeOfSubmission;

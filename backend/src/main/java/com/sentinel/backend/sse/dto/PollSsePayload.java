@@ -31,4 +31,7 @@ public class PollSsePayload {
     private String title;
 
     private Boolean showIndividualResponses;
+
+    private String selectionType;
+    private Integer maxSelections;
 }
